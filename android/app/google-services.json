@@ -1,0 +1,63 @@
+{
+  "project_info": {
+    "project_number": "867895907800",
+    "project_id": "worldchat-23783",
+    "storage_bucket": "worldchat-23783.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:867895907800:android:e6d50ac00a960785730ead",
+        "android_client_info": {
+          "package_name": "com.worldchat.community"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "867895907800-0b3a22q17v6hr55uajcq35nh1qfe0bv4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.worldchat.community",
+            "certificate_hash": "e143fa42004bf7edd6dee3c4e80c661933428803"
+          }
+        },
+        {
+          "client_id": "867895907800-b8hr8kn1da08odrriejcc8a9e6pnh1s3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.worldchat.community",
+            "certificate_hash": "aed5d433e6f12b22615c8f55385f740bd1b4732c"
+          }
+        },
+        {
+          "client_id": "867895907800-n7bkpl5sk9gv0p3hog26jsi2pft7lvkr.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.worldchat.community",
+            "certificate_hash": "27737e293830bb4c2b2baf30ee759c6a736ad2d0"
+          }
+        },
+        {
+          "client_id": "867895907800-qv4bfr1l7h0mn2hphc93g6sc5i2kf6co.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCS3znCeLlNXYdsB5OpkPSeLIqu4a8Go8o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "867895907800-3vgh02pv7hgem99dof6eq7k0rvp39g5n.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

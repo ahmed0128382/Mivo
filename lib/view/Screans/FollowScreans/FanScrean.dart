@@ -1,0 +1,51 @@
+import 'package:ahlachat/util/helperclass.dart';
+import 'package:ahlachat/view/Screans/UserProfile/ShowUserProfile.dart';
+import 'package:ahlachat/view/widgets/UserSideInfoWidget.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../../util/Localization.dart';
+import '../../../util/styles.dart';
+import '../../../viewmodels/Auth_Viewmodel/LoginViewModel.dart';
+import '../../../viewmodels/Follow_ViewModel/Follow_ViewModel.dart';
+class FanScrean extends StatelessWidget {
+  const FanScrean({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    FollowViewModel Follow=  Provider.of<FollowViewModel>(context,listen: true);
+    LoginViewmodel user= Provider.of<LoginViewmodel>(context,listen: true);
+    return Scaffold( appBar: AppBar( backgroundColor: Colors.transparent,iconTheme: IconThemeData(color: Colors.black), centerTitle: false,elevation: 0,title: Text(getLang(context: context,key: "Followers"),style: style6.copyWith(fontSize: 19,color:Colors.black87),)),
+        body: SingleChildScrollView(
+
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Column(children: List.generate(Follow.Myfans.length, (index) =>InkWell(onTap: (){
+              user.GetShoweduserProfile(user.checkuserkind(context: context,id: Follow.Myfans[index].user?.id )? Follow.Myfans[index].otheruser:Follow.Myfans[index].user);
+              navigateTo(context: context,screen: ShowUserProfile());
+            },
+              child: Padding(
+                padding: const EdgeInsets.only(top: 10),
+                child: Container(child: Row(
+                  mainAxisAlignment: MainAxisAlignment.start,
+
+                  children: [
+
+                    CircleAvatar(backgroundColor: Colors.transparent,radius: 30,backgroundImage: CachedNetworkImageProvider(user.checkuserkind(context: context,id: Follow.Myfans[index].user?.id )?Follow.Myfans[index].otheruser?.image??'':Follow.Myfans[index].user?.image??'')),
+                    SizedBox(width: 6,),
+                    UserSideInfoWidgets(UserDate:user.checkuserkind(context: context,id: Follow.Myfans[index].user?.id )? Follow.Myfans[index].otheruser:Follow.Myfans[index].user,),
+                    Spacer(),
+                    if(!(user.userinfo?.followIds?.contains(Follow.Myfans[index].user?.id.toString())??false))  InkWell(onTap: (){
+Follow. ReturnFollow(context: context,Senderid:Follow.Myfans[index].user?.id);
+},child: Container(decoration: BoxDecoration(color: MainColor,borderRadius: BorderRadius.circular(15)),child: Center(child: Text(getLang(context: context, key: "Follow") ,style: style6.copyWith(height: 1,color: whitecolor))),height: 25 ,width: 60,))
+
+
+                  ],
+                ) ),
+              ),
+            )),),
+          ),
+        ));
+  }
+}
+

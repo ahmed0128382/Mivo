@@ -1,0 +1,61 @@
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+// Older Flutter plugins can omit the namespace required by newer Android Gradle plugins.
+subprojects { subproject ->
+    subproject.plugins.withId('com.android.library') {
+        def androidExtension = subproject.extensions.findByName('android')
+        androidExtension.compileOptions.sourceCompatibility = JavaVersion.VERSION_1_8
+        androidExtension.compileOptions.targetCompatibility = JavaVersion.VERSION_1_8
+        if (androidExtension != null && !androidExtension.namespace) {
+            def manifest = subproject.file('src/main/AndroidManifest.xml')
+            if (manifest.exists()) {
+                def matcher = manifest.getText('UTF-8') =~ /package=[\"']([^\"']+)[\"']/
+                if (matcher.find()) {
+                    androidExtension.namespace = matcher.group(1)
+                }
+            }
+        }
+    }
+    subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+        kotlinOptions.jvmTarget = '1.8'
+    }
+    // A few older plugins set Java targets newer than their Kotlin defaults.
+    def kotlinTarget = [
+        device_info_plus: '17',
+        image_picker_android: '17',
+        package_info_plus: '17',
+        shared_preferences_android: '17',
+        url_launcher_android: '17',
+        video_player_android: '17',
+        wakelock_plus: '17',
+        webview_flutter_android: '17',
+        fluttertoast: '11'
+    ][subproject.name]
+    if (kotlinTarget) {
+        subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions.jvmTarget = kotlinTarget
+        }
+    }
+    if (subproject.name == 'sentry_flutter') {
+        subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
+            kotlinOptions.languageVersion = '1.8'
+        }
+    }
+}
+
+rootProject.buildDir = '../build'
+subprojects {
+    project.buildDir = "${rootProject.buildDir}/${project.name}"
+}
+subprojects {
+    project.evaluationDependsOn(':app')
+}
+
+tasks.register("clean", Delete) {
+    delete rootProject.layout.buildDirectory
+}
