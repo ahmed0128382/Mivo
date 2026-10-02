@@ -539,46 +539,101 @@ int target=0;
   }
 
   Future<User?> Googlesignin({context}) async {
-    try {
-      final googleuser = GoogleSignIn();
-      final signin = await googleuser.signIn();
-      if (googleuser != null) {
-        final googleAuth = await signin?.authentication;
-        if (googleAuth?.idToken != null) {
-          ShowGlopalLoading();
-          final usercredentioal = await _firebaseAuth
-              .signInWithCredential(GoogleAuthProvider.credential(
-            accessToken: googleAuth?.accessToken,
-            idToken: googleAuth?.idToken,
+  try {
+    final googleuser = GoogleSignIn();
 
-          ));
+    print('GOOGLE: opening account chooser');
 
+    final signin = await googleuser.signIn();
 
-          Gmail=usercredentioal.user?.email;
-          final ByteData imageData = await NetworkAssetBundle(Uri.parse(usercredentioal.user?.photoURL??'')).load("");
-          final Uint8List bytes = imageData.buffer.asUint8List();
-          ByteData byteData = ByteData.view(bytes.buffer);
-          var tempDir = await getTemporaryDirectory();
-          File file = await File('${tempDir.path}/img').writeAsBytes(bytes.buffer.asUint8List(byteData.offsetInBytes, byteData.lengthInBytes));
-          if(usercredentioal.user!=null){
-            Provider.of<LoginViewmodel>(context,listen: false).UpdateUsernameComp(name:usercredentioal.user?.displayName );
-            Provider.of<LoginViewmodel>(context,listen: false).updateComimage(image: file);
-           UserLoginGoogle(context: context ,email:usercredentioal.user?.email);
-          }
-          //Provider.of<LoginViewmodel>(context,listen: false).UserSocialRegester(context: context, uuid: usercredentioal.user!.uid,social: "2");
-
-        } else {
-//throw FirebaseAuthException(code: 'id tolen is null',message: 'id tolen is null');
-          print('=======================> id tolen is null');
-        }
-      } else {
-        //   throw FirebaseAuthException(code: 'id tolen is null',message: 'id tolen is null');
-        print('=======================>googleuser empty');
-      }
-    } catch (e) {
-      print(e);
+    if (signin == null) {
+      print('GOOGLE: user cancelled sign in');
+      return null;
     }
+
+    print('GOOGLE: account selected: ${signin.email}');
+
+    final googleAuth = await signin.authentication;
+
+    print(
+      'GOOGLE: idToken=${googleAuth.idToken != null}, '
+      'accessToken=${googleAuth.accessToken != null}',
+    );
+
+    if (googleAuth.idToken == null) {
+      print('GOOGLE: idToken is null');
+      return null;
+    }
+
+    ShowGlopalLoading();
+
+    final usercredentioal =
+        await _firebaseAuth.signInWithCredential(
+      GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      ),
+    );
+
+    print(
+      'GOOGLE FIREBASE USER: '
+      '${usercredentioal.user?.uid}',
+    );
+
+    Gmail = usercredentioal.user?.email;
+
+    final photoUrl = usercredentioal.user?.photoURL;
+
+    if (photoUrl != null && photoUrl.isNotEmpty) {
+      final imageData = await NetworkAssetBundle(
+        Uri.parse(photoUrl),
+      ).load("");
+
+      final Uint8List bytes =
+          imageData.buffer.asUint8List();
+
+      final byteData = ByteData.view(bytes.buffer);
+
+      var tempDir = await getTemporaryDirectory();
+
+      File file = await File(
+        '${tempDir.path}/img',
+      ).writeAsBytes(
+        bytes.buffer.asUint8List(
+          byteData.offsetInBytes,
+          byteData.lengthInBytes,
+        ),
+      );
+
+      Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      ).updateComimage(
+        image: file,
+      );
+    }
+
+    Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    ).UpdateUsernameComp(
+      name: usercredentioal.user?.displayName,
+    );
+
+    await UserLoginGoogle(
+      context: context,
+      email: usercredentioal.user?.email,
+    );
+
+    return usercredentioal.user;
+  } catch (e) {
+    print('GOOGLE SIGN-IN ERROR: $e');
+
+    DismissGlopalLoading();
+
+    return null;
   }
+}
 
 
   Future<bool> UpdateNewId({newid,context,myvip_id}) async {
@@ -666,54 +721,111 @@ if(response2.data['users']!="E05"){
     return userinfo;
   }
   Future<usermodel> UserLoginGoogle({email, context}) async {
-    try {
-      FormData formData =   FormData.fromMap({
-        "email": email.toString(),
-      });
+  try {
+    FormData formData = FormData.fromMap({
+      "email": email.toString(),
+    });
 
-      Response response2 = await dio.post(
-        'api/loginGoogle',
-        data: formData,
-      );
+    print('GOOGLE LOGIN: email = $email');
+    print('GOOGLE LOGIN: POST api/loginGoogle');
 
-      if (response2.statusCode == 200) {
-        if(response2.data['users']!="E05"){
+    Response response2 = await dio.post(
+      'api/loginGoogle',
+      data: formData,
+    );
 
-          UserId=response2.data['users']['id'].toString();
-          if(response2.data['users']['ban']==1){
-            DismissGlopalLoading();
-            Dialogs().showtoast('تم حظر هذا الحساب');
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.clear();
+    print(
+      'GOOGLE LOGIN RESPONSE: '
+      'status=${response2.statusCode}, '
+      'data=${response2.data}',
+    );
 
-          }else{
-            DismissGlopalLoading();
-            Provider.of<LoginViewmodel>(context,listen: false).UserLoginVerify(context: context,Parimater:email.toString() );
+    if (response2.statusCode == 200) {
+      if (response2.data['users'] != "E05") {
+        UserId = response2.data['users']['id'].toString();
 
-          }
-        }else{
-          print('Go To SignUp Otp');
+        if (response2.data['users']['ban'] == 1) {
           DismissGlopalLoading();
-          Navigator.pushNamed(context, AppConstants.CompleteSignUp_Screan);
 
+          Dialogs().showtoast('تم حظر هذا الحساب');
+
+          SharedPreferences prefs =
+              await SharedPreferences.getInstance();
+
+          await prefs.clear();
+        } else {
+          DismissGlopalLoading();
+
+          await Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).UserLoginVerify(
+            context: context,
+            Parimater: email.toString(),
+          );
         }
-
       } else {
-        //Navigator.pushNamed(context, '${AppConstants.Buttom_Navigation}');
-      }
+        print('GOOGLE LOGIN: E05 -> CompleteSignUp');
 
-    } catch (e) {
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+        DismissGlopalLoading();
+
+        Navigator.pushNamed(
+          context,
+          AppConstants.CompleteSignUp_Screan,
+        );
       }
-      print(e);
     }
-    print(userinfo);
-    return userinfo;
+  } catch (e) {
+    print('GOOGLE LOGIN ERROR: $e');
+
+    if (e is DioException) {
+      final statusCode = e.response?.statusCode;
+      final data = e.response?.data;
+
+      print('GOOGLE LOGIN ERROR STATUS: $statusCode');
+      print('GOOGLE LOGIN ERROR DATA: $data');
+
+      // Your backend uses HTTP 400 for "Google user does not exist".
+      if (statusCode == 400 &&
+          data is Map &&
+          data['errNum']?.toString() == 'E05') {
+        print('GOOGLE LOGIN: E05 -> CompleteSignUp');
+
+        DismissGlopalLoading();
+
+        Navigator.pushNamed(
+          context,
+          AppConstants.CompleteSignUp_Screan,
+        );
+
+        return userinfo;
+      }
+
+      if (data is Map && data['errNum'] != null) {
+        Dialogs().ShowErrorToast(
+          data['errNum'].toString(),
+          context,
+        );
+      } else {
+        Dialogs().showtoast(
+          'Google login failed ($statusCode)',
+        );
+      }
+    } else {
+      print('GOOGLE LOGIN UNKNOWN ERROR: $e');
+
+      Dialogs().showtoast(
+        'Google login failed',
+      );
+    }
+
+    DismissGlopalLoading();
   }
+
+  print('GOOGLE LOGIN USERINFO: $userinfo');
+
+  return userinfo;
+}
 
 
   Future<usermodel> UserLoginID({ID,Password, context}) async {

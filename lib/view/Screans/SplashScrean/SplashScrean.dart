@@ -36,22 +36,49 @@ class _SplashScreanState extends State<SplashScrean> {
 
   }
   void checkConnectitivy() async {
+  try {
+    final connectivityResult =
+        await Connectivity().checkConnectivity();
 
-    var connectivityResult = await (Connectivity().checkConnectivity());
-    if (connectivityResult == ConnectivityResult.mobile||connectivityResult==ConnectivityResult.wifi) {
-      SchedulerBinding.instance?.addPostFrameCallback((_) async{
-     await Helper().ids();
-     Helper().checkVersion();
-     Provider.of<LoginViewmodel>(context,listen: false).checklogin(context);
-     Provider.of<LoginViewmodel>(context,listen: false).getAllconstant(context);
+    print('CONNECTIVITY RESULT: $connectivityResult');
+
+    if (connectivityResult != ConnectivityResult.none) {
+      SchedulerBinding.instance?.addPostFrameCallback((_) async {
+        await Helper().ids();
+
+        Helper().checkVersion();
+
+        Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        ).checklogin(context);
+
+        Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        ).getAllconstant(context);
       });
-    } else{
+    } else {
+      print('CONNECTIVITY: NONE');
 
-      Navigator.pushNamed(context, AppConstants.InternetConnection_Screan);
+      if (!mounted) return;
+
+      Navigator.pushNamed(
+        context,
+        AppConstants.InternetConnection_Screan,
+      );
     }
+  } catch (e) {
+    print('CONNECTIVITY ERROR: $e');
 
+    if (!mounted) return;
 
+    Navigator.pushNamed(
+      context,
+      AppConstants.InternetConnection_Screan,
+    );
   }
+}
 
 
   checklogin(context)async{

@@ -49,8 +49,7 @@ void main() async {
   await Firebase.initializeApp();
   await FirebaseAppCheck.instance.activate();
   checklanguage();
-  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
+  
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   getnotifitoken();
   SystemChrome.setPreferredOrientations(
@@ -62,18 +61,22 @@ void main() async {
   });
 }
 
-getnotifitoken() async {
-  notifitoken = await FirebaseMessaging.instance.getToken();
+Future<void> getnotifitoken() async {
+  try {
+    notifitoken = await FirebaseMessaging.instance.getToken();
+    print('FCM token: $notifitoken');
+  } catch (e) {
+    print('FCM token unavailable: $e');
+  }
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     print(message.data);
+
     LocalNotificationService().showNotification(
       body: ';asd',
       id: 1,
       title: 'asdasdasd',
     );
-    // RoomViewmodel Room=  Provider.of<RoomViewmodel>(context,listen: false);
-    // Room.Leaveroom(context:context);
   });
 
   FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {});

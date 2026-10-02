@@ -50,11 +50,10 @@ List <String> insult=[
 
 
 class AppConstants {
-  static const String APP_NAME = 'World Chat';
+  static const String APP_NAME = 'Mivo';
   static const String FirstMessage = 'Hi';
-  static const String BASE_URL = 'https://theprochat.com//';
-  static const String Image_URL ="https://theprochat.com/images/";
-  static const String Socket_port = 'worldchat.online';
+  static const String BASE_URL = 'https://api.vortexatechnologies.com/';
+  static const String Image_URL ="https://api.vortexatechnologies.com/images/";
   static const String Splash_Screan = '/';
   static const String FamilyProfile_Screan='/FamilyProfile_Screan';
   static const String AllFamily_Screan='/AllFamily_Screan';

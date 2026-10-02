@@ -105,7 +105,7 @@ dependencies:
   country_picker: ^2.0.27
   country_code_picker: ^3.4.1
   country_list_pick: ^1.0.1+6
-  country_calling_code_picker: ^2.0.1
+  # country_calling_code_picker: ^2.0.1
 
   # Refresh / Interaction
   pull_to_refresh: ^2.0.0
@@ -181,7 +181,18 @@ flutter:
     - family: NotoSans
       fonts:
         - asset: assets/font/Noto-Sans-700.ttf
+          weight: 700
+
+    - family: Roboto
+      fonts:
+        - asset: assets/font/Roboto-Regular.ttf
           weight: 400
+        - asset: assets/font/Roboto-Medium.ttf
+          weight: 500
+        - asset: assets/font/Roboto-Bold.ttf
+          weight: 700
+        - asset: assets/font/Roboto-Black.ttf
+          weight: 900
 
     - family: numbers
       fonts:

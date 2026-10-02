@@ -33,16 +33,11 @@ class SocketViewmodel extends ChangeNotifier{
   Channel? channel;
   Future ConnectRoomScocket( context,id)async {
 
-    pusher =   PusherClient(
-      "123456789",
-      PusherOptions(
-        wssPort:6001,
-        wsPort:6001,
-        host:'worldchat.online',
-        encrypted: false,
-      ),
-      enableLogging: true,
-    );
+    pusher =  PusherClient(
+  "4e68aedca5c74610deac",
+  PusherOptions(cluster: 'mt1'),
+  enableLogging: true,
+);
     pusher?.connect();
 
     pusher?.onConnectionStateChange((state) {

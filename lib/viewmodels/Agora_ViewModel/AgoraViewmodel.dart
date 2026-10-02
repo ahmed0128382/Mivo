@@ -16,7 +16,7 @@ enum ClientRole { Broadcaster, Audience }
 
 class AgoraViewmodel extends ChangeNotifier{
   /// App ID on the Agora dashboard
-  String APP_ID = '1d53c7b949244336ac516b554d4070f4';
+  String APP_ID = '1fa18aa462fd4d28a420c248fa789386';
   bool muted = true;
   bool KickedFromChair=false;
   RtcEngine? _engine;

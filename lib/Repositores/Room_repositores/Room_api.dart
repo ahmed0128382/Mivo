@@ -448,7 +448,7 @@ class Roomapi extends RoomRepository {
  Index=2;
     try {
       Response response2 = await dio.get(
-        'https://worldchat.online/api/GetRooms/$SelectedRoomCategory',
+        '${AppConstants.BASE_URL}api/GetRooms/$SelectedRoomCategory',
       );
 
       if (response2.statusCode == 200) {

@@ -1,4 +1,5 @@
 # Miscellaneous
+
 *.class
 *.log
 *.pyc
@@ -10,17 +11,20 @@
 .svn/
 
 # IntelliJ related
+
 *.iml
 *.ipr
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
+# VS Code
+
+# Uncomment if you don't want to track VS Code configuration.
+
 #.vscode/
 
 # Flutter/Dart/Pub related
+
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
@@ -29,24 +33,56 @@
 .packages
 .pub-cache/
 .pub/
-/build/
+build/
+**/build/
+
+# Flutter generated files
+
+**/ios/Flutter/ephemeral/
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+
+# Flutter generated files inside third-party/example projects
+
+third_party/**/.dart_tool/
+third_party/**/build/
+third_party/**/local.properties
+third_party/**/ios/Flutter/ephemeral/
+third_party/**/ios/Flutter/Generated.xcconfig
+third_party/**/ios/Flutter/flutter_export_environment.sh
+third_party/**/ios/Runner/GeneratedPluginRegistrant.h
+third_party/**/ios/Runner/GeneratedPluginRegistrant.m
+third_party/**/pubspec.lock
+
+# Android generated/local files
+
+**/local.properties
 
 # Web related
+
 lib/generated_plugin_registrant.dart
 
 # Symbolication related
+
 app.*.symbols
 
 # Obfuscation related
+
 app.*.map.json
 
-# Android Studio will place build artifacts here
+# Android Studio build artifacts
+
 /android/app/debug
 /android/app/profile
 /android/app/release
 
-.tmp/
+# Temporary files
 
 .tmp/
 
-.tmp/
+# Generated / local iOS files
+ios/Podfile
+
+# Generated files inside third-party examples
+third_party/image_cropper/example/android/app/src/main/java/
+
