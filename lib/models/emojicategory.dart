@@ -1,5 +1,4 @@
 import 'package:ahlachat/models/emoji.dart';
-import 'package:ahlachat/util/app_constants.dart';
 
 class emojecategory {
   int? id;
@@ -8,36 +7,61 @@ class emojecategory {
 
   List<emojimodel>? emoji;
 
-  emojecategory(
-      {this.id,
-        this.name,
-        this.status,
-
-        this.emoji});
+  emojecategory({
+    this.id,
+    this.name,
+    this.status,
+    this.emoji,
+  });
 
   emojecategory.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    name =AppConstants.Image_URL+ json['name'];
-    status = json['status'];
+    id = json['id'] is int
+        ? json['id']
+        : int.tryParse(json['id']?.toString() ?? '');
 
-    if (json['emoji'] != null) {
+    name = json['name']?.toString();
+
+    // API returns status as int, e.g. 1
+    status = json['status']?.toString();
+
+    if (json['emoji'] is List) {
       emoji = <emojimodel>[];
-      json['emoji'].forEach((v) {
-        emoji!.add(new emojimodel.fromJson(v));
-      });
+
+      for (final item in json['emoji']) {
+        if (item is Map<String, dynamic>) {
+          try {
+            emoji!.add(
+              emojimodel.fromJson(item),
+            );
+          } catch (e, stackTrace) {
+            print(
+              'EMOJI CATEGORY ITEM PARSE ERROR: $e',
+            );
+            print(
+              'EMOJI CATEGORY ITEM DATA: $item',
+            );
+            print(
+              'EMOJI CATEGORY ITEM STACK: $stackTrace',
+            );
+          }
+        }
+      }
     }
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['name'] = this.name;
-    data['status'] = this.status;
+    final Map<String, dynamic> data = <String, dynamic>{};
 
-    if (this.emoji != null) {
-      data['emoji'] = this.emoji!.map((v) => v.toJson()).toList();
+    data['id'] = id;
+    data['name'] = name;
+    data['status'] = status;
+
+    if (emoji != null) {
+      data['emoji'] = emoji!
+          .map((v) => v.toJson())
+          .toList();
     }
+
     return data;
   }
-
- }
+}

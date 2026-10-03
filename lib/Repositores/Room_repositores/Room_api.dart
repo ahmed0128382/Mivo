@@ -1,4 +1,6 @@
 
+import 'dart:io';
+
 import 'package:ahlachat/Repositores/Room_repositores/Room_repository.dart';
 import 'package:ahlachat/models/FlagModel.dart';
 import 'package:ahlachat/models/KarismaCollectModel.dart';
@@ -1081,33 +1083,54 @@ print(e);
 
     return state;
   }
-  Future<bool> AddackImage({  image}) async {
-    bool state=true;
-    try {
-      FormData formData = FormData.fromMap({
-        "user_id": UserId.toString(),
-        "image": await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-      });
-      Response response2 = await dio.post(
-        'api/AddRoomimages',
-        data: formData,
-      );
-print(response2.data['Roomimages']['image']);
-      if (response2.statusCode == 200) {
-        LoginViewmodel user=  Provider.of<LoginViewmodel>(roomcontext,listen: false);
-
-        user.AddFirstbackground(val: response2.data['Roomimages']['image']);
-        state=true;
-        //Provider.of<LoginViewmodel>(context,listen: false).SendCodeRegester(context: context,phonenumber: "+2"+phone.toString());
-      }
-    } catch (e) {
-      state=false;
-      print(e);
-
+  Future<String?> AddackImage({image}) async {
+  try {
+    if (image == null) {
+      return null;
     }
 
-    return state;
+    final FormData formData = FormData.fromMap({
+      "user_id": UserId.toString(),
+      "image": await MultipartFile.fromFile(
+        image.path,
+        filename: image.path.split('/').last,
+      ),
+    });
+
+    final Response response2 = await dio.post(
+      'api/AddRoomimages',
+      data: formData,
+    );
+
+    print(
+      'ADD ROOM IMAGE RESPONSE: '
+      'status=${response2.statusCode}, '
+      'data=${response2.data}',
+    );
+
+    if (response2.statusCode == 200) {
+      final dynamic uploadedImage =
+          response2.data['Roomimages']?['image'];
+
+      if (uploadedImage != null &&
+          uploadedImage.toString().isNotEmpty) {
+        return uploadedImage.toString();
+      }
+    }
+  } on DioException catch (e) {
+    print(
+      'ADD ROOM IMAGE DIO ERROR: '
+      'type=${e.type}, '
+      'status=${e.response?.statusCode}, '
+      'data=${e.response?.data}, '
+      'message=${e.message}',
+    );
+  } catch (e) {
+    print('ADD ROOM IMAGE ERROR: $e');
   }
+
+  return null;
+}
   Future<bool> FollowRoom({ context,Roomid }) async {
     bool state=true;
     try {
@@ -1247,43 +1270,207 @@ print(response2.data);
 
     return state;
   }
-  Future<RoomModel> CreateRoom({context,Category,city,image,name,backgroundimage,RoomAds}) async {
-    try {
-      FormData formData = FormData.fromMap({
-        "name": name.toString(),
-        "image": await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-        "admin_id": UserId.toString(),
-        "Category":Category,
-        "city":city,
-        "animateimage":backgroundimage.toString(),
-        "RoomAds":RoomAds.toString()
-      });
-
-      Response response2 = await dio.post(
-        'api/CreateRoom',
-        data: formData,
+ Future<RoomModel> CreateRoom({
+  context,
+  Category,
+  city,
+  image,
+  name,
+  backgroundimage,
+  RoomAds,
+}) async {
+  try {
+    if (image == null) {
+      print(
+        'CREATE ROOM API: image is null',
       );
-      print(response2.data );
-      print(response2.data['errNum']);
-      if (response2.statusCode == 200) {
-         
-        Roominfo = RoomModel.fromJson(response2.data['room']);
-      }else{
-
-      }
-    } catch (e) {
-
-
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
-      }
+      return Roominfo;
     }
 
-    return Roominfo;
+    if (backgroundimage == null) {
+      print(
+        'CREATE ROOM API: backgroundimage is null',
+      );
+      return Roominfo;
+    }
+
+    final File roomImageFile =
+        image is File
+            ? image
+            : File(image.path);
+
+    final File backgroundImageFile =
+        backgroundimage is File
+            ? backgroundimage
+            : File(backgroundimage.path);
+
+    print(
+      'CREATE ROOM API IMAGE EXISTS: '
+      '${roomImageFile.existsSync()}',
+    );
+
+    print(
+      'CREATE ROOM API IMAGE SIZE: '
+      '${await roomImageFile.length()} bytes',
+    );
+
+    print(
+      'CREATE ROOM API BACKGROUND EXISTS: '
+      '${backgroundImageFile.existsSync()}',
+    );
+
+    print(
+      'CREATE ROOM API BACKGROUND SIZE: '
+      '${await backgroundImageFile.length()} bytes',
+    );
+
+    final MultipartFile roomMultipart =
+        await MultipartFile.fromFile(
+      roomImageFile.path,
+      filename:
+          roomImageFile.path.split('/').last,
+    );
+
+    final MultipartFile backgroundMultipart =
+        await MultipartFile.fromFile(
+      backgroundImageFile.path,
+      filename:
+          backgroundImageFile.path
+              .split('/')
+              .last,
+    );
+
+    final FormData formData =
+        FormData.fromMap({
+      'name': name.toString(),
+
+      'image': roomMultipart,
+
+      'admin_id':
+          UserId.toString(),
+
+      'Category':
+          Category.toString(),
+
+      'city':
+          city.toString(),
+
+      'animateimage':
+          backgroundMultipart,
+
+      'RoomAds':
+          RoomAds.toString(),
+    });
+
+    print(
+      'CREATE ROOM FORM DATA READY',
+    );
+
+    print(
+      'CREATE ROOM FIELDS: '
+      'name=$name, '
+      'admin_id=$UserId, '
+      'Category=$Category, '
+      'city=$city, '
+      'RoomAds=$RoomAds',
+    );
+
+    print(
+      'CREATE ROOM IMAGE FILE: '
+      '${roomImageFile.path}',
+    );
+
+    print(
+      'CREATE ROOM BACKGROUND FILE: '
+      '${backgroundImageFile.path}',
+    );
+
+    final Response response =
+        await dio.post(
+      'api/CreateRoom',
+      data: formData,
+    );
+
+    print(
+      'CREATE ROOM RESPONSE STATUS: '
+      '${response.statusCode}',
+    );
+
+    print(
+      'CREATE ROOM RESPONSE DATA: '
+      '${response.data}',
+    );
+
+    if (response.statusCode == 200) {
+      final dynamic roomData =
+          response.data['room'];
+
+      if (roomData != null) {
+        Roominfo =
+            RoomModel.fromJson(
+          roomData,
+        );
+
+        print(
+          'CREATE ROOM PARSED ID: '
+          '${Roominfo.id}',
+        );
+      }
+    }
+  } on DioException catch (e) {
+    print(
+      'CREATE ROOM DIO ERROR TYPE: '
+      '${e.type}',
+    );
+
+    print(
+      'CREATE ROOM DIO STATUS: '
+      '${e.response?.statusCode}',
+    );
+
+    print(
+      'CREATE ROOM DIO DATA: '
+      '${e.response?.data}',
+    );
+
+    print(
+      'CREATE ROOM DIO MESSAGE: '
+      '${e.message}',
+    );
+
+    print(
+      'CREATE ROOM REQUEST URL: '
+      '${e.requestOptions.uri}',
+    );
+
+    if (e.response?.data is Map) {
+      print(
+        'CREATE ROOM ERROR NUM: '
+        '${e.response?.data['errNum']}',
+      );
+
+      print(
+        'CREATE ROOM ERROR MESSAGE: '
+        '${e.response?.data['msg']}',
+      );
+    }
+
+    Dialogs().ShowErrorRegesterToast(
+      e.response?.data?['errNum'],
+      context,
+    );
+  } catch (e, stackTrace) {
+    print(
+      'CREATE ROOM API ERROR: $e',
+    );
+
+    print(
+      'CREATE ROOM API STACK: $stackTrace',
+    );
   }
+
+  return Roominfo;
+}
   Future<bool>  LeaveRoom({ context,Roomid}) async {
 bool leaved=false;
 

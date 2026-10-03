@@ -41,37 +41,35 @@ class userapi extends UserRepository {
   @override
   final _firebaseAuth = FirebaseAuth.instance;
 
-  usermodel userinfo=usermodel() ;
+  usermodel userinfo = usermodel();
   var Signupimage;
   MyVipmodel? myvip;
-  List<Gifts>  giftssent=[];
-  List<Gifts>  giftscollect=[];
-  List<usermodel> Searchuser=[];
-  List<usergifts> UserGifts=[];
-  List<Notificationmodel>Notifications=[];
+  List<Gifts> giftssent = [];
+  List<Gifts> giftscollect = [];
+  List<usermodel> Searchuser = [];
+  List<usergifts> UserGifts = [];
+  List<Notificationmodel> Notifications = [];
   final ImagePicker _picker = ImagePicker();
   var dio = Dio(
     BaseOptions(
       baseUrl: AppConstants.BASE_URL,
-      headers: { 
+      headers: {
         'Accept': 'application/json',
-        'Authorization':Token,
-        'DeviceId':deviceId,
-        'awqeASERQW':'8/325*mAIOEN',
-        'userid':UserId.toString(),
-        'UserIP':UserIP,
+        'Authorization': Token,
+        'DeviceId': deviceId,
+        'awqeASERQW': '8/325*mAIOEN',
+        'userid': UserId.toString(),
+        'UserIP': UserIP,
       },
     ),
   );
-  UserImages ? ProfileImages;
-  Future<UserImages> AddProfileImage({ context,image}) async {
-
-
+  UserImages? ProfileImages;
+  Future<UserImages> AddProfileImage({context, image}) async {
     try {
-      FormData formData =   FormData.fromMap({
-        "image":await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-        "user_id":UserId.toString(),
-
+      FormData formData = FormData.fromMap({
+        "image": await MultipartFile.fromFile(image?.path,
+            filename: image?.path?.split('/')?.last),
+        "user_id": UserId.toString(),
       });
 
       Response response2 = await dio.post(
@@ -80,170 +78,141 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-
-        ProfileImages=UserImages.fromJson(response2.data['ProfileImages']);
-
+        ProfileImages = UserImages.fromJson(response2.data['ProfileImages']);
       }
     } catch (e) {
       print(e);
-
-
     }
 
     return ProfileImages!;
   }
-  Future<bool>  DeleteProfileImage({context, ImageId})async {
-    bool deleted=false;
+
+  Future<bool> DeleteProfileImage({context, ImageId}) async {
+    bool deleted = false;
     try {
       Response response2 = await dio.get(
         '/api/DeleteProfileImage/$ImageId',
       );
 
       if (response2.statusCode == 200) {
-        deleted=true;
-      }else{
-        deleted=false;
+        deleted = true;
+      } else {
+        deleted = false;
       }
     } catch (e) {
-
       print(e);
     }
 
     return deleted;
-
   }
-  Future<int>  GetTimeTarget({context})async {
-int target=0;
+
+  Future<int> GetTimeTarget({context}) async {
+    int target = 0;
     try {
       Response response2 = await dio.get(
         '/api/getuserTime/$UserId',
       );
 
       if (response2.statusCode == 200) {
-       
-
-
-        target=int.parse(response2.data.toString());
-
+        target = int.parse(response2.data.toString());
       }
     } catch (e) {
       print(e);
-     
     }
 
     return target;
-
   }
-  Future<List<usergifts> >  GetUserGifts({context})async {
+
+  Future<List<usergifts>> GetUserGifts({context}) async {
     try {
       Response response2 = await dio.get(
         '/api/GetMyUserGifts/$UserId',
       );
 
       if (response2.statusCode == 200) {
-        List list =response2.data['UserGifts'];
+        List list = response2.data['UserGifts'];
 
         list.forEach((element) {
           UserGifts.add(usergifts.fromJson(element));
         });
-
-
       }
     } catch (e) {
       print(e);
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-        if (e.response!.data['errNum'] == '3500') {
-
-        }
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
+        if (e.response!.data['errNum'] == '3500') {}
       } else {
         print(e);
       }
     }
 
     return UserGifts;
-
   }
-  List<usermusic> UserMusic=[];
 
-  Future<List<Notificationmodel>>  UserNotification({context})async {
+  List<usermusic> UserMusic = [];
 
+  Future<List<Notificationmodel>> UserNotification({context}) async {
     try {
       Response response2 = await dio.get(
         '/api/GetUserNotification',
       );
 
       if (response2.statusCode == 200) {
-        List list =response2.data['UserNotifications'];
+        List list = response2.data['UserNotifications'];
 
         list.forEach((element) {
           Notifications.add(Notificationmodel.fromJson(element));
         });
-
-
       }
     } catch (e) {
       print(e);
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-        if (e.response!.data['errNum'] == '3500') {
-
-        }
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
+        if (e.response!.data['errNum'] == '3500') {}
       } else {
         print(e);
       }
     }
 
     return Notifications;
-
   }
-  InboxRoomModel ? ChatRoom;
-  Future<InboxRoomModel?>  ChatInBox({userid})async {
 
+  InboxRoomModel? ChatRoom;
+  Future<InboxRoomModel?> ChatInBox({userid}) async {
     try {
       Response response2 = await dio.get(
         '/api/ChatWithuser/$UserId/$userid',
       );
 
       if (response2.statusCode == 200) {
-        ChatRoom=InboxRoomModel.fromJson(response2.data);
-
+        ChatRoom = InboxRoomModel.fromJson(response2.data);
       }
-    } catch (e) {
-
-    }
+    } catch (e) {}
 
     return ChatRoom;
-
   }
-  Future<List<usermodel>>  SearchUser( tittle)async {
 
+  Future<List<usermodel>> SearchUser(tittle) async {
     try {
       Response response2 = await dio.get(
         '/api/SearchUser/$tittle',
       );
 
       if (response2.statusCode == 200) {
-        List list =response2.data['users'];
+        List list = response2.data['users'];
         list.forEach((element) {
           Searchuser.add(usermodel.fromJson(element));
         });
-
       }
-    } catch (e) {
-
-    }
+    } catch (e) {}
 
     return Searchuser;
-
   }
 
-  Future<bool> NewGuess({context,Coins,Roomid,Sendergueess}) async {
-    bool check=false;
+  Future<bool> NewGuess({context, Coins, Roomid, Sendergueess}) async {
+    bool check = false;
     try {
-      FormData formData =   FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "Sender_id": UserId.toString(),
         "Coins": Coins.toString(),
         "Room_id": Roomid.toString(),
@@ -256,26 +225,23 @@ int target=0;
       );
 
       if (response2.statusCode == 200) {
-         
-        check=true;
-
-      }else{
-
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-
+      check = false;
     }
 
     return check;
   }
-  Future<bool> NewLuckyPackage({context,Coins,Roomid}) async {
+
+  Future<bool> NewLuckyPackage({context, Coins, Roomid}) async {
     print(Roomid);
     print(Coins);
-    bool check=false;
+    bool check = false;
     try {
-      FormData formData =   FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "room_id": Roomid.toString(),
         "coins": Coins.toString(),
@@ -287,26 +253,23 @@ int target=0;
       );
 
       if (response2.statusCode == 200) {
-         
-        check=true;
-
-      }else{
-
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-
+      check = false;
     }
 
     return check;
   }
-  Future<bool> AcceptLuckyPackage({context,luckid,Roomid}) async {
+
+  Future<bool> AcceptLuckyPackage({context, luckid, Roomid}) async {
     print(Roomid);
     print(luckid);
-    bool check=false;
+    bool check = false;
     try {
-      FormData formData =   FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "room_id": Roomid.toString(),
         "luck_id": luckid.toString(),
@@ -318,23 +281,21 @@ int target=0;
       );
 
       if (response2.statusCode == 200) {
-         check=true;
-
-      }else{
-
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-
+      check = false;
     }
 
     return check;
   }
-  Future<bool>  PlayGuess({context,guessid,Roomid,Sendergueess}) async {
-    bool check=false;
+
+  Future<bool> PlayGuess({context, guessid, Roomid, Sendergueess}) async {
+    bool check = false;
     try {
-      FormData formData =   FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "Accept_id": UserId.toString(),
         "guess_id": guessid.toString(),
         "Room_id": Roomid.toString(),
@@ -347,47 +308,40 @@ int target=0;
       );
 
       if (response2.statusCode == 200) {
-         
-        check=true;
-
-      }else{
-
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-
+      check = false;
     }
 
     return check;
   }
+
   Future<bool> Removebubbles({context}) async {
-    bool check=false;
+    bool check = false;
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
-
       });
 
       Response response2 = await dio.post(
         'api/removebubbles',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
       print(e);
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -395,16 +349,14 @@ int target=0;
 
     return check;
   }
-  Future<List> Exchangecoins({context,jwile}) async {
-    bool check=false;
-    int coins=0;
-    int input=0;
-    try {
-      FormData formData = FormData.fromMap({
-        "user_id": UserId.toString(),
-        "beans":jwile.toString()
 
-      });
+  Future<List> Exchangecoins({context, jwile}) async {
+    bool check = false;
+    int coins = 0;
+    int input = 0;
+    try {
+      FormData formData = FormData.fromMap(
+          {"user_id": UserId.toString(), "beans": jwile.toString()});
 
       Response response2 = await dio.post(
         'api/Exchangecoins',
@@ -412,31 +364,30 @@ int target=0;
       );
 
       if (response2.statusCode == 200) {
-       print(response2.data['Exchangecoins']['UserCoins'].runtimeType);
-       print(response2.data['Exchangecoins']['UserInput'].runtimeType);
-       coins=response2.data['Exchangecoins']['UserCoins'];
-       input=response2.data['Exchangecoins']['UserInput'];
-        check=true;
-
-      }else{
-
-        check=false;
+        print(response2.data['Exchangecoins']['UserCoins'].runtimeType);
+        print(response2.data['Exchangecoins']['UserInput'].runtimeType);
+        coins = response2.data['Exchangecoins']['UserCoins'];
+        input = response2.data['Exchangecoins']['UserInput'];
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
       print(e);
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
     }
 
-    return [check,coins,input];
+    return [check, coins, input];
   }
-  Future<bool> Updatebubbles({bubbles,context}) async {
-    bool check=false;
+
+  Future<bool> Updatebubbles({bubbles, context}) async {
+    bool check = false;
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
@@ -447,21 +398,18 @@ int target=0;
         'api/Setbubbles',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
       print(e);
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -469,8 +417,9 @@ int target=0;
 
     return check;
   }
-  Future<bool> updateColoredMessage({Color,context}) async {
-    bool check=false;
+
+  Future<bool> updateColoredMessage({Color, context}) async {
+    bool check = false;
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
@@ -481,20 +430,18 @@ int target=0;
         'api/SetColordmessage',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-         check=true;
-         
-      }else{
-         
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
       print(e);
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -503,8 +450,8 @@ int target=0;
     return check;
   }
 
-  Future<bool> setHidden({Hidden,context}) async {
-    bool check=false;
+  Future<bool> setHidden({Hidden, context}) async {
+    bool check = false;
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
@@ -515,21 +462,18 @@ int target=0;
         'api/SetHidden',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -539,145 +483,145 @@ int target=0;
   }
 
   Future<User?> Googlesignin({context}) async {
-  try {
-    final googleuser = GoogleSignIn();
+    try {
+      final googleuser = GoogleSignIn();
 
-    print('GOOGLE: opening account chooser');
+      print('GOOGLE: opening account chooser');
 
-    final signin = await googleuser.signIn();
+      final signin = await googleuser.signIn();
 
-    if (signin == null) {
-      print('GOOGLE: user cancelled sign in');
-      return null;
-    }
+      if (signin == null) {
+        print('GOOGLE: user cancelled sign in');
+        return null;
+      }
 
-    print('GOOGLE: account selected: ${signin.email}');
+      print('GOOGLE: account selected: ${signin.email}');
 
-    final googleAuth = await signin.authentication;
+      final googleAuth = await signin.authentication;
 
-    print(
-      'GOOGLE: idToken=${googleAuth.idToken != null}, '
-      'accessToken=${googleAuth.accessToken != null}',
-    );
-
-    if (googleAuth.idToken == null) {
-      print('GOOGLE: idToken is null');
-      return null;
-    }
-
-    ShowGlopalLoading();
-
-    final usercredentioal =
-        await _firebaseAuth.signInWithCredential(
-      GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      ),
-    );
-
-    print(
-      'GOOGLE FIREBASE USER: '
-      '${usercredentioal.user?.uid}',
-    );
-
-    Gmail = usercredentioal.user?.email;
-
-    final photoUrl = usercredentioal.user?.photoURL;
-
-    if (photoUrl != null && photoUrl.isNotEmpty) {
-      final imageData = await NetworkAssetBundle(
-        Uri.parse(photoUrl),
-      ).load("");
-
-      final Uint8List bytes =
-          imageData.buffer.asUint8List();
-
-      final byteData = ByteData.view(bytes.buffer);
-
-      var tempDir = await getTemporaryDirectory();
-
-      File file = await File(
-        '${tempDir.path}/img',
-      ).writeAsBytes(
-        bytes.buffer.asUint8List(
-          byteData.offsetInBytes,
-          byteData.lengthInBytes,
-        ),
+      print(
+        'GOOGLE: idToken=${googleAuth.idToken != null}, '
+        'accessToken=${googleAuth.accessToken != null}',
       );
+
+      if (googleAuth.idToken == null) {
+        print('GOOGLE: idToken is null');
+        return null;
+      }
+
+      print('ShowGlopalLoading...');
+      ShowGlopalLoading();
+
+      print('GOOGLE: signing into Firebase...');
+
+      final usercredentioal = await _firebaseAuth
+          .signInWithCredential(
+        GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        ),
+      )
+          .timeout(
+        const Duration(seconds: 60),
+        onTimeout: () {
+          throw TimeoutException(
+            'Firebase Google sign-in timed out',
+          );
+        },
+      );
+
+      print(
+        'GOOGLE FIREBASE USER: '
+        '${usercredentioal.user?.uid}',
+      );
+
+      Gmail = usercredentioal.user?.email;
+
+      final photoUrl = usercredentioal.user?.photoURL;
+
+      if (photoUrl != null && photoUrl.isNotEmpty) {
+        final imageData = await NetworkAssetBundle(
+          Uri.parse(photoUrl),
+        ).load("");
+
+        final Uint8List bytes = imageData.buffer.asUint8List();
+
+        final byteData = ByteData.view(bytes.buffer);
+
+        var tempDir = await getTemporaryDirectory();
+
+        File file = await File(
+          '${tempDir.path}/img',
+        ).writeAsBytes(
+          bytes.buffer.asUint8List(
+            byteData.offsetInBytes,
+            byteData.lengthInBytes,
+          ),
+        );
+
+        Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        ).updateComimage(
+          image: file,
+        );
+      }
 
       Provider.of<LoginViewmodel>(
         context,
         listen: false,
-      ).updateComimage(
-        image: file,
+      ).UpdateUsernameComp(
+        name: usercredentioal.user?.displayName,
       );
+
+      await UserLoginGoogle(
+        context: context,
+        email: usercredentioal.user?.email,
+      );
+
+      return usercredentioal.user;
+    } catch (e) {
+      print('GOOGLE SIGN-IN ERROR: $e');
+
+      DismissGlopalLoading();
+
+      return null;
     }
-
-    Provider.of<LoginViewmodel>(
-      context,
-      listen: false,
-    ).UpdateUsernameComp(
-      name: usercredentioal.user?.displayName,
-    );
-
-    await UserLoginGoogle(
-      context: context,
-      email: usercredentioal.user?.email,
-    );
-
-    return usercredentioal.user;
-  } catch (e) {
-    print('GOOGLE SIGN-IN ERROR: $e');
-
-    DismissGlopalLoading();
-
-    return null;
   }
-}
 
-
-  Future<bool> UpdateNewId({newid,context,myvip_id}) async {
-    bool check=false;
-
+  Future<bool> UpdateNewId({newid, context, myvip_id}) async {
+    bool check = false;
 
     try {
       FormData formData = new FormData.fromMap({
-
         "user_id": UserId.toString(),
         "newid": newid.toString(),
-        "myvip_id":myvip_id.toString(),
-
+        "myvip_id": myvip_id.toString(),
       });
 
       Response response2 = await dio.post(
         'api/SetNewId',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-
-      }
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
+      } else {}
     }
 
     return check;
   }
+
   Future<usermodel> UserLogin({Phonenumber, context}) async {
-
-
     try {
       FormData formData = FormData.fromMap({
         "phone_number": Phonenumber.toString(),
@@ -689,181 +633,176 @@ int target=0;
       );
 
       if (response2.statusCode == 200) {
-if(response2.data['users']!="E05"){
-  UserId=response2.data['users']['id'].toString();
-  if(response2.data['users']['ban']==1){
-    DismissGlopalLoading();
-    Dialogs().showtoast('تم حظر هذا الحساب');
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.clear();
-    navigateTo(context: context, screen: LoginScrean());
-  }else{
-    Provider.of<LoginViewmodel>(context,listen: false).SendCodeRlogin(context: context,phonenumber: Phonenumber);
-
-  }
-
-}else{
-
-  Provider.of<LoginViewmodel>(context,listen: false).SendCodeSignUp(context: context,phonenumber: Phonenumber);
-
-
-}
-       } else {
-
-      }
-
+        if (response2.data['users'] != "E05") {
+          UserId = response2.data['users']['id'].toString();
+          if (response2.data['users']['ban'] == 1) {
+            DismissGlopalLoading();
+            Dialogs().showtoast('تم حظر هذا الحساب');
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            prefs.clear();
+            navigateTo(context: context, screen: LoginScrean());
+          } else {
+            Provider.of<LoginViewmodel>(context, listen: false)
+                .SendCodeRlogin(context: context, phonenumber: Phonenumber);
+          }
+        } else {
+          Provider.of<LoginViewmodel>(context, listen: false)
+              .SendCodeSignUp(context: context, phonenumber: Phonenumber);
+        }
+      } else {}
     } catch (e) {
       print(e);
       DismissGlopalLoading();
-
     }
 
     return userinfo;
   }
+
   Future<usermodel> UserLoginGoogle({email, context}) async {
-  try {
-    FormData formData = FormData.fromMap({
-      "email": email.toString(),
-    });
+    try {
+      FormData formData = FormData.fromMap({
+        "email": email.toString(),
+      });
 
-    print('GOOGLE LOGIN: email = $email');
-    print('GOOGLE LOGIN: POST api/loginGoogle');
+      print('GOOGLE LOGIN: email = $email');
+      print('GOOGLE LOGIN: POST api/loginGoogle');
 
-    Response response2 = await dio.post(
-      'api/loginGoogle',
-      data: formData,
-    );
+      Response response2 = await dio.post(
+        'api/loginGoogle',
+        data: formData,
+      );
 
-    print(
-      'GOOGLE LOGIN RESPONSE: '
-      'status=${response2.statusCode}, '
-      'data=${response2.data}',
-    );
+      print(
+        'GOOGLE LOGIN RESPONSE: '
+        'status=${response2.statusCode}, '
+        'data=${response2.data}',
+      );
 
-    if (response2.statusCode == 200) {
-      if (response2.data['users'] != "E05") {
-        UserId = response2.data['users']['id'].toString();
+      if (response2.statusCode == 200) {
+        if (response2.data['users'] != "E05") {
+          UserId = response2.data['users']['id'].toString();
 
-        if (response2.data['users']['ban'] == 1) {
-          DismissGlopalLoading();
+          if (response2.data['users']['ban'] == 1) {
+            DismissGlopalLoading();
 
-          Dialogs().showtoast('تم حظر هذا الحساب');
+            Dialogs().showtoast('تم حظر هذا الحساب');
 
-          SharedPreferences prefs =
-              await SharedPreferences.getInstance();
+            SharedPreferences prefs = await SharedPreferences.getInstance();
 
-          await prefs.clear();
+            await prefs.clear();
+          } else {
+            // Persist session immediately from loginGoogle response
+            // so reopening the app restores the user without login again.
+            final usersMap = Map<String, dynamic>.from(response2.data['users']);
+            userinfo = usermodel.fromJson(usersMap);
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            final tokenStr = (userinfo.rememperToken ?? '').toString();
+            await prefs.setString('token', tokenStr);
+// Save RAW map from API – never toJson()
+            await prefs.setString('UserData', jsonEncode(usersMap));
+            Token = tokenStr;
+            UserId = userinfo.id.toString();
+            print('GOOGLE LOGIN: token saved len=${tokenStr.length}');
+            DismissGlopalLoading();
+
+            await Provider.of<LoginViewmodel>(
+              context,
+              listen: false,
+            ).UserLoginVerify(
+              context: context,
+              Parimater: email.toString(),
+            );
+          }
         } else {
+          print('GOOGLE LOGIN: E05 -> CompleteSignUp');
+
           DismissGlopalLoading();
 
-          await Provider.of<LoginViewmodel>(
+          Navigator.pushNamed(
             context,
-            listen: false,
-          ).UserLoginVerify(
-            context: context,
-            Parimater: email.toString(),
+            AppConstants.CompleteSignUp_Screan,
+          );
+        }
+      }
+    } catch (e) {
+      print('GOOGLE LOGIN ERROR: $e');
+
+      if (e is DioException) {
+        final statusCode = e.response?.statusCode;
+        final data = e.response?.data;
+
+        print('GOOGLE LOGIN ERROR STATUS: $statusCode');
+        print('GOOGLE LOGIN ERROR DATA: $data');
+
+        // Your backend uses HTTP 400 for "Google user does not exist".
+        if (statusCode == 400 &&
+            data is Map &&
+            data['errNum']?.toString() == 'E05') {
+          print('GOOGLE LOGIN: E05 -> CompleteSignUp');
+
+          DismissGlopalLoading();
+
+          Navigator.pushNamed(
+            context,
+            AppConstants.CompleteSignUp_Screan,
+          );
+
+          return userinfo;
+        }
+
+        if (data is Map && data['errNum'] != null) {
+          Dialogs().ShowErrorToast(
+            data['errNum'].toString(),
+            context,
+          );
+        } else {
+          Dialogs().showtoast(
+            'Google login failed ($statusCode)',
           );
         }
       } else {
-        print('GOOGLE LOGIN: E05 -> CompleteSignUp');
+        print('GOOGLE LOGIN UNKNOWN ERROR: $e');
 
-        DismissGlopalLoading();
-
-        Navigator.pushNamed(
-          context,
-          AppConstants.CompleteSignUp_Screan,
-        );
-      }
-    }
-  } catch (e) {
-    print('GOOGLE LOGIN ERROR: $e');
-
-    if (e is DioException) {
-      final statusCode = e.response?.statusCode;
-      final data = e.response?.data;
-
-      print('GOOGLE LOGIN ERROR STATUS: $statusCode');
-      print('GOOGLE LOGIN ERROR DATA: $data');
-
-      // Your backend uses HTTP 400 for "Google user does not exist".
-      if (statusCode == 400 &&
-          data is Map &&
-          data['errNum']?.toString() == 'E05') {
-        print('GOOGLE LOGIN: E05 -> CompleteSignUp');
-
-        DismissGlopalLoading();
-
-        Navigator.pushNamed(
-          context,
-          AppConstants.CompleteSignUp_Screan,
-        );
-
-        return userinfo;
-      }
-
-      if (data is Map && data['errNum'] != null) {
-        Dialogs().ShowErrorToast(
-          data['errNum'].toString(),
-          context,
-        );
-      } else {
         Dialogs().showtoast(
-          'Google login failed ($statusCode)',
+          'Google login failed',
         );
       }
-    } else {
-      print('GOOGLE LOGIN UNKNOWN ERROR: $e');
 
-      Dialogs().showtoast(
-        'Google login failed',
-      );
+      DismissGlopalLoading();
     }
 
-    DismissGlopalLoading();
+    print('GOOGLE LOGIN USERINFO: $userinfo');
+
+    return userinfo;
   }
 
-  print('GOOGLE LOGIN USERINFO: $userinfo');
-
-  return userinfo;
-}
-
-
-  Future<usermodel> UserLoginID({ID,Password, context}) async {
+  Future<usermodel> UserLoginID({ID, Password, context}) async {
     try {
-      FormData formData =   FormData.fromMap({
-        "id": ID.toString(),
-        "password":Password.toString()
-      });
+      FormData formData = FormData.fromMap(
+          {"id": ID.toString(), "password": Password.toString()});
 
       Response response2 = await dio.post(
         'api/loginID',
         data: formData,
       );
-print(response2.data);
+      print(response2.data);
       if (response2.statusCode == 200) {
-        if(response2.data['users']!="E05"){
-
-          UserId=response2.data['users']['id'].toString();
-          if(response2.data['users']['ban']==1){
+        if (response2.data['users'] != "E05") {
+          UserId = response2.data['users']['id'].toString();
+          if (response2.data['users']['ban'] == 1) {
             DismissGlopalLoading();
             Dialogs().showtoast('تم حظر هذا الحساب');
             SharedPreferences prefs = await SharedPreferences.getInstance();
             prefs.clear();
-
-          }else{
-
-            Provider.of<LoginViewmodel>(context,listen: false).UserLoginVerify(context: context,Parimater: ID.toString());
-
+          } else {
+            Provider.of<LoginViewmodel>(context, listen: false)
+                .UserLoginVerify(context: context, Parimater: ID.toString());
           }
         }
       } else {
         DismissGlopalLoading();
         Dialogs().showtoast('الايدي او الرقم السري خطاء');
-
-
-
       }
-
     } catch (e) {
       DismissGlopalLoading();
       Dialogs().showtoast('الايدي او الرقم السري خطاء');
@@ -871,6 +810,7 @@ print(response2.data);
 
     return userinfo;
   }
+
   Future<bool> verifyUserPhoneNumber(String phoneNumber) async {
     final completer = Completer<AuthCredential>();
     await FirebaseAuth.instance.verifyPhoneNumber(
@@ -878,203 +818,194 @@ print(response2.data);
       timeout: Duration(seconds: 60),
       verificationCompleted: completer.complete,
       verificationFailed: completer.completeError,
-      codeAutoRetrievalTimeout: (verificationId) {
-
-      },
-      codeSent: (verificationId, [code]) {
-
-      },
+      codeAutoRetrievalTimeout: (verificationId) {},
+      codeSent: (verificationId, [code]) {},
     );
     try {
       final credential = await completer.future;
       return true;
     } catch (e) {
-
       return false;
     }
   }
-  SendCodeRlogin({context,phonenumber}){
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
-    user.updatesendcodestate(value: 1);
-    try{
-      Dialogs().showtoast(phonenumber.toString());
-    //  _firebaseAuth.setSettings(appVerificationDisabledForTesting:false  );
-      _firebaseAuth.verifyPhoneNumber(phoneNumber: phonenumber,
-          timeout: Duration(seconds:30),
-          verificationCompleted: (AuthCredential credential) async{
-            print(credential);
 
+  SendCodeRlogin({context, phonenumber}) {
+    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
+    user.updatesendcodestate(value: 1);
+    try {
+      Dialogs().showtoast(phonenumber.toString());
+      //  _firebaseAuth.setSettings(appVerificationDisabledForTesting:false  );
+      _firebaseAuth.verifyPhoneNumber(
+          phoneNumber: phonenumber,
+          timeout: Duration(seconds: 30),
+          verificationCompleted: (AuthCredential credential) async {
+            print(credential);
           },
-          verificationFailed: (exception){
+          verificationFailed: (exception) {
             user.hideSpinner();
             print(exception.code);
             print('Code Is missing-client-identifier');
-          Dialogs().showtoast('identifier');
+            Dialogs().showtoast('identifier');
           },
-          codeSent: (String verificationId, [int? forceResendingToken]){
-            verificationid=verificationId;
+          codeSent: (String verificationId, [int? forceResendingToken]) {
+            verificationid = verificationId;
 
             DismissGlopalLoading();
-            Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
+            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
 
-            navigateTo(context: context, screen: EnterCodeScrean(PhoneNumber:phonenumber ,));
+            navigateTo(
+                context: context,
+                screen: EnterCodeScrean(
+                  PhoneNumber: phonenumber,
+                ));
           },
-          codeAutoRetrievalTimeout: (message){
-            if( user.sendcodestate==1){
+          codeAutoRetrievalTimeout: (message) {
+            if (user.sendcodestate == 1) {
               //Navigator.pop(context);
               print('Code Is missing-client-identifier');
 
               user.hideSpinner();
-              Dialogs().showtoast(getLang( context: context, key: "code_expired"));
+              Dialogs()
+                  .showtoast(getLang(context: context, key: "code_expired"));
               user.updatesendcodestate(value: 0);
             }
-
-          }
-
-      );
-
-    }catch(error){
-      Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
+          });
+    } catch (error) {
+      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
       // user.hideSpinner();
       // Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
       // DismissGlopalLoading();
       // Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
-    };
-
+    }
+    ;
   }
-  ReSendCodelogin({context,phonenumber}){
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
-    user.updatesendcodestate(value: 1);
-   // _firebaseAuth.setSettings(appVerificationDisabledForTesting:false  );
 
-    try{
-      _firebaseAuth.verifyPhoneNumber(phoneNumber: phonenumber,
-          timeout: Duration(seconds:30),
-          verificationCompleted: (AuthCredential credential) async{
+  ReSendCodelogin({context, phonenumber}) {
+    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
+    user.updatesendcodestate(value: 1);
+    // _firebaseAuth.setSettings(appVerificationDisabledForTesting:false  );
+
+    try {
+      _firebaseAuth.verifyPhoneNumber(
+          phoneNumber: phonenumber,
+          timeout: Duration(seconds: 30),
+          verificationCompleted: (AuthCredential credential) async {
             print(credential);
             print('Code Is Recived');
           },
-          verificationFailed: (exception){
+          verificationFailed: (exception) {
             print(exception.code);
-            Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
+            Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
           },
-          codeSent: (String verificationId, [int? forceResendingToken]){
-            verificationid=verificationId;
+          codeSent: (String verificationId, [int? forceResendingToken]) {
+            verificationid = verificationId;
 
-            Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
-            Provider.of<LoginViewmodel>(context,listen: false).hideSpinner9();
+            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
+            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner9();
             // Navigator.pushNamed(context,'${AppConstants.EnterCodeScrean}');
           },
-          codeAutoRetrievalTimeout: (message){
-            if(user.sendcodestate==1){
-             // Navigator.pop(context);
-              Dialogs().showtoast(getLang( context: context, key: "code_expired"));
+          codeAutoRetrievalTimeout: (message) {
+            if (user.sendcodestate == 1) {
+              // Navigator.pop(context);
+              Dialogs()
+                  .showtoast(getLang(context: context, key: "code_expired"));
               user.updatesendcodestate(value: 0);
             }
-
-          }
-
-      );
-
-    }catch(error){
-      Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
-      Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
-    };
-
+          });
+    } catch (error) {
+      Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
+      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
+    }
+    ;
   }
 
-  EnterCodelogin({context,code,Phonenumber})async{
+  EnterCodelogin({context, code, Phonenumber}) async {
     LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
 
-    AuthCredential credential = await PhoneAuthProvider.credential(verificationId:verificationid??'', smsCode:code);
-    _firebaseAuth.signInWithCredential(credential).then(( result){
-       Provider.of<LoginViewmodel>(context,listen: false).UserLoginVerify(context: context,Parimater: Phonenumber);
-       user.updatesendcodestate(value: 0);
-   print('Goooooooooooooooooooooooooooooooooo');
-    }).catchError((e){
+    AuthCredential credential = await PhoneAuthProvider.credential(
+        verificationId: verificationid ?? '', smsCode: code);
+    _firebaseAuth.signInWithCredential(credential).then((result) {
+      Provider.of<LoginViewmodel>(context, listen: false)
+          .UserLoginVerify(context: context, Parimater: Phonenumber);
+      user.updatesendcodestate(value: 0);
+      print('Goooooooooooooooooooooooooooooooooo');
+    }).catchError((e) {
       user.updatesendcodestate(value: 1);
       //user.updatesendcodestate(value: 1);
-      Dialogs().showtoast(getLang( context: context, key: "rowng_code"));
+      Dialogs().showtoast(getLang(context: context, key: "rowng_code"));
       print(e);
-        print('Noooooooooooooooooooooooooooooooooo');
+      print('Noooooooooooooooooooooooooooooooooo');
     });
   }
 
-  EnterCodeSignUp({context,code})async{
+  EnterCodeSignUp({context, code}) async {
     LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
     print(verificationid);
     print(code);
-    AuthCredential credential = await PhoneAuthProvider.credential(verificationId:verificationid??'', smsCode:code);
-    _firebaseAuth.signInWithCredential(credential).then(( result){
-      Navigator.pushReplacementNamed(context, AppConstants.CompleteSignUp_Screan);
+    AuthCredential credential = await PhoneAuthProvider.credential(
+        verificationId: verificationid ?? '', smsCode: code);
+    _firebaseAuth.signInWithCredential(credential).then((result) {
+      Navigator.pushReplacementNamed(
+          context, AppConstants.CompleteSignUp_Screan);
       user.updatesendcodestate(value: 0);
-
-    }).catchError((e){
+    }).catchError((e) {
       user.updatesendcodestate(value: 1);
       //user.updatesendcodestate(value: 1);
-      Dialogs().showtoast(getLang( context: context, key: "rowng_code"));
+      Dialogs().showtoast(getLang(context: context, key: "rowng_code"));
       print(e);
-
     });
   }
 
-
-  SendCodeSignUp({context,phonenumber}){
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
+  SendCodeSignUp({context, phonenumber}) {
+    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
     user.updatesendcodestate(value: 1);
-    try{
-   //   _firebaseAuth.setSettings(appVerificationDisabledForTesting:true,forceRecaptchaFlow:false  );
+    try {
+      //   _firebaseAuth.setSettings(appVerificationDisabledForTesting:true,forceRecaptchaFlow:false  );
 
-      _firebaseAuth.verifyPhoneNumber(phoneNumber: phonenumber,
-          timeout: Duration(seconds:30),
-          verificationCompleted: (AuthCredential credential) async{
+      _firebaseAuth.verifyPhoneNumber(
+          phoneNumber: phonenumber,
+          timeout: Duration(seconds: 30),
+          verificationCompleted: (AuthCredential credential) async {
             print(credential);
             print('Code Is Recived');
           },
-          verificationFailed: (exception){
+          verificationFailed: (exception) {
             print(exception.code);
 
-            if(exception.code=='missing-client-identifier'){
+            if (exception.code == 'missing-client-identifier') {
               Dialogs().showtoast('Something went wrong, try again later');
-
-            }else{
-              Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
-
+            } else {
+              Dialogs()
+                  .showtoast(getLang(context: context, key: "Phone_valid"));
             }
             user.hideSpinner();
           },
-          codeSent: (String verificationId, [int? forceResendingToken]){
-            verificationid=verificationId;
+          codeSent: (String verificationId, [int? forceResendingToken]) {
+            verificationid = verificationId;
             DismissGlopalLoading();
 
-            Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
-            Navigator.pushNamed(context,AppConstants.EnterCodeSignUp_Screan);
+            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
+            Navigator.pushNamed(context, AppConstants.EnterCodeSignUp_Screan);
           },
-          codeAutoRetrievalTimeout: (message){
-            if( user.sendcodestate==1){
+          codeAutoRetrievalTimeout: (message) {
+            if (user.sendcodestate == 1) {
               //Navigator.pop(context);
               user.hideSpinner();
               print('print www');
-              Dialogs().showtoast(getLang( context: context, key: "code_expired"));
+              Dialogs()
+                  .showtoast(getLang(context: context, key: "code_expired"));
               user.updatesendcodestate(value: 0);
             }
-          }
-
-      );
-
-    }catch(error){
+          });
+    } catch (error) {
       print('rwtvasd');
-      Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
-      Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
-    };
-
+      Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
+      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
+    }
+    ;
   }
 
-
-
   Future<MyVipmodel?> ByeVip({VipModel? Vip, context}) async {
-
-
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
@@ -1087,19 +1018,15 @@ print(response2.data);
         'api/ByeVip',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-
-
-  myvip = MyVipmodel.fromJson(response2.data['MyVip']);
-
+        myvip = MyVipmodel.fromJson(response2.data['MyVip']);
       }
     } catch (e) {
       print(e);
       if (e is DioError) {
-
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -1107,9 +1034,8 @@ print(response2.data);
 
     return myvip;
   }
-  Future<MyVipmodel?> UseVip({MyVipmodel? Vip }) async {
 
-
+  Future<MyVipmodel?> UseVip({MyVipmodel? Vip}) async {
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
@@ -1122,22 +1048,19 @@ print(response2.data);
       );
 
       if (response2.statusCode == 200) {
-
-
         myvip = MyVipmodel.fromJson(response2.data);
-
       }
     } catch (e) {
       print(e);
-
     }
 
     return myvip;
   }
-  Future<bool> ByeBackages({coins,cost,kind,context}) async {
-   bool Status=false;
+
+  Future<bool> ByeBackages({coins, cost, kind, context}) async {
+    bool Status = false;
     try {
-      FormData formData =  FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "coins": coins.toString(),
         "method": kind.toString(),
@@ -1150,14 +1073,13 @@ print(response2.data);
       );
 
       if (response2.statusCode == 200) {
-        Status=true;
+        Status = true;
       }
     } catch (e) {
-      Status=false;
+      Status = false;
       if (e is DioError) {
-
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -1166,11 +1088,8 @@ print(response2.data);
     return Status;
   }
 
-
-
   Future<bool?> RemoveVip({MyVipmodel? MyVip}) async {
-
-    bool remove=false;
+    bool remove = false;
     try {
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
@@ -1180,14 +1099,13 @@ print(response2.data);
         'api/RemoveVip',
         data: formData,
       );
-       print(response2.data);
+      print(response2.data);
       if (response2.statusCode == 200) {
-         remove=true;
+        remove = true;
       }
     } catch (e) {
       print(e);
-      remove=false;
-
+      remove = false;
     }
 
     return remove;
@@ -1204,14 +1122,12 @@ print(response2.data);
         'api/checkForRegester',
         data: formData,
       );
-       
-      if (response2.statusCode == 200) {
 
-      }
+      if (response2.statusCode == 200) {}
     } catch (e) {
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -1219,20 +1135,19 @@ print(response2.data);
     print(userinfo);
     return userinfo;
   }
-  @override
-  Future<usermodel> UserLoginVerify({context,Parimater})async{
 
+  @override
+  Future<usermodel> UserLoginVerify({context, Parimater}) async {
     try {
-       var map= {
-          "user_id":UserId.toString(),
-          "notifi_token":notifitoken.toString(),
-        };
+      var map = {
+        "user_id": UserId.toString(),
+        "notifi_token": notifitoken.toString(),
+      };
       FormData formData = new FormData.fromMap(map);
       Response response2 = await dio.post(
         'api/Verifyaccount',
         data: formData,
       );
-
 
       if (response2.statusCode == 200 || response2.statusCode == 201) {
         print(notifitoken);
@@ -1240,25 +1155,36 @@ print(response2.data);
         userinfo = usermodel.fromJson(response2.data['users']);
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('token', userinfo.rememperToken.toString());
-        prefs.setString('UserData', jsonEncode(userinfo)) ;
+        final newToken = (userinfo.rememperToken ?? '').toString();
 
-        Token=userinfo.rememperToken.toString();
-        UserId=userinfo.id.toString();
-if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
-  Helper().PlaylinkMusic(path:userinfo.music );
-}
+// Never overwrite a good token with an empty one
+        if (newToken.isNotEmpty) {
+          await prefs.setString('token', newToken);
+          Token = newToken;
+        } else {
+          print('Verifyaccount returned empty token – keeping existing token');
+        }
+
+// Always save raw API map
+        await prefs.setString(
+          'UserData',
+          jsonEncode(response2.data['users']),
+        );
+
+        UserId = userinfo.id.toString();
+        if (userinfo.music != null && userinfo.music != '' && Gmail == null) {
+          Helper().PlaylinkMusic(path: userinfo.music);
+        }
 
         Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
         DismissGlopalLoading();
       }
-
     } catch (e) {
       print('ksap');
       print(e);
       if (e is DioError) {
         print(e.response?.data['errNum']);
-         Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
+        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
       } else {
         print(e);
       }
@@ -1266,30 +1192,28 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
 
     print(userinfo);
     return userinfo;
-
   }
+
   @override
-  Future<bool> SendReport({context,contact,feedback,feedback_type,contact_type,image})async{
-
-    bool data=false;
+  Future<bool> SendReport(
+      {context, contact, feedback, feedback_type, contact_type, image}) async {
+    bool data = false;
     try {
-
-
       var map;
-      if(image!=null){
-        map= {
+      if (image != null) {
+        map = {
           "user_id": UserId.toString(),
-          "feedback":feedback.toString(),
+          "feedback": feedback.toString(),
           "contact": contact.toString(),
-          "image": await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-
+          "image": await MultipartFile.fromFile(image?.path,
+              filename: image?.path?.split('/')?.last),
           "feedback_type": feedback_type.toString(),
           "contact_type": contact_type.toString(),
         };
-      }else{
-        map= {
+      } else {
+        map = {
           "user_id": UserId.toString(),
-          "feedback":feedback.toString(),
+          "feedback": feedback.toString(),
           "contact": contact.toString(),
           "feedback_type": feedback_type.toString(),
           "contact_type": contact_type.toString(),
@@ -1304,133 +1228,96 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
       );
 
       if (response2.statusCode == 200) {
-        data=true;
-      }else{
-        data=false;
+        data = true;
+      } else {
+        data = false;
       }
     } catch (e) {
-      data=false;
+      data = false;
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
       } else {
         print(e);
-
-
       }
     }
-
 
     return data;
   }
 
-
-  Future<List> MyGifts({context})async{
-
-  List data=[];
+  Future<List> MyGifts({context}) async {
+    List data = [];
     try {
-
       FormData formData = new FormData.fromMap({
         "user_id": UserId.toString(),
-
       });
       Response response2 = await dio.post(
         '/api/mygifts',
         data: formData,
       );
-       
 
       if (response2.statusCode == 200) {
+        List list = response2.data['users']['giftssent'];
 
-        List list =response2.data['users']['giftssent'];
-
-        list.forEach((element){
+        list.forEach((element) {
           giftssent.add(Gifts.fromJson(element));
         });
-        List list2 =response2.data['users']['giftscollect'];
-        list2.forEach((element){
+        List list2 = response2.data['users']['giftscollect'];
+        list2.forEach((element) {
           giftscollect.add(Gifts.fromJson(element));
         });
 
-
         data.add(giftssent);
         data.add(giftscollect);
-      }else{
-
-      }
+      } else {}
     } catch (e) {
-
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
       } else {
         print(e);
-
-
       }
     }
-
 
     return data;
   }
-  Future<usermodel> userinfoRoom({id,roomid, context}) async {
+
+  Future<usermodel> userinfoRoom({id, roomid, context}) async {
     print('=============================>$roomid');
     print('=============================>$id');
     try {
-
       Response response2 = await dio.get(
         '/api/getuserRoom/$id/$roomid',
       );
-       
-         print(userinfo);
+
+      print(userinfo);
       if (response2.statusCode == 200) {
-
         userinfo = usermodel.fromJson(response2.data['users']);
-
-
-       }
+      }
     } catch (e) {
-
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
       } else {
         print(e);
-
-
       }
     }
     print(userinfo);
 
     return userinfo;
   }
+
   Future<usermodel> UserProfileData({id, context}) async {
-
     try {
-
       Response response2 = await dio.get(
         '/api/UserProfileData/$id/$UserId',
       );
-       
 
       if (response2.statusCode == 200) {
-
         userinfo = usermodel.fromJson(response2.data['users']);
-
       }
     } catch (e) {
-
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
       } else {
         print(e);
-
-
       }
     }
     print(userinfo);
@@ -1438,115 +1325,111 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
     return userinfo;
   }
 
-
-  Future<usermodel> Userinfo({ context}) async {
-
-
+  Future<usermodel> Userinfo({context}) async {
     try {
-      FormData formData =   FormData.fromMap({
-        "":''
-      });
+      FormData formData = FormData.fromMap({"": ''});
 
       Response response2 = await dio.post(
         '/api/userinfo',
         data: formData,
       );
 
-
       if (response2.statusCode == 200) {
         userinfo = usermodel.fromJson(response2.data['users']);
-        Token=userinfo.rememperToken.toString();
-        UserId=userinfo.id.toString();
+        Token = userinfo.rememperToken.toString();
+        UserId = userinfo.id.toString();
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('UserData', jsonEncode(response2.data['users']) ) ;
+        prefs.setString('UserData', jsonEncode(response2.data['users']));
 
         prefs.setString('token', userinfo.rememperToken.toString());
-
       }
     } catch (e) {
-
-
       Navigator.pushNamed(context, AppConstants.Login_Screan);
-
-
     }
-
 
     return userinfo;
   }
+
   Future<usermodel> UserinfoID({ID, context}) async {
     LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-      dio.options.headers = {
-        'Authorization': Token,
-      };
-
+    dio.options.headers = {
+      'Authorization': Token,
+    };
 
     try {
-
-
       Response response2 = await dio.get(
         '/api/userinformation/${ID.toString()}/${user.userinfo?.id.toString()}',
       );
-       
-      if (response2.statusCode == 200) {
 
-   userinfo = usermodel.fromJson(response2.data['users']);
+      if (response2.statusCode == 200) {
+        userinfo = usermodel.fromJson(response2.data['users']);
       }
     } catch (e) {
       if (e is DioError) {
-
-
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
       } else {
         print(e);
       }
     }
 
-
     return userinfo;
   }
 
-
-
-   Future<usermodel> UpdatenormalProfile({Flag,ginder,Password,day,year,month,City,Description ,context,token,name,PhoneNumber,Image}) async {
-
-     print(Password);
-     print(name);
-     print(City);
-     print(ginder);  print(day);  print(year); print(month);print(Password);
-    var  map;
-    if(Image!=null){
-      map={
+  Future<usermodel> UpdatenormalProfile(
+      {Flag,
+      ginder,
+      Password,
+      day,
+      year,
+      month,
+      City,
+      Description,
+      context,
+      token,
+      name,
+      PhoneNumber,
+      Image}) async {
+    print(Password);
+    print(name);
+    print(City);
+    print(ginder);
+    print(day);
+    print(year);
+    print(month);
+    print(Password);
+    var map;
+    if (Image != null) {
+      map = {
         "description": Description.toString(),
 
         //"password":password.toString(),
         "name": name.toString(),
-        "image":await MultipartFile.fromFile(Image?.path, filename: Image?.path?.split('/')?.last),
-        "City":City,
-        "ginder":ginder.toString(),
-        "day":day.toString(),
-        "year":year.toString(),
-        "month":month.toString(),
-        "Flag":Flag.toString(),
-        "password":Password.toString(),
+        "image": await MultipartFile.fromFile(Image?.path,
+            filename: Image?.path?.split('/')?.last),
+        "City": City,
+        "ginder": ginder.toString(),
+        "day": day.toString(),
+        "year": year.toString(),
+        "month": month.toString(),
+        "Flag": Flag.toString(),
+        "password": Password.toString(),
       };
-    }else{
-      map={
+    } else {
+      map = {
         "description": Description.toString(),
-
-         "name": name.toString(),
-        "City":City,
-        "ginder":ginder.toString(),
-        "day":day.toString(),
-        "year":year.toString(),
-        "month":month.toString(),
-        "Flag":Flag.toString(),
-       "password":Password.toString(),
+        "name": name.toString(),
+        "City": City,
+        "ginder": ginder.toString(),
+        "day": day.toString(),
+        "year": year.toString(),
+        "month": month.toString(),
+        "Flag": Flag.toString(),
+        "password": Password.toString(),
       };
     }
 
-    map.removeWhere((key, value) => key == null || value == null||value==''||value=='null');
+    map.removeWhere((key, value) =>
+        key == null || value == null || value == '' || value == 'null');
 
     try {
       FormData formData = new FormData.fromMap(map);
@@ -1555,7 +1438,8 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
         'api/UpdateProfile',
         data: formData,
       );
-      print(response2.data);    print(response2.data);
+      print(response2.data);
+      print(response2.data);
       if (response2.statusCode == 200) {
         userinfo = usermodel.fromJson(response2.data['users']);
         Dialogs().showtoast('Profile Updated');
@@ -1567,27 +1451,26 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
       print(e);
       if (e is DioError) {
         print(e.response?.data['errNum']);
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-      } else {
-
-      }
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
+      } else {}
     }
     print(userinfo);
     return userinfo;
   }
-  FutureUpdatephoto({photo ,context,token,avatar}) async {
 
+  FutureUpdatephoto({photo, context, token, avatar}) async {
     var map;
-    if(photo!=null){
-      map={
-        "image": await MultipartFile.fromFile(photo?.path, filename: photo?.path?.split('/')?.last),
+    if (photo != null) {
+      map = {
+        "image": await MultipartFile.fromFile(photo?.path,
+            filename: photo?.path?.split('/')?.last),
       };
-    }else{
-       map={
+    } else {
+      map = {
         "image": avatar,
       };
     }
-    String image ='';
+    String image = '';
     map.removeWhere((key, value) => key == null || value == null);
     try {
       FormData formData = new FormData.fromMap(map);
@@ -1596,9 +1479,9 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
         'api/Updatephoto',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
-         image = response2.data['image'];
+        image = response2.data['image'];
         Dialogs().showtoast('Photo Updated');
         //Navigator.pushNamed(context, '${AppConstants.Buttom_Navigation}');
       } else {
@@ -1606,11 +1489,8 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
       }
     } catch (e) {
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-      } else {
-
-      }
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
+      } else {}
     }
 
     print(userinfo);
@@ -1618,141 +1498,204 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
   }
 
   @override
-
-
-
-  checklogin(context)async{
+  checklogin(context) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-      Token=prefs.getString('token');
+    Token = prefs.getString('token');
 
-  FlutterNativeSplash.remove();
-    if(Token==null){
+    FlutterNativeSplash.remove();
+    // Treat missing OR empty token as logged out
+    if (Token == null || Token!.trim().isEmpty) {
+      Navigator.pushNamed(context, AppConstants.Login_Screan);
+    } else {
+      try {
+        var datauser = prefs.getString('UserData');
+        if (datauser == null || datauser.isEmpty) {
+          await prefs.remove('token');
+          Token = null;
+          Navigator.pushNamed(context, AppConstants.Login_Screan);
+          return;
+        }
+        userinfo = usermodel.fromJson(jsonDecode(datauser));
+        UserId = userinfo.id.toString();
+        Provider.of<LoginViewmodel>(context, listen: false)
+            .MyUSERINFO(userinfo);
+        Provider.of<LoginViewmodel>(context, listen: false)
+            .waitingConstDate(context);
 
+        // Always go to home when session is valid
+        Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
 
-       Navigator.pushNamed(context,AppConstants.Login_Screan);
-
-
-    }else{
-
-    var  datauser=  prefs.getString('UserData');
-    userinfo = usermodel.fromJson(jsonDecode(datauser!));
-    Provider.of<LoginViewmodel>(context,listen: false).waitingConstDate(context);
-
-    // if(userinfo.StarterBanner!=null){
-    //   Dialogs().showtoast('Starteranner');
-    // }
-
-    //  Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
-
-      Provider.of<LoginViewmodel>(context,listen: false).userinformation( context: context, );
+        Provider.of<LoginViewmodel>(context, listen: false).userinformation(
+          context: context,
+        );
+      } catch (e) {
+        print('checklogin restore error: $e');
+        if (Token != null && Token!.trim().isNotEmpty) {
+          Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
+        } else {
+          Navigator.pushNamed(context, AppConstants.Login_Screan);
+        }
+      }
     }
-
   }
 
-  SendPhoneCodeResetPassword({context,phonenumber}){
-    LoginViewmodel user=Provider.of<LoginViewmodel>(context, listen: false);
+  SendPhoneCodeResetPassword({context, phonenumber}) {
+    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
     user.updatesendcodestate(value: 1);
 
-    try{
+    try {
       print('phone number $phonecode$phonenumber');
-      _firebaseAuth.verifyPhoneNumber(phoneNumber:"$phonecode$phonenumber",
-          timeout: Duration(seconds:30),
-          verificationCompleted: (AuthCredential credential) async{
+      _firebaseAuth.verifyPhoneNumber(
+          phoneNumber: "$phonecode$phonenumber",
+          timeout: Duration(seconds: 30),
+          verificationCompleted: (AuthCredential credential) async {
             print(credential);
             print('Code Is Recived');
           },
-          verificationFailed: (exception){
+          verificationFailed: (exception) {
             print(exception.code);
-            Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
+            Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
           },
-          codeSent: (String verificationId, [int? forceResendingToken]){
-            verificationid=verificationId;
-            Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
-            Navigator.pushNamed(context,AppConstants.OTP_Screan);
+          codeSent: (String verificationId, [int? forceResendingToken]) {
+            verificationid = verificationId;
+            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
+            Navigator.pushNamed(context, AppConstants.OTP_Screan);
           },
-          codeAutoRetrievalTimeout: (message){
-            if(user.sendcodestate==1){
+          codeAutoRetrievalTimeout: (message) {
+            if (user.sendcodestate == 1) {
               Navigator.pop(context);
-              Dialogs().showtoast(getLang( context: context, key: "code_expired"));
+              Dialogs()
+                  .showtoast(getLang(context: context, key: "code_expired"));
               user.updatesendcodestate(value: 0);
             }
-
-          }
-
-      );
-
-    }catch(error){
-      Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
-    };
-
+          });
+    } catch (error) {
+      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
+    }
+    ;
   }
 
   getAllconstant(context) async {
     try {
-      var avatars = await dio.get('api/GetConstData');
+      final response = await dio.get(
+        'api/GetConstData',
+      );
 
-      return avatars.data;
-    } catch (exception) {
-      print('asdasdasdasdasd');
-      print(exception);
+      print(
+        'GET CONST DATA: '
+        'status=${response.statusCode}',
+      );
+
+      print(
+        'GET CONST DATA: '
+        'dataType=${response.data.runtimeType}',
+      );
+
+      print(
+        'GET CONST DATA: '
+        'data=${response.data}',
+      );
+
+      return response.data;
+    } on DioException catch (exception) {
+      print(
+        'GET CONST DATA DIO ERROR: '
+        '${exception.type}',
+      );
+
+      print(
+        'GET CONST DATA STATUS: '
+        '${exception.response?.statusCode}',
+      );
+
+      print(
+        'GET CONST DATA RESPONSE: '
+        '${exception.response?.data}',
+      );
+
+      print(
+        'GET CONST DATA MESSAGE: '
+        '${exception.message}',
+      );
+
+      return null;
+    } catch (exception, stackTrace) {
+      print(
+        'GET CONST DATA ERROR: '
+        '$exception',
+      );
+
+      print(
+        'GET CONST DATA STACKTRACE: '
+        '$stackTrace',
+      );
+
+      return null;
     }
-
-
   }
+
   Future getReportImage() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile!= null) {
-      var  Signupimage = File(pickedFile.path);
+    if (pickedFile != null) {
+      var Signupimage = File(pickedFile.path);
       print(Signupimage);
       return Signupimage;
     } else {
       print('No image selected.');
     }
   }
+
   Future getImageGalary() async {
     final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-      if (pickedFile!= null) {
-       var  Signupimage = File(pickedFile.path);
-        print(Signupimage);
-        return Signupimage;
-      } else {
-        print('No image selected.');
-      }
+    if (pickedFile != null) {
+      var Signupimage = File(pickedFile.path);
+      print(Signupimage);
+      return Signupimage;
+    } else {
+      print('No image selected.');
+    }
   }
-  Future<usermodel>
-  RegesterNewUser({context,ginder,Flag,city,image,name,phone_number,year,month,day}) async {
-    var  map;
+
+  Future<usermodel> RegesterNewUser(
+      {context,
+      ginder,
+      Flag,
+      city,
+      image,
+      name,
+      phone_number,
+      year,
+      month,
+      day}) async {
+    var map;
     try {
-
-      if(Gmail==null){
-
-        map={
-          "name":name.toString(),
+      if (Gmail == null) {
+        map = {
+          "name": name.toString(),
           "phone_number": phone_number.toString(),
-          "year":year.toString(),
-          "month":month.toString(),
+          "year": year.toString(),
+          "month": month.toString(),
           "day": day.toString(),
-          "image":await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-          "notifi_token":notifitoken.toString(),
-          "city":city.toString(),
-          "Flag":Flag.toString(),
-          "ginder":ginder.toString(),
-
+          "image": await MultipartFile.fromFile(image?.path,
+              filename: image?.path?.split('/')?.last),
+          "notifi_token": notifitoken.toString(),
+          "city": city.toString(),
+          "Flag": Flag.toString(),
+          "ginder": ginder.toString(),
         };
-      }else{
-
-        map={
-          "name":name.toString(),
-          "year":year.toString(),
-          "month":month.toString(),
+      } else {
+        map = {
+          "name": name.toString(),
+          "year": year.toString(),
+          "month": month.toString(),
           "day": day.toString(),
-          "image":await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-          "notifi_token":notifitoken.toString(),
-          "city":city.toString(),
-          "Flag":Flag.toString(),
-          "ginder":ginder.toString(),
-          'email':Gmail.toString()
-
+          "image": await MultipartFile.fromFile(image?.path,
+              filename: image?.path?.split('/')?.last),
+          "notifi_token": notifitoken.toString(),
+          "city": city.toString(),
+          "Flag": Flag.toString(),
+          "ginder": ginder.toString(),
+          'email': Gmail.toString()
         };
       }
 
@@ -1762,33 +1705,27 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
         '/api/SignUpaccount',
         data: formData,
       );
-       
+
       if (response2.statusCode == 200) {
         userinfo = usermodel.fromJson(response2.data['users']);
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('token', userinfo.rememperToken.toString());
-        prefs.setString('UserData', jsonEncode(userinfo)) ;
+        prefs.setString('UserData', jsonEncode(userinfo.toJson()));
         print(userinfo.rememperToken);
-        Token=userinfo.rememperToken.toString();
-        UserId=userinfo.id.toString();
-        if(userinfo.music!=null&&userinfo.music!=''&&Gmail!=null){
-          Helper().PlaylinkMusic(path:userinfo.music );
+        Token = userinfo.rememperToken.toString();
+        UserId = userinfo.id.toString();
+        if (userinfo.music != null && userinfo.music != '' && Gmail != null) {
+          Helper().PlaylinkMusic(path: userinfo.music);
         }
 
         Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
-
       }
-
-    }catch (e) {
+    } catch (e) {
       print(e);
       if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-      } else {
-
-      }
+        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
+      } else {}
     }
-
 
     return userinfo;
   }
@@ -1797,22 +1734,20 @@ if(userinfo.music!=null&&userinfo.music!=''&&Gmail==null){
     SharedPreferences prefs = await SharedPreferences.getInstance();
     print('Token is ======> $Token');
     FormData formData = new FormData.fromMap({
-      "user_id":UserId.toString(),
+      "user_id": UserId.toString(),
     });
 
     Response response2 = await dio.post(
       '/api/logout',
       data: formData,
     );
-     
+
     if (response2.statusCode == 200) {
       prefs.remove('token');
       prefs.remove('uuid');
-return true;
-    }else{
+      return true;
+    } else {
       return false;
     }
-
-
   }
 }

@@ -1,4 +1,3 @@
-
 import 'dart:convert';
 
 import 'package:ahlachat/util/Dialogs.dart';
@@ -19,47 +18,56 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:provider/provider.dart';
 import 'package:ahlachat/models/Usermodel.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 class SplashScrean extends StatefulWidget {
   const SplashScrean({Key? key}) : super(key: key);
   @override
   State<SplashScrean> createState() => _SplashScreanState();
 }
+
 class _SplashScreanState extends State<SplashScrean> {
-  checklanguage()async{
+  checklanguage() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    Lang= prefs.getString('Lang');
+    Lang = prefs.getString('Lang');
     print("language====================================$Lang");
     print('Lang is $Lang');
-    setState(() {
-
-    });
-
+    setState(() {});
   }
+
   void checkConnectitivy() async {
-  try {
-    final connectivityResult =
-        await Connectivity().checkConnectivity();
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
 
-    print('CONNECTIVITY RESULT: $connectivityResult');
+      print('CONNECTIVITY RESULT: $connectivityResult');
 
-    if (connectivityResult != ConnectivityResult.none) {
-      SchedulerBinding.instance?.addPostFrameCallback((_) async {
-        await Helper().ids();
+      if (connectivityResult != ConnectivityResult.none) {
+        SchedulerBinding.instance?.addPostFrameCallback((_) async {
+          await Helper().ids();
 
-        Helper().checkVersion();
+          Helper().checkVersion();
 
-        Provider.of<LoginViewmodel>(
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).checklogin(context);
+
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).getAllconstant(context);
+        });
+      } else {
+        print('CONNECTIVITY: NONE');
+
+        if (!mounted) return;
+
+        Navigator.pushNamed(
           context,
-          listen: false,
-        ).checklogin(context);
-
-        Provider.of<LoginViewmodel>(
-          context,
-          listen: false,
-        ).getAllconstant(context);
-      });
-    } else {
-      print('CONNECTIVITY: NONE');
+          AppConstants.InternetConnection_Screan,
+        );
+      }
+    } catch (e) {
+      print('CONNECTIVITY ERROR: $e');
 
       if (!mounted) return;
 
@@ -68,48 +76,50 @@ class _SplashScreanState extends State<SplashScrean> {
         AppConstants.InternetConnection_Screan,
       );
     }
-  } catch (e) {
-    print('CONNECTIVITY ERROR: $e');
-
-    if (!mounted) return;
-
-    Navigator.pushNamed(
-      context,
-      AppConstants.InternetConnection_Screan,
-    );
   }
-}
 
-
-  checklogin(context)async{
-    LoginViewmodel   UserState=Provider.of<LoginViewmodel>(context,listen: false);
+  checklogin(context) async {
+    LoginViewmodel UserState =
+        Provider.of<LoginViewmodel>(context, listen: false);
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    Token=prefs.getString('token');
+    Token = prefs.getString('token');
 
-    if(Token==null){
-
+    // Treat missing OR empty token as logged out
+    if (Token == null || Token!.trim().isEmpty) {
       UserState.UpdateCurrentPage(LoginScrean());
-     // Navigator.pushNamed(context,AppConstants.Login_Screan);
-    }else{
+      // Navigator.pushNamed(context,AppConstants.Login_Screan);
+    } else {
+      try {
+        var datauser = prefs.getString('UserData');
+        if (datauser == null || datauser.isEmpty) {
+          await prefs.remove('token');
+          Token = null;
+          UserState.UpdateCurrentPage(LoginScrean());
+          return;
+        }
+        var userinfo = jsonDecode(datauser);
+        var user = usermodel.fromJson(userinfo);
+        UserState.MyUSERINFO(user);
+        UserState.waitingConstDate(context);
 
-      var  datauser=  prefs.getString('UserData');
-      var userinfo = jsonDecode(datauser!);
-      var user = usermodel.fromJson(userinfo);
-      UserState.MyUSERINFO(user);
-      UserState.waitingConstDate(context);
-
-      UserId=user.id.toString();
-      if(user.StarterBanner!=null){
-
-        UserState.UpdateCurrentPage(StartBannerScrean());
-      }else{
-
-        UserState.UpdateCurrentPage(ButtomNavigation());
+        UserId = user.id.toString();
+        if (user.StarterBanner != null) {
+          UserState.UpdateCurrentPage(StartBannerScrean());
+        } else {
+          UserState.UpdateCurrentPage(ButtomNavigation());
+        }
+      } catch (e) {
+        print('Splash checklogin restore error: $e');
+        // Keep token – only go home with partial data if possible
+        if (Token != null && Token!.trim().isNotEmpty) {
+          UserState.UpdateCurrentPage(ButtomNavigation());
+        } else {
+          UserState.UpdateCurrentPage(LoginScrean());
+        }
       }
-
     }
-
   }
+
   @override
   void initState() {
     checklogin(context);
@@ -120,11 +130,11 @@ class _SplashScreanState extends State<SplashScrean> {
     super.initState();
   }
 
-
   @override
   Widget build(BuildContext context) {
     SizeConfig().init(context);
-    LoginViewmodel   UserState=Provider.of<LoginViewmodel>(context,listen: true);
+    LoginViewmodel UserState =
+        Provider.of<LoginViewmodel>(context, listen: true);
     return UserState.CurrentBage;
   }
 }
