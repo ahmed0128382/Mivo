@@ -19,194 +19,475 @@ import 'package:pusher_client/pusher_client.dart';
 import 'package:ahlachat/models/Usermodel.dart';
 import 'package:ahlachat/main.dart';
 import '../../util/Dialogs.dart';
-class SocketuserViewmodel extends ChangeNotifier{
+
+class SocketuserViewmodel extends ChangeNotifier {
   PusherClient? pusher2;
   Channel? channel2;
-  Future ConnectuserScocket(roomcontext)async {
 
-    pusher2 =   PusherClient(
-      "123456789",
+  Future<void> ConnectuserScocket(roomcontext) async {
+    print('========== USER PUSHER CONNECT ==========');
+    print('PUSHER KEY: 4e68aedca5c74610deac');
+    print('PUSHER CLUSTER: mt1');
+    print('PUSHER CHANNEL: user$UserId');
+    print('PUSHER EVENT: user');
+    print('=========================================');
+
+    // Disconnect previous connection if one exists.
+    try {
+      channel2?.unbind('user');
+      pusher2?.unsubscribe('user$UserId');
+      pusher2?.disconnect();
+    } catch (e) {
+      print('OLD USER PUSHER DISCONNECT ERROR: $e');
+    }
+
+    pusher2 = PusherClient(
+      '4e68aedca5c74610deac',
       PusherOptions(
-        wssPort:6001,
-        wsPort:6001,
-        host:'worldchat.online',
-        encrypted: false,
+        cluster: 'mt1',
+        encrypted: true,
       ),
       enableLogging: true,
     );
+
+    // Connection state listener
+    pusher2?.onConnectionStateChange((state) {
+      print('========== USER PUSHER STATE ==========');
+      print('PREVIOUS: ${state?.previousState}');
+      print('CURRENT:  ${state?.currentState}');
+      print('=======================================');
+
+      log(
+        'User Pusher state: '
+        '${state?.previousState} -> ${state?.currentState}',
+      );
+    });
+
+    // Connection error listener
+    pusher2?.onConnectionError((error) {
+      print('========== USER PUSHER ERROR ==========');
+      print('MESSAGE: ${error?.message}');
+      print('CODE: ${error?.code}');
+      print('=======================================');
+
+      log('User Pusher error: ${error?.message}');
+    });
+
+    // Connect
+    print('USER PUSHER: connecting...');
     pusher2?.connect();
-    pusher2?.onConnectionStateChange((state) {
-      log("previousState: ${state?.previousState}, currentState: ${state?.currentState}");});
-    pusher2?.onConnectionError((error) {
-      log("error: ${error?.message}");
-    });
 
-    channel2 = pusher2?.subscribe('user$UserId');
+    // Subscribe to user channel
+    final String userChannel = 'user$UserId';
+
+    print('USER PUSHER: subscribing to "$userChannel"...');
+
+    channel2 = pusher2?.subscribe(userChannel);
+
+    // Bind user event
     channel2?.bind('user', (e) {
-      degisenMenu(data: jsonDecode(e?.data??''),state: jsonDecode(e?.data??'')['state'],roomcontext: roomcontext,);
+      print('========== USER PUSHER EVENT ==========');
+      print('CHANNEL: $userChannel');
+      print('EVENT: user');
+      print('RAW DATA: ${e?.data}');
+      print('=======================================');
 
-     });
-    pusher2?.onConnectionStateChange((state) {
+      try {
+        final String rawData = e?.data ?? '';
 
-      log("previousState: ${state?.previousState}, currentState: ${state?.currentState}");
-    });
+        if (rawData.isEmpty) {
+          print('USER PUSHER: event data is empty');
+          return;
+        }
 
-    pusher2?.onConnectionError((error) {
+        final Map<String, dynamic> decoded =
+            jsonDecode(rawData) as Map<String, dynamic>;
 
-      log("error: ${error?.message}");
+        final dynamic state = decoded['state'];
+
+        print('USER PUSHER EVENT STATE: $state');
+
+        degisenMenu(
+          data: decoded,
+          state: state,
+          roomcontext: roomcontext,
+        );
+      } catch (e, stackTrace) {
+        print('========== USER PUSHER EVENT ERROR ==========');
+        print('ERROR: $e');
+        print('STACK TRACE:');
+        print(stackTrace);
+        print('=============================================');
+      }
     });
 
     notifyListeners();
   }
 
+  Future<void> DisConnect({required id}) async {
+    final String userChannel = 'user$id';
 
+    print('========== USER PUSHER DISCONNECT ==========');
+    print('CHANNEL: $userChannel');
 
-  Future DisConnect({required id})async{
-    pusher2?.unsubscribe('user$id');
+    try {
+      channel2?.unbind('user');
+      pusher2?.unsubscribe(userChannel);
+      pusher2?.disconnect();
+
+      channel2 = null;
+      pusher2 = null;
+
+      print('USER PUSHER: disconnected successfully');
+    } catch (e, stackTrace) {
+      print('USER PUSHER DISCONNECT ERROR: $e');
+      print(stackTrace);
+    }
+
     notifyListeners();
   }
 
-  degisenMenu({data,state, roomcontext,index}) async{
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(roomcontext,listen: false);
-    InboxroomViewModel Inboxroom=  Provider.of<InboxroomViewModel>(roomcontext,listen: false);
-    RoomViewmodel Rooms=  Provider.of<RoomViewmodel>(roomcontext,listen: false);
-    switch (state) {
-      case 0:
+  Future<void> degisenMenu({
+    required dynamic data,
+    required dynamic state,
+    required dynamic roomcontext,
+    int? index,
+  }) async {
+    try {
+      final LoginViewmodel user =
+          Provider.of<LoginViewmodel>(
+        roomcontext,
+        listen: false,
+      );
 
+      final InboxroomViewModel Inboxroom =
+          Provider.of<InboxroomViewModel>(
+        roomcontext,
+        listen: false,
+      );
 
-       user.UpdateFrame(frames:data['data']['frame'] );
-        break;
-      case 1:
-        user.UpdateEntry(Entry: data['data']['entry'] );
-        break;
-      case 2:
-        user.removeFrame();
-        break;
-      case 3:
-        user.removeEntry();
-        break;
-      case 4:
+      final RoomViewmodel Rooms =
+          Provider.of<RoomViewmodel>(
+        roomcontext,
+        listen: false,
+      );
 
-        InboxRoomModel Inbox=InboxRoomModel.fromJson(data['data']['InboxRoom']);
+      switch (state) {
+        case 0:
+          user.UpdateFrame(
+            frames: data['data']['frame'],
+          );
+          break;
 
+        case 1:
+          user.UpdateEntry(
+            Entry: data['data']['entry'],
+          );
+          break;
 
-          Inboxroom.AddnewInboxRoom(value: Inbox);
-        break;
-      case 5:
-       Message messages=Message.fromJson(data['data']['Messages']);
+        case 2:
+          user.removeFrame();
+          break;
 
-var Inbox= Inboxroom.Inboxrooms.where((element) => element.id==messages.inboxroomId);
-        if(Inboxroom.inroomid==messages.inboxroomId){
+        case 3:
+          user.removeEntry();
+          break;
 
-if(Inbox.isNotEmpty){
-  Inboxroom.Inboxrooms.where((element) => element.id==messages.inboxroomId).first.numberUnread=0 ;
-}
+        case 4:
+          final InboxRoomModel Inbox =
+              InboxRoomModel.fromJson(
+            data['data']['InboxRoom'],
+          );
 
-          Inboxroom.AlreadyinInboxRoom();
-        }else{
-          if(Inbox.isNotEmpty){
-            Inboxroom.Inboxrooms.where((element) => element.id==messages.inboxroomId).first.numberUnread=Inboxroom.Inboxrooms.where((element) => element.id==messages.inboxroomId).first.numberUnread!+1;
+          Inboxroom.AddnewInboxRoom(
+            value: Inbox,
+          );
+          break;
 
+        case 5:
+          final Message messages =
+              Message.fromJson(
+            data['data']['Messages'],
+          );
+
+          final Inbox = Inboxroom.Inboxrooms.where(
+            (element) => element.id == messages.inboxroomId,
+          );
+
+          if (Inboxroom.inroomid == messages.inboxroomId) {
+            if (Inbox.isNotEmpty) {
+              Inbox.first.numberUnread = 0;
+            }
+
+            Inboxroom.AlreadyinInboxRoom();
+          } else {
+            if (Inbox.isNotEmpty) {
+              Inbox.first.numberUnread =
+                  (Inbox.first.numberUnread ?? 0) + 1;
+            }
           }
-        }
-       if(Inbox.isNotEmpty){
-         Inboxroom.Inboxrooms.where((element) => element.id==messages.inboxroomId).first.updatedAt=messages.createdAt ;
-       }
 
+          if (Inbox.isNotEmpty) {
+            Inbox.first.updatedAt = messages.createdAt;
+          }
 
-if(messages.senderId.toString()!=user.userinfo?.id.toString()){
-  LocalNotificationService().showNotification(body: messages.message??"",id: 1, title:'رساله جديده',  );
+          if (messages.senderId.toString() !=
+              user.userinfo?.id.toString()) {
+            LocalNotificationService().showNotification(
+              body: messages.message ?? "",
+              id: 1,
+              title: 'رساله جديده',
+            );
 
-  Inboxroom.AddMessageInbox(value: messages,id:messages.inboxroomId,context: roomcontext );
-}
+            Inboxroom.AddMessageInbox(
+              value: messages,
+              id: messages.inboxroomId,
+              context: roomcontext,
+            );
+          }
 
-        if(messages.userId.toString()==user.userinfo?.id.toString()){
-        //  Dialogs().ShowMessage(name: 'رساله جديده',message:messages.message);
-          LocalNotificationService().showNotification(body: messages.message??"",id: 1, title:'رساله جديده',  );
-          user.changeNewmessage(true);
+          if (messages.userId.toString() ==
+              user.userinfo?.id.toString()) {
+            LocalNotificationService().showNotification(
+              body: messages.message ?? "",
+              id: 1,
+              title: 'رساله جديده',
+            );
 
-         Helper().PlayMusic(path: AppConstants.Chatnotifi);
-        }
-        break;
-      case 6:
+            user.changeNewmessage(true);
 
-        user.AddCoinspluse(value:int.parse(data['data']['coins'].toString()));
-        break;
-      case 7:
-        LocalNotificationService().showNotification(body:'${data['data']['Room']['name']}قام بدعوتك الي غرفه ',id: 3, title:data['data']['user']['name'],  );
+            Helper().PlayMusic(
+              path: AppConstants.Chatnotifi,
+            );
+          }
 
-        Rooms.InviteToRoom(Roominfo:  data['data']['Room'], user:  data['data']['user'],context:roomcontext );
+          break;
 
-        break;
-      case 8:
-        Rooms.InviteToChair(Roominfo:  data['data']['Room'], user:  data['data']['user'],Chair_id:data['data']['chair_id'] ,context:roomcontext );
+        case 6:
+          user.AddCoinspluse(
+            value: int.parse(
+              data['data']['coins'].toString(),
+            ),
+          );
+          break;
 
+        case 7:
+          LocalNotificationService().showNotification(
+            body:
+                '${data['data']['Room']['name']}قام بدعوتك الي غرفه ',
+            id: 3,
+            title: data['data']['user']['name'],
+          );
 
-        break;
-      case 9:
+          Rooms.InviteToRoom(
+            Roominfo: data['data']['Room'],
+            user: data['data']['user'],
+            context: roomcontext,
+          );
 
-        user.Changecoins(value:int.parse(data['data']['coins'].toString()));
-        break;
-      case 10:
+          break;
 
-        user.MinusCoinspluse(value:int.parse(data['data']['coins'].toString()));
+        case 8:
+          Rooms.InviteToChair(
+            Roominfo: data['data']['Room'],
+            user: data['data']['user'],
+            Chair_id: data['data']['chair_id'],
+            context: roomcontext,
+          );
 
-         break;
-      case 11:
-        Dialogs().showtoast('    لقد ربحت  ${data['data']['coins'].toString()} ماسه   ');
-        user.AddCoinspluse(value:int.parse(data['data']['coins'].toString()));
+          break;
 
-        break;
-      case 12:
-        user.removeEnterbubles();
-        break;
-      case 13:
-        user.UpdateEnterbubles(frames:data['data']['frame'] );
-        break;
-      case 14:
+        case 9:
+          user.Changecoins(
+            value: int.parse(
+              data['data']['coins'].toString(),
+            ),
+          );
+          break;
 
-        var user=usermodel.fromJson(data['data']['sender']);
-        LocalNotificationService().showNotification(body:'  قام ${user.name} بمتابعتك  ',id: 5, title:'رساله جديده',  );
-        showDialog(context: NavigationService.navigatorKey.currentContext!,builder: (context) {
-          return AlertDialog(backgroundColor:  Color(0xFF2b2f3b),shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),content:Container(
-            child:Text('  قام ${user.name} بمتابعتك  ',style: style3.copyWith(color: Color(0xFFeae2be)  ,fontWeight: FontWeight.bold,fontSize: 16),textDirection: TextDirection.rtl  ),
-          ),actions: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround,children: [
-                InkWell(onTap:(){
-                  Provider.of<FollowViewModel>(context,listen: false).ReturnFollow(context: NavigationService.navigatorKey.currentContext!,Senderid:user.id);
+        case 10:
+          user.MinusCoinspluse(
+            value: int.parse(
+              data['data']['coins'].toString(),
+            ),
+          );
+          break;
 
-                  Navigator.pop(context);
-                },child: Container(child: Center(child:  Text('رد المتابعه',style: style6.copyWith(fontSize: 15),)),width: 80,height: 37,decoration: BoxDecoration(borderRadius: BorderRadius.circular(20),color: Color(0xFFeae2be)))),
+        case 11:
+          Dialogs().showtoast(
+            '    لقد ربحت  ${data['data']['coins'].toString()} ماسه   ',
+          );
 
-                InkWell(onTap:()=>Navigator.pop(context),child: Container(child: Center(child:  Text(getLang( context: context, key: "Close"),style:  style6.copyWith(fontSize: 15),)),width: 80,height: 37,decoration: BoxDecoration(color: Color(0xFFeae2be),borderRadius: BorderRadius.circular(20), ))),
+          user.AddCoinspluse(
+            value: int.parse(
+              data['data']['coins'].toString(),
+            ),
+          );
 
-               ],),
-            )
-          ],);
-        },);
+          break;
 
-        break;
-      case 15:
-        user.removeProfilebubles();
-        break;
-      case 16:
-        user.UpdateProfilebubles(frames:data['data']['frame'] );
-        break;
-      case 17:
-        LocalNotificationService().showNotification(body:'تم حظر هذا الحساب',id: 2, title:'رساله جديده',  );
-        Dialogs().showtoast('تم حظر هذا الحساب');
-        SystemNavigator.pop();
-        break;
+        case 12:
+          user.removeEnterbubles();
+          break;
+
+        case 13:
+          user.UpdateEnterbubles(
+            frames: data['data']['frame'],
+          );
+          break;
+
+        case 14:
+          final usermodel followedUser =
+              usermodel.fromJson(
+            data['data']['sender'],
+          );
+
+          LocalNotificationService().showNotification(
+            body:
+                '  قام ${followedUser.name} بمتابعتك  ',
+            id: 5,
+            title: 'رساله جديده',
+          );
+
+          showDialog(
+            context:
+                NavigationService.navigatorKey.currentContext!,
+            builder: (context) {
+              return AlertDialog(
+                backgroundColor:
+                    const Color(0xFF2b2f3b),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                content: Container(
+                  child: Text(
+                    '  قام ${followedUser.name} بمتابعتك  ',
+                    style: style3.copyWith(
+                      color: const Color(0xFFeae2be),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    textDirection: TextDirection.rtl,
+                  ),
+                ),
+                actions: [
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      mainAxisAlignment:
+                          MainAxisAlignment.spaceAround,
+                      children: [
+                        InkWell(
+                          onTap: () {
+                            Provider.of<FollowViewModel>(
+                              context,
+                              listen: false,
+                            ).ReturnFollow(
+                              context: NavigationService
+                                  .navigatorKey
+                                  .currentContext!,
+                              Senderid: followedUser.id,
+                            );
+
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            width: 80,
+                            height: 37,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(20),
+                              color:
+                                  const Color(0xFFeae2be),
+                            ),
+                            child: Center(
+                              child: Text(
+                                'رد المتابعه',
+                                style: style6.copyWith(
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          child: Container(
+                            width: 80,
+                            height: 37,
+                            decoration: BoxDecoration(
+                              color:
+                                  const Color(0xFFeae2be),
+                              borderRadius:
+                                  BorderRadius.circular(20),
+                            ),
+                            child: Center(
+                              child: Text(
+                                getLang(
+                                  context: context,
+                                  key: "Close",
+                                ),
+                                style: style6.copyWith(
+                                  fontSize: 15,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          );
+
+          break;
+
+        case 15:
+          user.removeProfilebubles();
+          break;
+
+        case 16:
+          user.UpdateProfilebubles(
+            frames: data['data']['frame'],
+          );
+          break;
+
+        case 17:
+          LocalNotificationService().showNotification(
+            body: 'تم حظر هذا الحساب',
+            id: 2,
+            title: 'رساله جديده',
+          );
+
+          Dialogs().showtoast(
+            'تم حظر هذا الحساب',
+          );
+
+          SystemNavigator.pop();
+          break;
+
         case 18:
-          LocalNotificationService().showNotification(body:data['data']['message'],id: 8, title:'رساله جديده',  );
+          LocalNotificationService().showNotification(
+            body: data['data']['message'],
+            id: 8,
+            title: 'رساله جديده',
+          );
+          break;
 
-      break;
-      default:
-
+        default:
+          print(
+            'USER PUSHER: Unknown state received: $state',
+          );
+      }
+    } catch (e, stackTrace) {
+      print('========== USER PUSHER MENU ERROR ==========');
+      print('STATE: $state');
+      print('ERROR: $e');
+      print('STACK TRACE:');
+      print(stackTrace);
+      print('============================================');
     }
   }
-
-
 }

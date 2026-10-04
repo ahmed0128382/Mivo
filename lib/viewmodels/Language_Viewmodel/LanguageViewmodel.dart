@@ -5,9 +5,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 
 String ? Lang='En';
+const String defaultLanguage = 'ar';
 checklanguage()async{
   SharedPreferences prefs = await SharedPreferences.getInstance();
   Lang= prefs.getString('Lang');
+  Lang ??= defaultLanguage;
   print("language====================================$Lang");
   print('Lang is $Lang');
 

@@ -173,7 +173,6 @@ class _MainScreanState extends State<MainScrean>
                                 .hidpanner2();
 
                             svga.dispose();
-                            ShowGlopalLoading();
                             Rooms.JoinRoom4(
                                 Roomid: user.userinfo?.currentroom?.id,
                                 context: context);

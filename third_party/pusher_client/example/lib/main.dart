@@ -1,108 +1,141 @@
+
 import 'dart:developer';
 
 import 'package:flutter/material.dart';
 import 'package:pusher_client/pusher_client.dart';
 
 void main() {
-  runApp(MyApp());
+  runApp( MyApp());
 }
 
 class MyApp extends StatefulWidget {
+  
+
   @override
-  _MyAppState createState() => _MyAppState();
+  State<MyApp> createState() => _MyAppState();
 }
 
 class _MyAppState extends State<MyApp> {
-  PusherClient pusher;
-  Channel channel;
+  PusherClient? pusher;
+  Channel? channel;
+
+  static const String pusherAppKey = '4e68aedca5c74610deac';
+  static const String pusherCluster = 'mt1';
 
   @override
   void initState() {
     super.initState();
 
-    String token = getToken();
-
-    pusher = new PusherClient(
-      "app-key",
+    pusher = PusherClient(
+      pusherAppKey,
       PusherOptions(
-        // if local on android use 10.0.2.2
-        host: 'localhost',
-        encrypted: false,
-        auth: PusherAuth(
-          'http://example.com/broadcasting/auth',
-          headers: {
-            'Authorization': 'Bearer $token',
-          },
-        ),
+        cluster: pusherCluster,
+        encrypted: true,
       ),
       enableLogging: true,
     );
 
-    channel = pusher.subscribe("private-orders");
-
-    pusher.onConnectionStateChange((state) {
-      log("previousState: ${state.previousState}, currentState: ${state.currentState}");
+    pusher?.onConnectionStateChange((state) {
+      log(
+        'PUSHER STATE: '
+        '${state?.previousState} -> ${state?.currentState}',
+      );
     });
 
-    pusher.onConnectionError((error) {
-      log("error: ${error.message}");
+    pusher?.onConnectionError((error) {
+      log(
+        'PUSHER ERROR: '
+        '${error?.message}',
+      );
     });
 
-    channel.bind('status-update', (event) {
-      log(event.data);
+    channel = pusher?.subscribe('Gigo');
+
+    channel?.bind('Gigo', (event) {
+      log(
+        'PUSHER GIGO EVENT: '
+        '${event?.data}',
+      );
     });
 
-    channel.bind('order-filled', (event) {
-      log("Order Filled Event" + event.data.toString());
-    });
+    log('PUSHER: Connecting...');
+    pusher?.connect();
   }
 
-  String getToken() => "super-secret-token";
+  @override
+  void dispose() {
+    log('PUSHER: Disposing...');
+
+    channel?.unbind('Gigo');
+    pusher?.unsubscribe('Gigo');
+    pusher?.disconnect();
+
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
         appBar: AppBar(
-          title: const Text('Example Pusher App'),
+          title: const Text('Pusher Test'),
         ),
         body: Center(
-            child: Column(
-          children: [
-            ElevatedButton(
-              child: Text('Unsubscribe Private Orders'),
-              onPressed: () {
-                pusher.unsubscribe('private-orders');
-              },
-            ),
-            ElevatedButton(
-              child: Text('Unbind Status Update'),
-              onPressed: () {
-                channel.unbind('status-update');
-              },
-            ),
-            ElevatedButton(
-              child: Text('Unbind Order Filled'),
-              onPressed: () {
-                channel.unbind('order-filled');
-              },
-            ),
-            ElevatedButton(
-              child: Text('Bind Status Update'),
-              onPressed: () {
-                channel.bind('status-update', (PusherEvent event) {
-                  log("Status Update Event" + event.data.toString());
-                });
-              },
-            ),
-            ElevatedButton(
-              child: Text('Trigger Client Typing'),
-              onPressed: () {
-                channel.trigger('client-istyping', {'name': 'Bob'});
-              },
-            ),
-          ],
-        )),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              ElevatedButton(
+                onPressed: () {
+                  log('PUSHER: Connecting...');
+                  pusher?.connect();
+                },
+                child: const Text('Connect Pusher'),
+              ),
+
+              const SizedBox(height: 12),
+
+              ElevatedButton(
+                onPressed: () {
+                  log('PUSHER: Unsubscribing from Gigo...');
+
+                  pusher?.unsubscribe('Gigo');
+                  channel = null;
+                },
+                child: const Text('Unsubscribe Gigo'),
+              ),
+
+              const SizedBox(height: 12),
+
+              ElevatedButton(
+                onPressed: () {
+                  log('PUSHER: Binding Gigo event...');
+
+                  channel?.bind(
+                    'Gigo',
+                    (PusherEvent? event) {
+                      log(
+                        'GIGO EVENT: '
+                        '${event?.data}',
+                      );
+                    },
+                  );
+                },
+                child: const Text('Bind Gigo Event'),
+              ),
+
+              const SizedBox(height: 12),
+
+              ElevatedButton(
+                onPressed: () {
+                  log('PUSHER: Unbinding Gigo event...');
+
+                  channel?.unbind('Gigo');
+                },
+                child: const Text('Unbind Gigo Event'),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

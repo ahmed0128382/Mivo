@@ -1027,34 +1027,78 @@ print(response2.data);
         "user_id": UserId.toString(),
         "room_id": Roomid.toString(),
       });
+
+       print('========== JOIN ROOM REQUEST ==========');
+    print('METHOD: POST');
+    print('URL: ${dio.options.baseUrl}api/JoinRoom');
+    print('USER ID: $UserId');
+    print('ROOM ID REQUESTED: $Roomid');
+    print('=======================================');
+
       Response response2 = await dio.post(
         'api/JoinRoom',
         data: formData,
       );
+      print('========== JOIN ROOM RESPONSE ==========');
+    print('STATUS: ${response2.statusCode}');
+    print('URL: ${response2.requestOptions.uri}');
+    print('RESPONSE DATA: ${response2.data}');
+    print('========================================');
 
       if (response2.statusCode == 200) {
 
         print('Join Responce is');
         Roominfo = RoomModel.fromJson(response2.data['Room']);
         Joinid = response2.data['Room']['joinid'];
-        print( response2.data['Room']['joinid']);
+        print('========== JOIN ROOM PARSED ==========');
+      print('DB ID: ${Roominfo.id}');
+      print('PUBLIC RoomID: ${Roominfo.RoomID}');
+      print('JOIN ID: $Joinid');
+      print('ADMIN ID: ${Roominfo.adminId}');
+      print('TOKEN: ${Roominfo.Token}');
+      print('NAME: ${Roominfo.name}');
+      print('======================================');
         Roomss.clearcompo();
         Roomss.hidewaitingtimer2();
         print('JOIN ID IS $Joinid');
         //Provider.of<LoginViewmodel>(context,listen: false).SendCodeRegester(context: context,phonenumber: "+2"+phone.toString());
       }
-    } catch (e) {
-print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
-      }
-    }
+    } on DioException catch (e, stackTrace) {
+    print('========== JOIN ROOM DIO ERROR ==========');
+    print('TYPE: ${e.type}');
+    print('METHOD: ${e.requestOptions.method}');
+    print('URL: ${e.requestOptions.uri}');
+    print('STATUS: ${e.response?.statusCode}');
+    print('RESPONSE DATA: ${e.response?.data}');
+    print('MESSAGE: ${e.message}');
+    print('STACK: $stackTrace');
+    print('=========================================');
 
-    return Roominfo;
+    if (e.response?.data is Map) {
+      print(
+        'JOIN ROOM ERROR NUM: '
+        '${e.response?.data['errNum']}',
+      );
+
+      print(
+        'JOIN ROOM ERROR MESSAGE: '
+        '${e.response?.data['msg']}',
+      );
+
+      Dialogs().ShowErrorRegesterToast(
+        e.response?.data['errNum'],
+        context,
+      );
+    }
+  } catch (e, stackTrace) {
+    print('========== JOIN ROOM UNKNOWN ERROR ==========');
+    print('ERROR: $e');
+    print('STACK: $stackTrace');
+    print('=============================================');
   }
+
+  return Roominfo;
+}
   Future<bool> Addsupervisors({ context,Roomid,userid}) async {
     bool state=true;
     try {
@@ -1401,6 +1445,14 @@ print(response2.data);
       '${response.data}',
     );
 
+    print('========== CREATE ROOM RESPONSE ==========');
+print('METHOD: ${response.requestOptions.method}');
+print('URL: ${response.requestOptions.uri}');
+print('STATUS: ${response.statusCode}');
+print('RESPONSE HEADERS: ${response.headers}');
+print('RESPONSE DATA: ${response.data}');
+print('==========================================');
+
     if (response.statusCode == 200) {
       final dynamic roomData =
           response.data['room'];
@@ -1411,11 +1463,17 @@ print(response2.data);
           roomData,
         );
 
-        print(
-          'CREATE ROOM PARSED ID: '
-          '${Roominfo.id}',
-        );
-      }
+         print('========== CREATE ROOM PARSED ==========');
+    print('DB ID: ${Roominfo.id}');
+    print('PUBLIC RoomID: ${Roominfo.RoomID}');
+    print('ADMIN ID: ${Roominfo.adminId}');
+    print('TOKEN: ${Roominfo.Token}');
+    print('NAME: ${Roominfo.name}');
+    print('========================================');
+  } else {
+    print('CREATE ROOM ERROR: response.data["room"] is NULL');
+  }
+      
     }
   } on DioException catch (e) {
     print(
@@ -1482,12 +1540,23 @@ bool leaved=false;
       };
       map.removeWhere((key, value) => key == null || value == null||value=='null'||key=='null');
       FormData formData = FormData.fromMap(map);
-      print('Join id is 1');
+       print('========== LEAVE ROOM REQUEST ==========');
+    print('METHOD: POST');
+    print('URL: ${dio.options.baseUrl}api/LeaveRoom');
+    print('JOIN ID: ${Joinid}');
+    print('ROOM ID: $Roomid');
+    print('USER ID: $UserId');
+    print('=========================================');
       Response response2 = await dio.post(
         'api/LeaveRoom',
         data: formData,
       );
-      print('Join id is 2');
+      print('========== LEAVE ROOM RESPONSE ==========');
+    print('STATUS: ${response2.statusCode}');
+    print('URL: ${response2.requestOptions.uri}');
+    print('RESPONSE DATA: ${response2.data}');
+    print('RESPONSE HEADERS: ${response2.headers}');
+    print('==========================================');
        
       if (response2.statusCode == 200) {
          
