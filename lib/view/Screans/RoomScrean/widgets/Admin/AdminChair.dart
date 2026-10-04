@@ -52,16 +52,34 @@ class AdminChair extends StatelessWidget {
 
           },
             child: Stack( alignment: Alignment.center,children: [
-              if(Agora.speakerids.any((element) =>element['uid']==int.parse(Room.Currentroom?.chairs?[8].userId??'0') )&&Room.Currentroom?.chairs?[8].mute==0  )    Positioned(top: 0,
-                child: AvatarGlow(
-                  glowColor: Colors.tealAccent,
-                  glowRadiusFactor: 1.2,glowCount: 2,
-                  duration: Duration(milliseconds: 1000),
-                  repeat: true,
-                  animate: true,
-                  child:SizedBox(),
-                ),
-              ),
+        
+if (
+  Agora.isUserSpeaking(
+    int.tryParse(
+          Room.Currentroom?.chairs?[8].userId?.toString() ?? '0',
+        ) ??
+        0,
+  ) &&
+  Room.Currentroom?.chairs?[8].mute == 0
+)
+  Positioned(
+    top: 0,
+    child: AvatarGlow(
+      glowColor: Colors.tealAccent,
+      glowRadiusFactor: 1.2,
+      glowCount: 2,
+      duration: const Duration(
+        milliseconds: 1000,
+      ),
+      repeat: true,
+      animate: true,
+      child: const SizedBox(
+        width: 70,
+        height: 70,
+      ),
+    ),
+  ),
+
               Column(mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.center,
 

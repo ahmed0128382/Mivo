@@ -53,7 +53,7 @@ class Images {
   static const String  VipIcon = 'assets/image/ic_me_entry_vipcenter.png';
   static const String  RechargecoinsIcon = 'assets/image/ic_me_entry_pointcenter.png';
 
-  static const String  logo = 'assets/image/Logo.png';
+  static const String  logo = 'assets/image/mivo.png';
   static const String  LoginVedio='assets/image/MyVideo.mp4';
   static const String  LoginEffect='assets/image/login_bg.svga';
   static const String  LoginBackground='assets/image/BackgroundLogin.jpg';
