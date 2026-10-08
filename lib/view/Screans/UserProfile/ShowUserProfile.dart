@@ -6,26 +6,23 @@ import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/util/helperclass.dart';
 import 'package:ahlachat/util/images.dart';
 import 'package:ahlachat/util/styles.dart';
-
 import 'package:ahlachat/view/Screans/UserProfile/AddImageProfileScrean.dart';
 import 'package:ahlachat/view/Screans/UserProfile/HonorWall.dart';
 import 'package:ahlachat/view/Screans/UserProfile/ProfileView.dart';
 import 'package:ahlachat/view/Screans/UserProfile/UserPostsWidgets.dart';
-import 'package:ahlachat/viewmodels/Animated_Viewmodel/ElementViewModel.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Follow_ViewModel/Follow_ViewModel.dart';
-import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/Moment_Viewmodel/Moment_ViewModel.dart';
 import 'package:ahlachat/viewmodels/Relations_ViewModel/RelationsViewModel.dart';
-import 'package:ahlachat/viewmodels/RoomPlay_ViewModel/RoomPlayViewModel.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
-import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
 import 'package:delayed_display/delayed_display.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:svgaplayer_flutter/player.dart';
 import 'package:tab_indicator_styler/tab_indicator_styler.dart';
 class ShowUserProfile extends StatefulWidget {
+  const ShowUserProfile({super.key});
+
 
   @override
   State<ShowUserProfile> createState() => _ShowUserProfileState();
@@ -37,9 +34,9 @@ class _ShowUserProfileState extends State<ShowUserProfile> {
   Widget build(BuildContext context) {
     LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: true);
     MomentViewModel   posts=Provider.of<MomentViewModel>(context,listen: true);
-    RelationsViewModel Relation=  Provider.of<RelationsViewModel>(context,listen: true);
-    FollowViewModel Follow=  Provider.of<FollowViewModel>(context,listen: true);
-    RoomViewmodel Room=  Provider.of<RoomViewmodel>(context,listen: true);
+    RelationsViewModel relation=  Provider.of<RelationsViewModel>(context,listen: true);
+    FollowViewModel follow=  Provider.of<FollowViewModel>(context,listen: true);
+    RoomViewmodel room=  Provider.of<RoomViewmodel>(context,listen: true);
 
     return SafeArea(
       child: Scaffold(
@@ -110,7 +107,7 @@ class _ShowUserProfileState extends State<ShowUserProfile> {
                         padding: const EdgeInsets.symmetric(horizontal: 10),
                         child: InkWell(
                           onTap: () {
-                            Relation.GetUserRelation(context: context);
+                            relation.GetUserRelation(context: context);
                           },
                           child: CircleAvatar(backgroundColor: Colors.black12,
                               radius: 16,
@@ -177,10 +174,10 @@ class _ShowUserProfileState extends State<ShowUserProfile> {
              child: Row(crossAxisAlignment: CrossAxisAlignment.center,mainAxisAlignment: MainAxisAlignment.spaceAround,children: [
                InkWell(onTap: () {
                  if((user.userinfo?.followIds?.contains(user.userProfileData?.id.toString()??'')??true)){
-                   Follow.RemoveFollows3(context: context,userid:user.userProfileData?.id );
+                   follow.RemoveFollows3(context: context,userid:user.userProfileData?.id );
                  }else{
 
-                   Follow.SentFollow3(context: context,userid:user.userProfileData?.id );
+                   follow.SentFollow3(context: context,userid:user.userProfileData?.id );
                  }
 
                },child: Image.asset((user.userinfo?.followIds?.contains(user.userProfileData?.id.toString()??'')??true)?Images.followed:Images.follow,width: 80)),
@@ -188,11 +185,11 @@ class _ShowUserProfileState extends State<ShowUserProfile> {
                  user.GetInBoxChat(context: context,userid: user.userProfileData?.id??'', user: user.userProfileData );
                },child: Image.asset( Images.chat ,width: 80)),
                if(user.userProfileData?.CurrentRoom!=null)      InkWell(onTap: () {
-                 Room.EnterRoom(id:user.userProfileData?.CurrentRoom?.roomId,adminId:user.userProfileData?.CurrentRoom?.userId,context: context );
+                 room.EnterRoom(id:user.userProfileData?.CurrentRoom?.roomId,adminId:user.userProfileData?.CurrentRoom?.userId,context: context );
 
                },child: Image.asset(Images.enterroom,width: 80)),
                if(user.userProfileData?.MyRoom!=null)    InkWell(onTap: () {
-                 Room.EnterRoom(id:user.userProfileData?.MyRoom?.id,adminId:user.userProfileData?.MyRoom?.adminId,context: context );
+                 room.EnterRoom(id:user.userProfileData?.MyRoom?.id,adminId:user.userProfileData?.MyRoom?.adminId,context: context );
 
 
 

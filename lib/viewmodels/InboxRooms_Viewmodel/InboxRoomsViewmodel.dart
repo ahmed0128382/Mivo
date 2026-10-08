@@ -168,24 +168,58 @@ bool InboxLoading=false;
     Inboxrooms.add(value);
     notifyListeners();
   }
-  AddMessageInbox({required Message  value,id,context}){
-    var inbox=Inboxrooms.where((element) => element.id.toString()==id.toString());
-    if(inbox.isNotEmpty){
-      Inboxrooms.where((element) => element.id.toString()==id.toString()).first.message?.add(value);
-    }
+  AddMessageInbox({required Message value, id, context}) {
+  print('');
+  print('========== ADD INCOMING PRIVATE MESSAGE ==========');
+  print('MESSAGE ID: ${value.id}');
+  print('USER ID: ${value.userId}');
+  print('SENDER ID: ${value.senderId}');
+  print('INBOX ID: ${value.inboxroomId}');
+  print('PASSED INBOX ID: $id');
+  print('TEXT: ${value.message}');
+  print('CURRENT CHAT ID: $inroomid');
 
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
+  final inbox = Inboxrooms.where(
+    (element) => element.id.toString() == id.toString(),
+  );
 
-if(value.inboxroomId==user.ChatRoom?.id){
+  print('MATCHING INBOX COUNT: ${inbox.length}');
 
-  user.addtochatRoom(value);
-}
-    notifyListeners();
+  if (inbox.isNotEmpty) {
+    final targetInbox = inbox.first;
+
+    print('INBOX FOUND: ${targetInbox.id}');
+    print('MESSAGES BEFORE: ${targetInbox.message?.length}');
+
+    targetInbox.message?.add(value);
+
+    print('MESSAGES AFTER: ${targetInbox.message?.length}');
+  } else {
+    print('!!! INBOX NOT FOUND !!!');
   }
+
+  final LoginViewmodel user =
+      Provider.of<LoginViewmodel>(context, listen: false);
+
+  print('LOGIN CHAT ROOM ID: ${user.ChatRoom?.id}');
+
+  if (value.inboxroomId == user.ChatRoom?.id) {
+    print('ADDING MESSAGE TO LOGIN CHAT ROOM');
+    user.addtochatRoom(value);
+  } else {
+    print('MESSAGE DOES NOT MATCH LOGIN CHAT ROOM');
+  }
+
+  notifyListeners();
+
+  print('==================================================');
+}
+
   ExistChatRoom(){
     inroomid=0;
     notifyListeners();
   }
+  
 ReadInboxRoom({id,context})async{
   Inboxrooms.where((element) => element.id==id).first!=0;
   inroomid=id;
@@ -250,12 +284,28 @@ ReadInboxRoom({id,context})async{
     notifyListeners();
   }
  SendMessage({id,context,message,usermodel ?userinfo })async{
+  print('');
+print('========== VM SEND PRIVATE MESSAGE ==========');
+print('TARGET USER ID: ${userinfo?.id}');
+print('SENDER USER ID: $UserId');
+print('INBOX ID FROM UI: $id');
+print('TEXT: $message');
+print('============================================');
 
    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
 
 
-   await Chatapi().SendMessage(message:message ,userid:userinfo?.id ,Senderid:UserId ,context:context ).then((value) {
-
+   await Chatapi().sendMessage(message:message ,userid:userinfo?.id ,Senderid:UserId ,context:context ).then((value) {
+print('');
+print('========== VM SEND RESPONSE ==========');
+print('MESSAGE ID: ${value.id}');
+print('MESSAGE USER ID: ${value.userId}');
+print('MESSAGE SENDER ID: ${value.senderId}');
+print('MESSAGE INBOX ID: ${value.inboxroomId}');
+print('MESSAGE TEXT: ${value.message}');
+print('UI INBOX ID: $id');
+print('TOTAL INBOXES: ${Inboxrooms.length}');
+print('======================================');
      if(value.id!=null){
 
   var inbox=Inboxrooms.where((element) => element.id==id);
@@ -325,7 +375,7 @@ ReadInboxRoom({id,context})async{
   SendMessageInRoom({context,message,userid })async{
 
     showSpinner2();
-    await Chatapi().SendMessage(message:message ,userid:userid ,Senderid:UserId ,context:context ).then((value) {
+    await Chatapi().sendMessage(message:message ,userid:userid ,Senderid:UserId ,context:context ).then((value) {
 
       if(value.id!=null){
         defaultindex=value.inboxroomId!;

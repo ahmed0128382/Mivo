@@ -18,7 +18,7 @@ import '../view/Screans/Authentication/EnterCodeScrean/EnterCodeSignUp.dart';
 import '../view/Screans/Authentication/LoginScrean/LoginScrean.dart';
 import '../view/Screans/Authentication/LoginScrean/PhoneAuthScrean.dart';
 import '../view/Screans/BageScrean/BageScrean.dart';
-import '../view/Screans/ChatScrean/ChatScrean.dart';
+import '../view/Screans/ChatScrean/chat_screan.dart';
 
 import '../view/Screans/ExchangeScrean/ExchangeScrean.dart';
 
@@ -120,7 +120,7 @@ Route<dynamic> generateRoute(RouteSettings settings) {
         case AppConstants.Buttom_Navigation:
           return MaterialPageRoute(builder: (_) => ButtomNavigation());
         case AppConstants.Chat_Screan:
-          return MaterialPageRoute(builder: (_) => ChatScrean(InboxContent: settings.arguments as InboxRoomModel));
+          return MaterialPageRoute(builder: (_) => ChatScreen(inboxContent: settings.arguments as InboxRoomModel));
         case AppConstants.Level_Gifts:
           return MaterialPageRoute(builder: (_) => const LevelGifts());
 

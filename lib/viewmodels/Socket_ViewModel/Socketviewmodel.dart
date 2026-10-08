@@ -6,7 +6,6 @@ import 'dart:developer';
 import 'package:ahlachat/models/guessGameModel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:ahlachat/models/ChairModel.dart';
 import 'package:ahlachat/models/Chatroom.dart';
 import 'package:ahlachat/models/JoinRoomModel.dart';
@@ -34,7 +33,7 @@ class SocketViewmodel extends ChangeNotifier{
   Future ConnectRoomScocket( context,id)async {
 
     pusher =  PusherClient(
-  "4e68aedca5c74610deac",
+  "c131d267a74a0cbd3da9",
   PusherOptions(cluster: 'mt1'),
   enableLogging: true,
 );
@@ -51,9 +50,57 @@ class SocketViewmodel extends ChangeNotifier{
 
     channel = pusher?.subscribe('Room$id');
     channel?.bind('Room', (e) {
+  print('');
+  print('========================================');
+  print('========== ROOM PUSHER EVENT ===========');
+  print('========================================');
+  print('CHANNEL: Room$id');
+  print('EVENT: Room');
+  print('RAW DATA: ${e?.data}');
 
-      degisenMenu(data: jsonDecode(e?.data??''),state: jsonDecode(e?.data??'')['state']   );
-    });
+  try {
+    final decoded = jsonDecode(e?.data ?? '');
+
+    print('DECODED STATE: ${decoded['state']}');
+    print('DECODED DATA: ${decoded['data']}');
+
+    if (decoded['state'] == 4 || decoded['state'] == '4') {
+      print('========== CHAT MESSAGE EVENT ==========');
+      print('CHAT DATA: ${decoded['data']}');
+
+      try {
+        final chat = Chatroom.fromJson(
+          Map<String, dynamic>.from(decoded['data']),
+        );
+
+        print('========== CHAT PARSED SUCCESSFULLY ==========');
+        print('CHAT ID: ${chat.id}');
+        print('CHAT USER ID: ${chat.userId}');
+        print('CHAT ROOM ID: ${chat.roomId}');
+        print('CHAT CONTENT: ${chat.content}');
+        print('CHAT USER: ${chat.user?.name}');
+      } catch (chatError, chatStack) {
+        print('========== CHAT PARSE FAILED ==========');
+        print('CHAT ERROR: $chatError');
+        print('CHAT STACK: $chatStack');
+      }
+    }
+
+    print('========== CALLING degisenMenu ==========');
+
+    degisenMenu(
+      data: decoded,
+      state: decoded['state'],
+    );
+  } catch (error, stackTrace) {
+    print('========== PUSHER JSON ERROR ==========');
+    print('ERROR: $error');
+    print('STACK: $stackTrace');
+  }
+
+  print('========================================');
+  print('');
+});
     pusher?.onConnectionStateChange((state) {
 
       log("previousState: ${state?.previousState}, currentState: ${state?.currentState}");

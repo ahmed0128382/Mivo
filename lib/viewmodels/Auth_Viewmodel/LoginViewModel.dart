@@ -13,7 +13,7 @@ import 'package:ahlachat/models/emoji.dart';
 import 'package:ahlachat/models/emojicategory.dart';
 import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/view/Screans/Authentication/LoginScrean/LoginScrean.dart';
-import 'package:ahlachat/view/Screans/ChatScrean/ChatScrean.dart';
+import 'package:ahlachat/view/Screans/ChatScrean/chat_screan.dart';
 import 'package:ahlachat/view/Screans/HostreportScrean/HostreportScrean.dart';
 import 'package:ahlachat/view/Screans/SearchScrean/widgets/SearchPeople.dart';
 import 'package:ahlachat/viewmodels/InboxRooms_Viewmodel/InboxRoomsViewmodel.dart';
@@ -376,8 +376,8 @@ class LoginViewmodel extends ChangeNotifier {
 
             navigateTo(
               context: context,
-              screen: ChatScrean(
-                InboxContent: ChatRoom,
+              screen: ChatScreen(
+                inboxContent: ChatRoom,
                 states: 0,
               ),
             );
@@ -402,8 +402,8 @@ class LoginViewmodel extends ChangeNotifier {
 
             navigateTo(
               context: context,
-              screen: ChatScrean(
-                InboxContent: ChatRoom,
+              screen: ChatScreen(
+                inboxContent: ChatRoom,
                 states: 0,
               ),
             );

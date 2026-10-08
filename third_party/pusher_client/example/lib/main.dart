@@ -19,7 +19,7 @@ class _MyAppState extends State<MyApp> {
   PusherClient? pusher;
   Channel? channel;
 
-  static const String pusherAppKey = '4e68aedca5c74610deac';
+  static const String pusherAppKey = 'c131d267a74a0cbd3da9';
   static const String pusherCluster = 'mt1';
 
   @override

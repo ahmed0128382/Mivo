@@ -485,7 +485,7 @@ class Chatapi extends MomentRepository {
   // SEND TEXT MESSAGE
   // ============================================================
 
-  Future<Message> SendMessage({
+  Future<Message> sendMessage({
     context,
     message,
     Senderid,
@@ -530,12 +530,29 @@ class Chatapi extends MomentRepository {
       if (response.statusCode == 200) {
         final dynamic data = response.data;
 
+        print('');
+  print('========== SEND MESSAGE PARSING ==========');
+  print('RESPONSE TYPE: ${data.runtimeType}');
+  print('RESPONSE DATA: $data');
+  print('Messages TYPE: ${data is Map ? data['Messages'].runtimeType : 'N/A'}');
+  print('Messages DATA: ${data is Map ? data['Messages'] : 'N/A'}');
+  print('==========================================');
+
         if (data is Map && data['Messages'] is Map) {
           messages = Message.fromJson(
             Map<String, dynamic>.from(
               data['Messages'],
             ),
           );
+          print('========== MESSAGE PARSED ==========');
+    print('ID: ${messages.id}');
+    print('USER ID: ${messages.userId}');
+    print('SENDER ID: ${messages.senderId}');
+    print('INBOX ID: ${messages.inboxroomId}');
+    print('MESSAGE: ${messages.message}');
+    print('STATUS: ${messages.status}');
+    print('CREATED: ${messages.createdAt}');
+    print('====================================');
         } else {
           print(
             'SEND MESSAGE WARNING: '

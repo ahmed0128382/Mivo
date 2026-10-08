@@ -1,22 +1,29 @@
+import 'dart:async';
 import 'package:ahlachat/models/FlagModel.dart';
-import 'package:ahlachat/models/Usermodel.dart';
-import 'package:flutter/material.dart';
-import 'room_state_mixin.dart';
 
-/// Enter animation, ranks, and small UI helpers.
-mixin RoomUiMixin on RoomStateMixin {
-  void ShowEnterWidget({usermodel? Info}) {
+import 'package:ahlachat/models/Usermodel.dart';
+import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
+import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
+import 'package:provider/provider.dart';
+import 'room_state_mixin.dart';
+import 'room_lists_mixin.dart';
+
+mixin RoomUiMixin on RoomStateMixin, RoomListsMixin {
+  ShowEnterWidget({
+    usermodel? Info,
+  }) {
     EnterUserinfo = Info;
     EnterOffser = -1;
     selected = true;
     notifyListeners();
   }
 
-  void HideEnterWidget() {
+  HideEnterWidget() {
     if (EnterOffser == -10.5) {
       EnterOffser = 6.0;
     } else {
       EnterOffser = -10.5;
+
       Future.delayed(
         Duration(milliseconds: 500),
         () {
@@ -24,138 +31,226 @@ mixin RoomUiMixin on RoomStateMixin {
         },
       );
     }
+
     notifyListeners();
   }
 
-  void SelectedLeader(val) {
+SelectedLeader(val) {
     LeaderShipColor = LeaderShipColors[val];
     LeaderShipBack = LeaderShipBacks[val];
     SelectedRank = RankInmages[val];
     notifyListeners();
   }
 
-  void GetSelectedCountry(FlagModel val) {
+  GetSelectedCountry(FlagModel val) {
     SelectedCountry = val;
-    // GetCountriRoom is in RoomListsMixin – called via the combined class
+    GetCountriRoom();
     notifyListeners();
   }
 
-  void GetShowItem(item) {
-    ShowItem = item;
-    notifyListeners();
-  }
-
-  void FlagChose({flag}) {
+  FlagChose({flag}) {
     flagchoosen = flag;
     notifyListeners();
   }
 
-  void FlagChose2({flag}) {
+  FlagChose2({flag}) {
     flagchoosen2.clear();
     flagchoosen2.add(flag);
     notifyListeners();
   }
 
-  void addnewchoosen2(value) {
-    choosen2.add(value);
+  GetShowItem(item) {
+    ShowItem = item;
     notifyListeners();
   }
 
-  void addflagchoosen2(value) {
-    flagchoosen2.add(value);
-    notifyListeners();
-  }
-
-  void addbackchhosen2({value}) {
-    backchoosen2.add(value);
-    notifyListeners();
-  }
-
-  void AddtoEdit() {
-    backchoosen2.add(Currentroom?.nothostedimage);
-    flagchoosen2.add(Currentroom?.city);
-    choosen2.add(Currentroom?.Category);
-    EditRoomName.text = Currentroom?.name ?? '';
-    EditRoomDescription.text = Currentroom?.RoomAds ?? '';
-    notifyListeners();
-  }
-
-  void clearadd2() {
-    backchoosen2.clear();
-    EditRoomName.clear();
-    flagchoosen2.clear();
-    // ClearImage2 / ClearImage3 live in create mixin if present
-    choosen2.clear();
-    notifyListeners();
-  }
-
-  void DisposeController() {
-    controller?.dispose();
-    notifyListeners();
-  }
-
-  void initscrollcontroller() {
-    controller = ScrollController();
-  }
-
-  void cleanMessage() {
-    // showloading7 is in loading mixin
-    Message.clear();
-    notifyListeners();
-  }
-
-  void ClearCurrentroom() {
-    Currentroom = null;
-    notifyListeners();
-  }
-
-  void removecurrentroom() {
-    Currentroom?.id = 0654;
-    notifyListeners();
-  }
-
-  void deleteroomchat() {
+  deleteroomchat() {
     Currentroom?.chatroom?.clear();
     notifyListeners();
   }
 
-  void GetMentionid({String? id, String? name}) {
-    Mentionid = id;
-    MentionName = name;
-  }
-
-  void ClearMentionid() {
-    Mentionid = null;
-    MentionName = null;
-  }
-
-  void AddRolletchoice(String name) {
-    Rolletchoice.add(name);
+  removecurrentroom() {
+    Currentroom?.id = 0654;
     notifyListeners();
   }
 
-  void RemoveRolletchoice(String userinfo) {
-    Rolletchoice.remove(userinfo);
+  addnewchoosen2(value) {
+    choosen2.add(value);
     notifyListeners();
   }
 
-  void AddMuted(id) {
+  addflagchoosen2(value) {
+    flagchoosen2.add(value);
+    notifyListeners();
+  }
+
+  addbackchhosen2({value}) {
+    backchoosen2.add(value);
+    notifyListeners();
+  }
+
+  AddtoEdit() {
+    backchoosen2.add(
+      Currentroom?.nothostedimage,
+    );
+
+    flagchoosen2.add(
+      Currentroom?.city,
+    );
+
+    choosen2.add(
+      Currentroom?.Category,
+    );
+
+    EditRoomName.text =
+        Currentroom?.name ?? '';
+
+    EditRoomDescription.text =
+        Currentroom?.RoomAds ?? '';
+
+    notifyListeners();
+  }
+
+  clearadd2() {
+    backchoosen2.clear();
+    EditRoomName.clear();
+    flagchoosen2.clear();
+    Roomimage2 = null;
+    Roomimage3 = null;
+    choosen2.clear();
+    notifyListeners();
+  }
+
+  DisposeController() {
+    controller?.dispose();
+    notifyListeners();
+  }
+
+  closealltap() {
+    showloading14 = false;
+    showloading17 = false;
+    showloading18 = false;
+    showloading19 = false;
+    showloading8 = false;
+    showloading21 = false;
+    showloading39 = false;
+    showloading40 = false;
+    notifyListeners();
+  }
+
+  AddUserIds({id}) {
+    GiftsViewModel gits =
+        Provider.of<GiftsViewModel>(
+      roomcontext,
+      listen: false,
+    );
+
+    UserIds.add(id);
+
+    if (gits.GiftList.isNotEmpty) {
+      gits.addtogiftlist(
+        value: gits.GiftList.first,
+        costs:
+            (int.parse(
+                  gits.SentValue.toString(),
+                ) *
+                gits.GiftList.first['price'])
+            .toInt() *
+            UserIds.length,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  RemoveUserIds({id}) {
+    UserIds.remove(id);
+
+    GiftsViewModel gits =
+        Provider.of<GiftsViewModel>(
+      roomcontext,
+      listen: false,
+    );
+
+    if (gits.GiftList.isNotEmpty) {
+      gits.addtogiftlist(
+        value: gits.GiftList.first,
+        costs:
+            (int.parse(
+                  gits.SentValue.toString(),
+                ) *
+                gits.GiftList.first['price'])
+            .toInt() *
+            UserIds.length,
+      );
+    }
+
+    notifyListeners();
+  }
+
+  ClearUserIds() {
+    UserIds.clear();
+    notifyListeners();
+  }
+
+  ClearCurrentroom() {
+    Currentroom = null;
+    notifyListeners();
+  }
+
+  cleanMessage() {
+    showloading7 = false;
+    Message.clear();
+    notifyListeners();
+  }
+
+  AddMuted(id) {
     Mutedids.add(id);
     notifyListeners();
   }
 
-  void AddUserIds({id}) {
-    UserIds.add(id);
+  initscrollcontroller() {}
+
+  GetMentionid({
+    String? id,
+    String? name,
+  }) {
+    Mentionid = id;
+    MentionName = name;
+  }
+
+  ClearMentionid() {
+    Mentionid = null;
+    MentionName = null;
+  }
+
+  AddRolletchoice(String name) {
+    Rolletchoice.add(name);
     notifyListeners();
   }
 
-  void RemoveUserIds({id}) {
-    UserIds.remove(id);
+  RemoveRolletchoice(String userinfo) {
+    Rolletchoice.remove(userinfo);
     notifyListeners();
   }
 
-  void ClearUserIds() {
-    UserIds.clear();
+  showwaitingtimer2() {
+    waitingtimer2 = true;
     notifyListeners();
   }
+
+  hidewaitingtimer2() {
+    waitingtimer2 = false;
+    notifyListeners();
+  }
+
+  showwaitingtimer() {
+    waitingtimer = true;
+  }
+
+  hidewaitingtimer() {
+    waitingtimer = false;
+    notifyListeners();
+  }
+
 }

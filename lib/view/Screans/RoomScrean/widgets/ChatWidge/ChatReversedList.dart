@@ -10,21 +10,19 @@ import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:flutter_mentions/flutter_mentions.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../viewmodels/Auth_Viewmodel/LoginViewModel.dart';
-
 class ChatReversedList extends StatelessWidget {
-  const ChatReversedList({Key? key}) : super(key: key);
+  const ChatReversedList({super.key});
 
   @override
   Widget build(BuildContext context) {
-    RoomViewmodel Room=  Provider.of<RoomViewmodel>(context,listen: true);
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: true);
+    RoomViewmodel room=  Provider.of<RoomViewmodel>(context,listen: true);
+    
     return Portal(
       child: Container(color: Colors.transparent,
         child: Column(
           children: [
             Expanded(child:   InkWell(onTap:  () {
-              Room. cleanMessage();
+              room. cleanMessage();
             } , child: Container(color: Colors.transparent,))),
 
 
@@ -40,17 +38,17 @@ class ChatReversedList extends StatelessWidget {
                       decoration: BoxDecoration(color:Colors.white,borderRadius: BorderRadius.circular(10) ),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 5),
-                        child: FlutterMentions(defaultText: Room.Message.text,onMentionAdd: (p0){
+                        child: FlutterMentions(defaultText: room.Message.text,onMentionAdd: (p0){
 
-                          Room.GetMentionid(id:p0['id'],name: p0['display']);
+                          room.GetMentionid(id:p0['id'],name: p0['display']);
                         } ,decoration: InputDecoration(
                               suffixIconColor: Colors.black,border: InputBorder.none,
                               hintText:getLang(context: context,key: "Send_Message")),
                              onChanged: (val){
                           if(val.length<2){
-                            Room.ClearMentionid();
+                            room.ClearMentionid();
                           }
-                          Room.Message.text=val.toString();
+                          room.Message.text=val.toString();
                          },
                           autofocus: true,
                           appendSpaceOnAdd: true,
@@ -59,19 +57,19 @@ class ChatReversedList extends StatelessWidget {
                           minLines: 1,  trailing : [
                           InkWell(onTap: () {
 
-                            if(Room.Message.text==''){
+                            if(room.Message.text==''){
                             }else{
-                              Room.hideSpinner7();
-if(Room.Mentionid!=null&&(Room.MentionName?.length??0)+1<Room.Message.text.length){
-print(Room.Message.text);
-  Room.SendMentionChat(content: Room.Message.text.replaceFirst('@', '') );
+                              room.hideSpinner7();
+if(room.Mentionid!=null&&(room.MentionName?.length??0)+1<room.Message.text.length){
+print(room.Message.text);
+  room.sendMentionChat(content: room.Message.text.replaceFirst('@', '') );
 
 }else{
-  Room.SendMessageChat(content: Room.Message.text );
+  room.sendMessageChat(content: room.Message.text );
 
 }
                             }
-                            Room.Message.clear();
+                            room.Message.clear();
                           }, child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Icon(Icons.send_outlined,color: MainColor),
@@ -84,7 +82,7 @@ print(Room.Message.text);
                                 style: TextStyle(
                                   color: Colors.amber,
                                 ),
-                                data:  Room.ChairMaps,
+                                data:  room.ChairMaps,
                                 matchAll: false,markupBuilder: (String trigger, String mention, String value){
 
                                   return value;

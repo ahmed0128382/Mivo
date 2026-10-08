@@ -2,7 +2,7 @@ import 'package:ahlachat/models/Inboxroom.dart';
 import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/util/SizeConfig.dart';
 import 'package:ahlachat/util/helperclass.dart';
-import 'package:ahlachat/view/Screans/ChatScrean/ChatScrean.dart';
+import 'package:ahlachat/view/Screans/ChatScrean/chat_screan.dart';
 import 'package:ahlachat/viewmodels/InboxRooms_Viewmodel/InboxRoomsViewmodel.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -317,8 +317,8 @@ class _MessageScreanState extends State<MessageScrean> {
     // Open the chat.
     navigateTo(
       context: context,
-      screen: ChatScrean(
-        InboxContent: chat,
+      screen: ChatScreen(
+        inboxContent: chat,
       ),
     );
   }

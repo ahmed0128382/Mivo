@@ -11,45 +11,45 @@ import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Follow_ViewModel/Follow_ViewModel.dart';
 import 'package:provider/provider.dart';
 class FollwoingRowWidget extends StatelessWidget {
-  const  FollwoingRowWidget({Key? key}) : super(key: key);
+  const  FollwoingRowWidget({super.key});
 
   @override
   Widget build(BuildContext context) {
-    FollowViewModel Follow=  Provider.of<FollowViewModel>(context,listen: true);
+    FollowViewModel follow=  Provider.of<FollowViewModel>(context,listen: true);
     LoginViewmodel user= Provider.of<LoginViewmodel>(context,listen: true);
 
 
     return  Row(mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
         InkWell(onTap: ()
-        {Follow.GetmyVisitors(context: context);
+        {follow.GetmyVisitors(context: context);
           navigateTo(context: context, screen: VisitorsScrean());
 
-                },child: FollowRowWidget(name:getLang(context: context, key: "Visitors")  ,num:user.userinfo?.visitors.toString())),
+                },child: followRowWidget(name:getLang(context: context, key: "Visitors")  ,num:user.userinfo?.visitors.toString())),
         InkWell(onTap: ()
         {
 
-          Follow.GetFriends(context: context);
+          follow.GetFriends(context: context);
 
           navigateTo(context: context, screen:  FriendsScrean());
 
-          },child: FollowRowWidget(name: getLang(context: context, key: "Friends") ,num:user.userinfo?.friends.toString())),
+          },child: followRowWidget(name: getLang(context: context, key: "Friends") ,num:user.userinfo?.friends.toString())),
     InkWell(onTap: (){
-      Follow.GetFollowing(context: context);
+      follow.GetFollowing(context: context);
       navigateTo(context: context, screen:  FollowingScrean());
-    },child: FollowRowWidget(name: getLang(context: context, key: "Following")  ,num:user.userinfo?.following.toString())),
+    },child: followRowWidget(name: getLang(context: context, key: "Following")  ,num:user.userinfo?.following.toString())),
     InkWell(onTap: ()
     {
-      Follow.Getmyfans(context: context);
+      follow.Getmyfans(context: context);
 
       navigateTo(context: context, screen:  FanScrean());
-      },child: FollowRowWidget(name: getLang(context: context, key: "Fans") ,num:user.userinfo?.followers.toString()))
+      },child: followRowWidget(name: getLang(context: context, key: "Fans") ,num:user.userinfo?.followers.toString()))
       ],
     );
   }
 }
 //01061078946
-Widget  FollowRowWidget({String ?num,String? name}){
+Widget  followRowWidget({String ?num,String? name}){
   return    Column(
     children: [
       Text(num??'',style:TextStyle().copyWith(color: Colors.black,fontSize: 15,fontWeight: FontWeight.bold)),

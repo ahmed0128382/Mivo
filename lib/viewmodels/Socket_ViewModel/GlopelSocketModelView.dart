@@ -20,7 +20,7 @@ class GlopelViewmodel extends ChangeNotifier {
 
   Future<void> ConnectGlopalScocket(context) async {
     print('========== GLOBAL PUSHER CONNECT ==========');
-    print('PUSHER KEY: 4e68aedca5c74610deac');
+    print('PUSHER KEY: c131d267a74a0cbd3da9');
     print('PUSHER CLUSTER: mt1');
     print('PUSHER CHANNEL: Gigo');
     print('PUSHER EVENT: Gigo');
@@ -35,7 +35,7 @@ class GlopelViewmodel extends ChangeNotifier {
     }
 
     pusher = PusherClient(
-      '4e68aedca5c74610deac',
+      'c131d267a74a0cbd3da9',
       PusherOptions(
         cluster: 'mt1',
         encrypted: true,

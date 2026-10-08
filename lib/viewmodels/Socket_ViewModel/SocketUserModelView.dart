@@ -26,7 +26,7 @@ class SocketuserViewmodel extends ChangeNotifier {
 
   Future<void> ConnectuserScocket(roomcontext) async {
     print('========== USER PUSHER CONNECT ==========');
-    print('PUSHER KEY: 4e68aedca5c74610deac');
+    print('PUSHER KEY: c131d267a74a0cbd3da9');
     print('PUSHER CLUSTER: mt1');
     print('PUSHER CHANNEL: user$UserId');
     print('PUSHER EVENT: user');
@@ -42,7 +42,7 @@ class SocketuserViewmodel extends ChangeNotifier {
     }
 
     pusher2 = PusherClient(
-      '4e68aedca5c74610deac',
+      'c131d267a74a0cbd3da9',
       PusherOptions(
         cluster: 'mt1',
         encrypted: true,
@@ -103,9 +103,12 @@ class SocketuserViewmodel extends ChangeNotifier {
         final Map<String, dynamic> decoded =
             jsonDecode(rawData) as Map<String, dynamic>;
 
-        final dynamic state = decoded['state'];
+        final dynamic rawState = decoded['state'];
+final int? state = int.tryParse(rawState.toString());
 
-        print('USER PUSHER EVENT STATE: $state');
+print('RAW STATE: $rawState');
+print('NORMALIZED STATE: $state');
+print('DATA: ${decoded['data']}');
 
         degisenMenu(
           data: decoded,
@@ -205,10 +208,24 @@ class SocketuserViewmodel extends ChangeNotifier {
           break;
 
         case 5:
+        print('');
+  print('========== PRIVATE MESSAGE EVENT ==========');
+  print('RAW DATA: $data');
+  print('MESSAGES RAW: ${data['data']['Messages']}');
+
           final Message messages =
               Message.fromJson(
             data['data']['Messages'],
           );
+          print('========== PRIVATE MESSAGE PARSED ==========');
+  print('ID: ${messages.id}');
+  print('USER ID: ${messages.userId}');
+  print('SENDER ID: ${messages.senderId}');
+  print('INBOX ID: ${messages.inboxroomId}');
+  print('MESSAGE: ${messages.message}');
+  print('CURRENT USER: ${user.userinfo?.id}');
+  print('CURRENT INBOX: ${Inboxroom.inroomid}');
+  print('============================================');
 
           final Inbox = Inboxroom.Inboxrooms.where(
             (element) => element.id == messages.inboxroomId,
