@@ -1,466 +1,523 @@
-import 'dart:async';
-import 'dart:io';
-
 import 'package:ahlachat/Repositores/Shop_repositores/ShopRepository.dart';
 import 'package:dio/dio.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../models/MyItemModel.dart';
 import '../../models/ShopModel.dart';
 import '../../util/Dialogs.dart';
 import '../../util/app_constants.dart';
 
-
-
 class shopapi extends ShopRepository {
+  final Dio _dio = ApiClient.instance.dio;
 
+  Shop shop = Shop();
 
-  Shop shop=Shop() ;
-List<Shop> AllShop=[];
-  List<Salesmodel> AllMyItems=[];
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization':Token,
-        'awqeASERQW':'8/325*mAIOEN',
-        'userid':UserId.toString(),
-        'UserIP':UserIP,
-      },
-    ),
-  );
+  List<Shop> AllShop = [];
+  List<Salesmodel> AllMyItems = [];
 
+  ApiException _handleError(dynamic error) {
+    if (error is DioException) {
+      final response = error.response;
 
-  Future<List<Shop>> getShop({context}) async {
-     try {
-
-      Response response2 = await dio.get(
-        '/api/GetShopCategory',
+      return ApiException(
+        statusCode: response?.statusCode,
+        message: response?.data?['message']?.toString() ??
+            response?.data?['error']?.toString() ??
+            response?.data?['errNum']?.toString() ??
+            error.message ??
+            'Something went wrong',
+        data: response?.data,
       );
-       
-
-      if (response2.statusCode == 200) {
-    
-   List list =response2.data['ShopCategory'] ;
- 
-  list.forEach((element) {
-  AllShop.add(Shop.fromJson(element));
-  });
- 
-      }
-    } catch (e) {
-
-      if (e is DioError) {
-         
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-
-      } else {
-
-
-
-      }
     }
 
+    return ApiException(
+      message: error.toString(),
+      data: error,
+    );
+  }
+
+  Future<List<Shop>> getShop({context}) async {
+    try {
+      final response = await _dio.get(
+        '/api/GetShopCategory',
+      );
+
+      final List list = response.data['ShopCategory'] ?? [];
+
+      AllShop.clear();
+
+      for (final element in list) {
+        AllShop.add(
+          Shop.fromJson(element),
+        );
+      }
+    } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
+      }
+    }
 
     return AllShop;
   }
 
-  Future<bool> ByeItem({itemId,day,price, context,categoryid}) async {
-    bool check=false;
+  Future<bool> ByeItem({
+    itemId,
+    day,
+    price,
+    context,
+    categoryid,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-        "item_id": itemId.toString(),
-        "user_id": UserId.toString(),
-        "day": day.toString(),
-        "price": price.toString(),
-        "category_id":categoryid.toString(),
+      final FormData formData = FormData.fromMap({
+        'item_id': itemId.toString(),
+        'user_id': UserId.toString(),
+        'day': day.toString(),
+        'price': price.toString(),
+        'category_id': categoryid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/byeitem',
         data: formData,
       );
-       
-      if (response2.statusCode == 200) {
-         check=true;
-         
-      }else{
-         
-        check=false;
+
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
+      final exception = _handleError(e);
+      print(exception);
 
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> SendByeShop({itemId,day,price,userid, context,categoryid}) async {
-    bool check=false;
+  Future<bool> SendByeShop({
+    itemId,
+    day,
+    price,
+    userid,
+    context,
+    categoryid,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-        "item_id": itemId.toString(),
-        "user_id": UserId.toString(),
-        "reciver":userid.toString(),
-        "day": day.toString(),
-        "price": price.toString(),
-        "category_id":categoryid.toString(),
+      final FormData formData = FormData.fromMap({
+        'item_id': itemId.toString(),
+        'user_id': UserId.toString(),
+        'reciver': userid.toString(),
+        'day': day.toString(),
+        'price': price.toString(),
+        'category_id': categoryid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/SendItem',
         data: formData,
       );
 
-      if (response2.statusCode == 200) {
-         check=true;
-
-      }else{
-
-        check=false;
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return check;
   }
-  Future<bool> UpdateFrame({Frame,context}) async {
-    bool check=false;
 
+  Future<bool> UpdateFrame({
+    Frame,
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-        "frame": Frame.toString(),
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
+        'frame': Frame.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/Setframe',
         data: formData,
       );
-       
-      if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> UpdateEnterbubles({Frame,context}) async {
-    bool check=false;
-
+  Future<bool> UpdateEnterbubles({
+    Frame,
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-        "frame": Frame.toString(),
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
+        'frame': Frame.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/SetEnterbubles',
         data: formData,
       );
 
-      if (response2.statusCode == 200) {
-
-        check=true;
-
-      }else{
-
-        check=false;
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
-  Future<bool> Updateprofilebubles({Frame,context}) async {
-    bool check=false;
 
+  Future<bool> Updateprofilebubles({
+    Frame,
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-        "frame": Frame.toString(),
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
+        'frame': Frame.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/Setprofilebubles',
         data: formData,
       );
 
-      if (response2.statusCode == 200) {
-
-        check=true;
-
-      }else{
-
-        check=false;
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
+      check = false;
 
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
-  Future<bool> RemoveFrame({context}) async {
-    bool check=false;
 
+  Future<bool> RemoveFrame({
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/removeframe',
         data: formData,
       );
-       
-      if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      check = false;
+
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> UpdateEntry({Entry,context}) async {
-    bool check=false;
-
+  Future<bool> UpdateEntry({
+    Entry,
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-        "entry": Entry.toString(),
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
+        'entry': Entry.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/SetEntry',
         data: formData,
       );
-       
-      if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      check = false;
+
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> RemoveEntry({context}) async {
-    bool check=false;
-
+  Future<bool> RemoveEntry({
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/removeEntry',
         data: formData,
       );
-       
-      if (response2.statusCode == 200) {
-         
-        check=true;
-         
-      }else{
-         
-        check=false;
+
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      check = false;
+
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> RemoveEnterbubles({context}) async {
-    bool check=false;
-
+  Future<bool> RemoveEnterbubles({
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/removeEnterbubles',
         data: formData,
       );
 
-      if (response2.statusCode == 200) {
-
-        check=true;
-
-      }else{
-
-        check=false;
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      check = false;
+
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
-  Future<bool> RemoveProfilebubles({context}) async {
-    bool check=false;
 
+  Future<bool> RemoveProfilebubles({
+    context,
+  }) async {
+    bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
-
-        "user_id": UserId.toString(),
-
-
+      final FormData formData = FormData.fromMap({
+        'user_id': UserId.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/RemoveProfilebubles',
         data: formData,
       );
 
-      if (response2.statusCode == 200) {
-
-        check=true;
-
-      }else{
-
-        check=false;
+      if (response.statusCode == 200) {
+        check = true;
+      } else {
+        check = false;
       }
     } catch (e) {
-      check=false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'],context);
-      } else {
-        print(e);
+      check = false;
+
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
-  Future<List<Salesmodel>> GetMyBag( ) async {
-    try {
 
-      Response response2 = await dio.get(
+  Future<List<Salesmodel>> GetMyBag() async {
+    try {
+      final response = await _dio.get(
         '/api/GetuserShopCategory/${UserId.toString()}',
       );
-      if (response2.statusCode == 200) {
-          List list =response2.data['MyitemsCategory'] ;
-         list.forEach((element) {
-          AllMyItems.add(Salesmodel.fromJson(element));
-         });
- 
+
+      if (response.statusCode == 200) {
+        final List list = response.data['MyitemsCategory'] ?? [];
+
+        AllMyItems.clear();
+
+        for (final element in list) {
+          AllMyItems.add(
+            Salesmodel.fromJson(element),
+          );
+        }
       }
     } catch (e) {
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return AllMyItems;
   }
-
 }

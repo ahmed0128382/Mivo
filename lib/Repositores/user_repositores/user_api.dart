@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'dart:io';
 import 'dart:typed_data';
+
 import 'package:ahlachat/Repositores/user_repositores/user_repository.dart';
 import 'package:ahlachat/models/Inboxroom.dart';
 import 'package:ahlachat/models/UsarImages.dart';
@@ -10,20 +10,20 @@ import 'package:ahlachat/models/UserModels.dart';
 import 'package:ahlachat/view/Screans/Authentication/EnterCodeScrean/EnterCodeScrean.dart';
 import 'package:ahlachat/view/Screans/Authentication/LoginScrean/LoginScrean.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/InBoxsRoom.dart';
-
 import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:path_provider/path_provider.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../models/MyVip.dart';
 import '../../models/NotificationModel.dart';
 import '../../models/UserGiftsmodel.dart';
@@ -44,31 +44,65 @@ class userapi extends UserRepository {
   usermodel userinfo = usermodel();
   var Signupimage;
   MyVipmodel? myvip;
+
   List<Gifts> giftssent = [];
   List<Gifts> giftscollect = [];
   List<usermodel> Searchuser = [];
   List<usergifts> UserGifts = [];
   List<Notificationmodel> Notifications = [];
+
   final ImagePicker _picker = ImagePicker();
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': Token,
-        'DeviceId': deviceId,
-        'awqeASERQW': '8/325*mAIOEN',
-        'userid': UserId.toString(),
-        'UserIP': UserIP,
-      },
-    ),
-  );
+
+  final Dio dio = ApiClient.instance.dio;
+
   UserImages? ProfileImages;
-  Future<UserImages> AddProfileImage({context, image}) async {
+
+  // ApiClient.instance.dio already has ApiInterceptors.
+  // ApiInterceptors is responsible for all global headers:
+  // Authorization, userid, UserIP, DeviceId, awqeASERQW, Accept.
+  userapi();
+
+  ApiException _handleError(dynamic error) {
+    if (error is DioException) {
+      final response = error.response;
+
+      dynamic responseData = response?.data;
+
+      String? message;
+
+      if (responseData is Map) {
+        message =
+            responseData['message']?.toString() ??
+            responseData['error']?.toString() ??
+            responseData['errNum']?.toString();
+      }
+
+      return ApiException(
+        statusCode: response?.statusCode,
+        message:
+            message ??
+            error.message ??
+            'Something went wrong',
+        data: responseData,
+      );
+    }
+
+    return ApiException(
+      message: error.toString(),
+      data: error,
+    );
+  }
+
+  Future<UserImages> AddProfileImage({
+    context,
+    image,
+  }) async {
     try {
       FormData formData = FormData.fromMap({
-        "image": await MultipartFile.fromFile(image?.path,
-            filename: image?.path?.split('/')?.last),
+        "image": await MultipartFile.fromFile(
+          image?.path,
+          filename: image?.path?.split('/')?.last,
+        ),
         "user_id": UserId.toString(),
       });
 
@@ -78,17 +112,24 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-        ProfileImages = UserImages.fromJson(response2.data['ProfileImages']);
+        ProfileImages = UserImages.fromJson(
+          response2.data['ProfileImages'],
+        );
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return ProfileImages!;
   }
 
-  Future<bool> DeleteProfileImage({context, ImageId}) async {
+  Future<bool> DeleteProfileImage({
+    context,
+    ImageId,
+  }) async {
     bool deleted = false;
+
     try {
       Response response2 = await dio.get(
         '/api/DeleteProfileImage/$ImageId',
@@ -100,30 +141,39 @@ class userapi extends UserRepository {
         deleted = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return deleted;
   }
 
-  Future<int> GetTimeTarget({context}) async {
+  Future<int> GetTimeTarget({
+    context,
+  }) async {
     int target = 0;
+
     try {
       Response response2 = await dio.get(
         '/api/getuserTime/$UserId',
       );
 
       if (response2.statusCode == 200) {
-        target = int.parse(response2.data.toString());
+        target = int.parse(
+          response2.data.toString(),
+        );
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return target;
   }
 
-  Future<List<usergifts>> GetUserGifts({context}) async {
+  Future<List<usergifts>> GetUserGifts({
+    context,
+  }) async {
     try {
       Response response2 = await dio.get(
         '/api/GetMyUserGifts/$UserId',
@@ -133,16 +183,32 @@ class userapi extends UserRepository {
         List list = response2.data['UserGifts'];
 
         list.forEach((element) {
-          UserGifts.add(usergifts.fromJson(element));
+          UserGifts.add(
+            usergifts.fromJson(element),
+          );
         });
       }
     } catch (e) {
-      print(e);
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-        if (e.response!.data['errNum'] == '3500') {}
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
+
+        if (errNum == '3500') {
+          // Preserve existing behavior.
+        }
       }
     }
 
@@ -151,26 +217,45 @@ class userapi extends UserRepository {
 
   List<usermusic> UserMusic = [];
 
-  Future<List<Notificationmodel>> UserNotification({context}) async {
+  Future<List<Notificationmodel>> UserNotification({
+    context,
+  }) async {
     try {
       Response response2 = await dio.get(
         '/api/GetUserNotification',
       );
 
       if (response2.statusCode == 200) {
-        List list = response2.data['UserNotifications'];
+        List list =
+            response2.data['UserNotifications'];
 
         list.forEach((element) {
-          Notifications.add(Notificationmodel.fromJson(element));
+          Notifications.add(
+            Notificationmodel.fromJson(element),
+          );
         });
       }
     } catch (e) {
-      print(e);
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-        if (e.response!.data['errNum'] == '3500') {}
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
+
+        if (errNum == '3500') {
+          // Preserve existing behavior.
+        }
       }
     }
 
@@ -178,39 +263,68 @@ class userapi extends UserRepository {
   }
 
   InboxRoomModel? ChatRoom;
-  Future<InboxRoomModel?> ChatInBox({userid}) async {
+
+  Future<InboxRoomModel?> ChatInBox({
+    userid,
+  }) async {
     try {
       Response response2 = await dio.get(
         '/api/ChatWithuser/$UserId/$userid',
       );
 
       if (response2.statusCode == 200) {
-        ChatRoom = InboxRoomModel.fromJson(response2.data);
+        ChatRoom = InboxRoomModel.fromJson(
+          response2.data,
+        );
       }
-    } catch (e) {}
+    } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+    }
 
     return ChatRoom;
   }
 
-  Future<List<usermodel>> SearchUser(tittle) async {
+  Future<List<usermodel>> SearchUser(
+    tittle,
+  ) async {
     try {
+      final String query =
+          tittle?.toString().trim() ?? '';
+
+      if (query.isEmpty) {
+        return Searchuser;
+      }
+
       Response response2 = await dio.get(
-        '/api/SearchUser/$tittle',
+        '/api/SearchUser/$query',
       );
 
       if (response2.statusCode == 200) {
         List list = response2.data['users'];
+
         list.forEach((element) {
-          Searchuser.add(usermodel.fromJson(element));
+          Searchuser.add(
+            usermodel.fromJson(element),
+          );
         });
       }
-    } catch (e) {}
+    } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+    }
 
     return Searchuser;
   }
 
-  Future<bool> NewGuess({context, Coins, Roomid, Sendergueess}) async {
+  Future<bool> NewGuess({
+    context,
+    Coins,
+    Roomid,
+    Sendergueess,
+  }) async {
     bool check = false;
+
     try {
       FormData formData = FormData.fromMap({
         "Sender_id": UserId.toString(),
@@ -230,16 +344,25 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
     }
 
     return check;
   }
 
-  Future<bool> NewLuckyPackage({context, Coins, Roomid}) async {
+  Future<bool> NewLuckyPackage({
+    context,
+    Coins,
+    Roomid,
+  }) async {
     print(Roomid);
     print(Coins);
+
     bool check = false;
+
     try {
       FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
@@ -258,16 +381,25 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
     }
 
     return check;
   }
 
-  Future<bool> AcceptLuckyPackage({context, luckid, Roomid}) async {
+  Future<bool> AcceptLuckyPackage({
+    context,
+    luckid,
+    Roomid,
+  }) async {
     print(Roomid);
     print(luckid);
+
     bool check = false;
+
     try {
       FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
@@ -286,14 +418,23 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
     }
 
     return check;
   }
 
-  Future<bool> PlayGuess({context, guessid, Roomid, Sendergueess}) async {
+  Future<bool> PlayGuess({
+    context,
+    guessid,
+    Roomid,
+    Sendergueess,
+  }) async {
     bool check = false;
+
     try {
       FormData formData = FormData.fromMap({
         "Accept_id": UserId.toString(),
@@ -313,16 +454,22 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
     }
 
     return check;
   }
 
-  Future<bool> Removebubbles({context}) async {
+  Future<bool> Removebubbles({
+    context,
+  }) async {
     bool check = false;
+
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
       });
 
@@ -337,26 +484,45 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<List> Exchangecoins({context, jwile}) async {
+  Future<List> Exchangecoins({
+    context,
+    jwile,
+  }) async {
     bool check = false;
     int coins = 0;
     int input = 0;
+
     try {
-      FormData formData = FormData.fromMap(
-          {"user_id": UserId.toString(), "beans": jwile.toString()});
+      FormData formData = FormData.fromMap({
+        "user_id": UserId.toString(),
+        "beans": jwile.toString(),
+      });
 
       Response response2 = await dio.post(
         'api/Exchangecoins',
@@ -364,32 +530,63 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-        print(response2.data['Exchangecoins']['UserCoins'].runtimeType);
-        print(response2.data['Exchangecoins']['UserInput'].runtimeType);
-        coins = response2.data['Exchangecoins']['UserCoins'];
-        input = response2.data['Exchangecoins']['UserInput'];
+        print(
+          response2.data['Exchangecoins']
+              ['UserCoins']
+              .runtimeType,
+        );
+
+        print(
+          response2.data['Exchangecoins']
+              ['UserInput']
+              .runtimeType,
+        );
+
+        coins =
+            response2.data['Exchangecoins']['UserCoins'];
+
+        input =
+            response2.data['Exchangecoins']['UserInput'];
+
         check = true;
       } else {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return [check, coins, input];
   }
 
-  Future<bool> Updatebubbles({bubbles, context}) async {
+  Future<bool> Updatebubbles({
+    bubbles,
+    context,
+  }) async {
     bool check = false;
+
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "bubbles": bubbles.toString(),
       });
@@ -405,23 +602,40 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> updateColoredMessage({Color, context}) async {
+  Future<bool> updateColoredMessage({
+    Color,
+    context,
+  }) async {
     bool check = false;
+
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "Color": Color.toString(),
       });
@@ -437,23 +651,40 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<bool> setHidden({Hidden, context}) async {
+  Future<bool> setHidden({
+    Hidden,
+    context,
+  }) async {
     bool check = false;
+
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "Hidden": Hidden.toString(),
       });
@@ -469,35 +700,58 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
 
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return check;
   }
 
-  Future<User?> Googlesignin({context}) async {
+  Future<User?> Googlesignin({
+    context,
+  }) async {
     try {
       final googleuser = GoogleSignIn();
 
-      print('GOOGLE: opening account chooser');
+      print(
+        'GOOGLE: opening account chooser',
+      );
 
       final signin = await googleuser.signIn();
 
       if (signin == null) {
-        print('GOOGLE: user cancelled sign in');
+        print(
+          'GOOGLE: user cancelled sign in',
+        );
+
         return null;
       }
 
-      print('GOOGLE: account selected: ${signin.email}');
+      print(
+        'GOOGLE: account selected: ${signin.email}',
+      );
 
-      final googleAuth = await signin.authentication;
+      final googleAuth =
+          await signin.authentication;
 
       print(
         'GOOGLE: idToken=${googleAuth.idToken != null}, '
@@ -505,14 +759,22 @@ class userapi extends UserRepository {
       );
 
       if (googleAuth.idToken == null) {
-        print('GOOGLE: idToken is null');
+        print(
+          'GOOGLE: idToken is null',
+        );
+
         return null;
       }
 
-      print('ShowGlopalLoading...');
+      print(
+        'ShowGlopalLoading...',
+      );
+
       ShowGlopalLoading();
 
-      print('GOOGLE: signing into Firebase...');
+      print(
+        'GOOGLE: signing into Firebase...',
+      );
 
       final usercredentioal = await _firebaseAuth
           .signInWithCredential(
@@ -537,18 +799,24 @@ class userapi extends UserRepository {
 
       Gmail = usercredentioal.user?.email;
 
-      final photoUrl = usercredentioal.user?.photoURL;
+      final photoUrl =
+          usercredentioal.user?.photoURL;
 
-      if (photoUrl != null && photoUrl.isNotEmpty) {
-        final imageData = await NetworkAssetBundle(
+      if (photoUrl != null &&
+          photoUrl.isNotEmpty) {
+        final imageData =
+            await NetworkAssetBundle(
           Uri.parse(photoUrl),
         ).load("");
 
-        final Uint8List bytes = imageData.buffer.asUint8List();
+        final Uint8List bytes =
+            imageData.buffer.asUint8List();
 
-        final byteData = ByteData.view(bytes.buffer);
+        final byteData =
+            ByteData.view(bytes.buffer);
 
-        var tempDir = await getTemporaryDirectory();
+        var tempDir =
+            await getTemporaryDirectory();
 
         File file = await File(
           '${tempDir.path}/img',
@@ -581,7 +849,9 @@ class userapi extends UserRepository {
 
       return usercredentioal.user;
     } catch (e) {
-      print('GOOGLE SIGN-IN ERROR: $e');
+      print(
+        'GOOGLE SIGN-IN ERROR: $e',
+      );
 
       DismissGlopalLoading();
 
@@ -589,11 +859,15 @@ class userapi extends UserRepository {
     }
   }
 
-  Future<bool> UpdateNewId({newid, context, myvip_id}) async {
+  Future<bool> UpdateNewId({
+    newid,
+    context,
+    myvip_id,
+  }) async {
     bool check = false;
 
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "newid": newid.toString(),
         "myvip_id": myvip_id.toString(),
@@ -610,18 +884,34 @@ class userapi extends UserRepository {
         check = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       check = false;
 
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {}
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
+      }
     }
 
     return check;
   }
 
-  Future<usermodel> UserLogin({Phonenumber, context}) async {
+  Future<usermodel> UserLogin({
+    Phonenumber,
+    context,
+  }) async {
     try {
       FormData formData = FormData.fromMap({
         "phone_number": Phonenumber.toString(),
@@ -634,38 +924,70 @@ class userapi extends UserRepository {
 
       if (response2.statusCode == 200) {
         if (response2.data['users'] != "E05") {
-          UserId = response2.data['users']['id'].toString();
+          UserId =
+              response2.data['users']['id'].toString();
+
           if (response2.data['users']['ban'] == 1) {
             DismissGlopalLoading();
-            Dialogs().showtoast('تم حظر هذا الحساب');
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.clear();
-            navigateTo(context: context, screen: LoginScrean());
+
+            Dialogs().showtoast(
+              'تم حظر هذا الحساب',
+            );
+
+            SharedPreferences prefs =
+                await SharedPreferences.getInstance();
+
+            await prefs.clear();
+
+            navigateTo(
+              context: context,
+              screen: LoginScrean(),
+            );
           } else {
-            Provider.of<LoginViewmodel>(context, listen: false)
-                .SendCodeRlogin(context: context, phonenumber: Phonenumber);
+            Provider.of<LoginViewmodel>(
+              context,
+              listen: false,
+            ).SendCodeRlogin(
+              context: context,
+              phonenumber: Phonenumber,
+            );
           }
         } else {
-          Provider.of<LoginViewmodel>(context, listen: false)
-              .SendCodeSignUp(context: context, phonenumber: Phonenumber);
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).SendCodeSignUp(
+            context: context,
+            phonenumber: Phonenumber,
+          );
         }
-      } else {}
+      }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
+
       DismissGlopalLoading();
     }
 
     return userinfo;
   }
 
-  Future<usermodel> UserLoginGoogle({email, context}) async {
+  Future<usermodel> UserLoginGoogle({
+    email,
+    context,
+  }) async {
     try {
       FormData formData = FormData.fromMap({
         "email": email.toString(),
       });
 
-      print('GOOGLE LOGIN: email = $email');
-      print('GOOGLE LOGIN: POST api/loginGoogle');
+      print(
+        'GOOGLE LOGIN: email = $email',
+      );
+
+      print(
+        'GOOGLE LOGIN: POST api/loginGoogle',
+      );
 
       Response response2 = await dio.post(
         'api/loginGoogle',
@@ -680,29 +1002,54 @@ class userapi extends UserRepository {
 
       if (response2.statusCode == 200) {
         if (response2.data['users'] != "E05") {
-          UserId = response2.data['users']['id'].toString();
+          UserId =
+              response2.data['users']['id'].toString();
 
           if (response2.data['users']['ban'] == 1) {
             DismissGlopalLoading();
 
-            Dialogs().showtoast('تم حظر هذا الحساب');
+            Dialogs().showtoast(
+              'تم حظر هذا الحساب',
+            );
 
-            SharedPreferences prefs = await SharedPreferences.getInstance();
+            SharedPreferences prefs =
+                await SharedPreferences.getInstance();
 
             await prefs.clear();
           } else {
-            // Persist session immediately from loginGoogle response
-            // so reopening the app restores the user without login again.
-            final usersMap = Map<String, dynamic>.from(response2.data['users']);
-            userinfo = usermodel.fromJson(usersMap);
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            final tokenStr = (userinfo.rememperToken ?? '').toString();
-            await prefs.setString('token', tokenStr);
-// Save RAW map from API – never toJson()
-            await prefs.setString('UserData', jsonEncode(usersMap));
+            final usersMap =
+                Map<String, dynamic>.from(
+              response2.data['users'],
+            );
+
+            userinfo =
+                usermodel.fromJson(usersMap);
+
+            SharedPreferences prefs =
+                await SharedPreferences.getInstance();
+
+            final tokenStr =
+                (userinfo.rememperToken ?? '')
+                    .toString();
+
+            await prefs.setString(
+              'token',
+              tokenStr,
+            );
+
+            await prefs.setString(
+              'UserData',
+              jsonEncode(usersMap),
+            );
+
             Token = tokenStr;
             UserId = userinfo.id.toString();
-            print('GOOGLE LOGIN: token saved len=${tokenStr.length}');
+
+            print(
+              'GOOGLE LOGIN: token saved '
+              'len=${tokenStr.length}',
+            );
+
             DismissGlopalLoading();
 
             await Provider.of<LoginViewmodel>(
@@ -714,7 +1061,9 @@ class userapi extends UserRepository {
             );
           }
         } else {
-          print('GOOGLE LOGIN: E05 -> CompleteSignUp');
+          print(
+            'GOOGLE LOGIN: E05 -> CompleteSignUp',
+          );
 
           DismissGlopalLoading();
 
@@ -725,20 +1074,35 @@ class userapi extends UserRepository {
         }
       }
     } catch (e) {
-      print('GOOGLE LOGIN ERROR: $e');
+      final exception = _handleError(e);
+
+      print(
+        'GOOGLE LOGIN ERROR: $exception',
+      );
 
       if (e is DioException) {
-        final statusCode = e.response?.statusCode;
+        final statusCode =
+            e.response?.statusCode;
+
         final data = e.response?.data;
 
-        print('GOOGLE LOGIN ERROR STATUS: $statusCode');
-        print('GOOGLE LOGIN ERROR DATA: $data');
+        print(
+          'GOOGLE LOGIN ERROR STATUS: '
+          '$statusCode',
+        );
 
-        // Your backend uses HTTP 400 for "Google user does not exist".
+        print(
+          'GOOGLE LOGIN ERROR DATA: '
+          '$data',
+        );
+
         if (statusCode == 400 &&
             data is Map &&
-            data['errNum']?.toString() == 'E05') {
-          print('GOOGLE LOGIN: E05 -> CompleteSignUp');
+            data['errNum']?.toString() ==
+                'E05') {
+          print(
+            'GOOGLE LOGIN: E05 -> CompleteSignUp',
+          );
 
           DismissGlopalLoading();
 
@@ -750,7 +1114,8 @@ class userapi extends UserRepository {
           return userinfo;
         }
 
-        if (data is Map && data['errNum'] != null) {
+        if (data is Map &&
+            data['errNum'] != null) {
           Dialogs().ShowErrorToast(
             data['errNum'].toString(),
             context,
@@ -761,7 +1126,9 @@ class userapi extends UserRepository {
           );
         }
       } else {
-        print('GOOGLE LOGIN UNKNOWN ERROR: $e');
+        print(
+          'GOOGLE LOGIN UNKNOWN ERROR: $e',
+        );
 
         Dialogs().showtoast(
           'Google login failed',
@@ -771,243 +1138,491 @@ class userapi extends UserRepository {
       DismissGlopalLoading();
     }
 
-    print('GOOGLE LOGIN USERINFO: $userinfo');
+    print(
+      'GOOGLE LOGIN USERINFO: $userinfo',
+    );
 
     return userinfo;
   }
 
-  Future<usermodel> UserLoginID({ID, Password, context}) async {
+  Future<usermodel> UserLoginID({
+    ID,
+    Password,
+    context,
+  }) async {
     try {
-      FormData formData = FormData.fromMap(
-          {"id": ID.toString(), "password": Password.toString()});
+      FormData formData = FormData.fromMap({
+        "id": ID.toString(),
+        "password": Password.toString(),
+      });
 
       Response response2 = await dio.post(
         'api/loginID',
         data: formData,
       );
+
       print(response2.data);
+
       if (response2.statusCode == 200) {
         if (response2.data['users'] != "E05") {
-          UserId = response2.data['users']['id'].toString();
+          UserId =
+              response2.data['users']['id'].toString();
+
           if (response2.data['users']['ban'] == 1) {
             DismissGlopalLoading();
-            Dialogs().showtoast('تم حظر هذا الحساب');
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            prefs.clear();
+
+            Dialogs().showtoast(
+              'تم حظر هذا الحساب',
+            );
+
+            SharedPreferences prefs =
+                await SharedPreferences.getInstance();
+
+            await prefs.clear();
           } else {
-            Provider.of<LoginViewmodel>(context, listen: false)
-                .UserLoginVerify(context: context, Parimater: ID.toString());
+            Provider.of<LoginViewmodel>(
+              context,
+              listen: false,
+            ).UserLoginVerify(
+              context: context,
+              Parimater: ID.toString(),
+            );
           }
         }
       } else {
         DismissGlopalLoading();
-        Dialogs().showtoast('الايدي او الرقم السري خطاء');
+
+        Dialogs().showtoast(
+          'الايدي او الرقم السري خطاء',
+        );
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       DismissGlopalLoading();
-      Dialogs().showtoast('الايدي او الرقم السري خطاء');
+
+      Dialogs().showtoast(
+        'الايدي او الرقم السري خطاء',
+      );
     }
 
     return userinfo;
   }
 
-  Future<bool> verifyUserPhoneNumber(String phoneNumber) async {
-    final completer = Completer<AuthCredential>();
+  Future<bool> verifyUserPhoneNumber(
+    String phoneNumber,
+  ) async {
+    final completer =
+        Completer<AuthCredential>();
+
     await FirebaseAuth.instance.verifyPhoneNumber(
       phoneNumber: phoneNumber,
       timeout: Duration(seconds: 60),
-      verificationCompleted: completer.complete,
-      verificationFailed: completer.completeError,
-      codeAutoRetrievalTimeout: (verificationId) {},
-      codeSent: (verificationId, [code]) {},
+      verificationCompleted:
+          completer.complete,
+      verificationFailed:
+          completer.completeError,
+      codeAutoRetrievalTimeout:
+          (verificationId) {},
+      codeSent: (
+        verificationId,
+        [code]
+      ) {},
     );
+
     try {
-      final credential = await completer.future;
+      final credential =
+          await completer.future;
+
       return true;
     } catch (e) {
       return false;
     }
   }
 
-  SendCodeRlogin({context, phonenumber}) {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-    user.updatesendcodestate(value: 1);
+  SendCodeRlogin({
+    context,
+    phonenumber,
+  }) {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
+
+    user.updatesendcodestate(
+      value: 1,
+    );
+
     try {
-      Dialogs().showtoast(phonenumber.toString());
-      //  _firebaseAuth.setSettings(appVerificationDisabledForTesting:false  );
+      Dialogs().showtoast(
+        phonenumber.toString(),
+      );
+
       _firebaseAuth.verifyPhoneNumber(
-          phoneNumber: phonenumber,
-          timeout: Duration(seconds: 30),
-          verificationCompleted: (AuthCredential credential) async {
-            print(credential);
-          },
-          verificationFailed: (exception) {
+        phoneNumber: phonenumber,
+        timeout: Duration(seconds: 30),
+        verificationCompleted:
+            (AuthCredential credential) async {
+          print(credential);
+        },
+        verificationFailed:
+            (exception) {
+          user.hideSpinner();
+
+          print(exception.code);
+
+          print(
+            'Code Is missing-client-identifier',
+          );
+
+          Dialogs().showtoast(
+            'identifier',
+          );
+        },
+        codeSent: (
+          String verificationId,
+          [int? forceResendingToken]
+        ) {
+          verificationid = verificationId;
+
+          DismissGlopalLoading();
+
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).hideSpinner();
+
+          navigateTo(
+            context: context,
+            screen: EnterCodeScrean(
+              PhoneNumber: phonenumber,
+            ),
+          );
+        },
+        codeAutoRetrievalTimeout:
+            (message) {
+          if (user.sendcodestate == 1) {
+            print(
+              'Code Is missing-client-identifier',
+            );
+
             user.hideSpinner();
-            print(exception.code);
-            print('Code Is missing-client-identifier');
-            Dialogs().showtoast('identifier');
-          },
-          codeSent: (String verificationId, [int? forceResendingToken]) {
-            verificationid = verificationId;
 
-            DismissGlopalLoading();
-            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
-
-            navigateTo(
+            Dialogs().showtoast(
+              getLang(
                 context: context,
-                screen: EnterCodeScrean(
-                  PhoneNumber: phonenumber,
-                ));
-          },
-          codeAutoRetrievalTimeout: (message) {
-            if (user.sendcodestate == 1) {
-              //Navigator.pop(context);
-              print('Code Is missing-client-identifier');
+                key: "code_expired",
+              ),
+            );
 
-              user.hideSpinner();
-              Dialogs()
-                  .showtoast(getLang(context: context, key: "code_expired"));
-              user.updatesendcodestate(value: 0);
-            }
-          });
+            user.updatesendcodestate(
+              value: 0,
+            );
+          }
+        },
+      );
     } catch (error) {
-      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
-      // user.hideSpinner();
-      // Provider.of<LoginViewmodel>(context,listen: false).hideSpinner();
-      // DismissGlopalLoading();
-      // Dialogs().showtoast(getLang( context: context, key: "Phone_valid"));
+      Dialogs().showtoast(
+        getLang(
+          context: context,
+          key: "Phone_valid",
+        ),
+      );
     }
-    ;
   }
 
-  ReSendCodelogin({context, phonenumber}) {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-    user.updatesendcodestate(value: 1);
-    // _firebaseAuth.setSettings(appVerificationDisabledForTesting:false  );
+  ReSendCodelogin({
+    context,
+    phonenumber,
+  }) {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
+
+    user.updatesendcodestate(
+      value: 1,
+    );
 
     try {
       _firebaseAuth.verifyPhoneNumber(
-          phoneNumber: phonenumber,
-          timeout: Duration(seconds: 30),
-          verificationCompleted: (AuthCredential credential) async {
-            print(credential);
-            print('Code Is Recived');
-          },
-          verificationFailed: (exception) {
-            print(exception.code);
-            Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
-          },
-          codeSent: (String verificationId, [int? forceResendingToken]) {
-            verificationid = verificationId;
+        phoneNumber: phonenumber,
+        timeout: Duration(seconds: 30),
+        verificationCompleted:
+            (AuthCredential credential) async {
+          print(credential);
+          print('Code Is Recived');
+        },
+        verificationFailed:
+            (exception) {
+          print(exception.code);
 
-            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
-            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner9();
-            // Navigator.pushNamed(context,'${AppConstants.EnterCodeScrean}');
-          },
-          codeAutoRetrievalTimeout: (message) {
-            if (user.sendcodestate == 1) {
-              // Navigator.pop(context);
-              Dialogs()
-                  .showtoast(getLang(context: context, key: "code_expired"));
-              user.updatesendcodestate(value: 0);
-            }
-          });
+          Dialogs().showtoast(
+            getLang(
+              context: context,
+              key: "Phone_valid",
+            ),
+          );
+        },
+        codeSent: (
+          String verificationId,
+          [int? forceResendingToken]
+        ) {
+          verificationid = verificationId;
+
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).hideSpinner();
+
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).hideSpinner9();
+        },
+        codeAutoRetrievalTimeout:
+            (message) {
+          if (user.sendcodestate == 1) {
+            Dialogs().showtoast(
+              getLang(
+                context: context,
+                key: "code_expired",
+              ),
+            );
+
+            user.updatesendcodestate(
+              value: 0,
+            );
+          }
+        },
+      );
     } catch (error) {
-      Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
-      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
+      Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      ).hideSpinner();
+
+      Dialogs().showtoast(
+        getLang(
+          context: context,
+          key: "Phone_valid",
+        ),
+      );
     }
-    ;
   }
 
-  EnterCodelogin({context, code, Phonenumber}) async {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
+  EnterCodelogin({
+    context,
+    code,
+    Phonenumber,
+  }) async {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
 
-    AuthCredential credential = await PhoneAuthProvider.credential(
-        verificationId: verificationid ?? '', smsCode: code);
-    _firebaseAuth.signInWithCredential(credential).then((result) {
-      Provider.of<LoginViewmodel>(context, listen: false)
-          .UserLoginVerify(context: context, Parimater: Phonenumber);
-      user.updatesendcodestate(value: 0);
-      print('Goooooooooooooooooooooooooooooooooo');
+    AuthCredential credential =
+        await PhoneAuthProvider.credential(
+      verificationId: verificationid ?? '',
+      smsCode: code,
+    );
+
+    _firebaseAuth
+        .signInWithCredential(
+      credential,
+    )
+        .then((result) {
+      Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      ).UserLoginVerify(
+        context: context,
+        Parimater: Phonenumber,
+      );
+
+      user.updatesendcodestate(
+        value: 0,
+      );
+
+      print(
+        'Goooooooooooooooooooooooooooooooooo',
+      );
     }).catchError((e) {
-      user.updatesendcodestate(value: 1);
-      //user.updatesendcodestate(value: 1);
-      Dialogs().showtoast(getLang(context: context, key: "rowng_code"));
+      user.updatesendcodestate(
+        value: 1,
+      );
+
+      Dialogs().showtoast(
+        getLang(
+          context: context,
+          key: "rowng_code",
+        ),
+      );
+
       print(e);
-      print('Noooooooooooooooooooooooooooooooooo');
+
+      print(
+        'Noooooooooooooooooooooooooooooooooo',
+      );
     });
   }
 
-  EnterCodeSignUp({context, code}) async {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
+  EnterCodeSignUp({
+    context,
+    code,
+  }) async {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
+
     print(verificationid);
     print(code);
-    AuthCredential credential = await PhoneAuthProvider.credential(
-        verificationId: verificationid ?? '', smsCode: code);
-    _firebaseAuth.signInWithCredential(credential).then((result) {
+
+    AuthCredential credential =
+        await PhoneAuthProvider.credential(
+      verificationId: verificationid ?? '',
+      smsCode: code,
+    );
+
+    _firebaseAuth
+        .signInWithCredential(
+      credential,
+    )
+        .then((result) {
       Navigator.pushReplacementNamed(
-          context, AppConstants.CompleteSignUp_Screan);
-      user.updatesendcodestate(value: 0);
+        context,
+        AppConstants.CompleteSignUp_Screan,
+      );
+
+      user.updatesendcodestate(
+        value: 0,
+      );
     }).catchError((e) {
-      user.updatesendcodestate(value: 1);
-      //user.updatesendcodestate(value: 1);
-      Dialogs().showtoast(getLang(context: context, key: "rowng_code"));
+      user.updatesendcodestate(
+        value: 1,
+      );
+
+      Dialogs().showtoast(
+        getLang(
+          context: context,
+          key: "rowng_code",
+        ),
+      );
+
       print(e);
     });
   }
 
-  SendCodeSignUp({context, phonenumber}) {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-    user.updatesendcodestate(value: 1);
+  SendCodeSignUp({
+    context,
+    phonenumber,
+  }) {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
+
+    user.updatesendcodestate(
+      value: 1,
+    );
+
     try {
-      //   _firebaseAuth.setSettings(appVerificationDisabledForTesting:true,forceRecaptchaFlow:false  );
-
       _firebaseAuth.verifyPhoneNumber(
-          phoneNumber: phonenumber,
-          timeout: Duration(seconds: 30),
-          verificationCompleted: (AuthCredential credential) async {
-            print(credential);
-            print('Code Is Recived');
-          },
-          verificationFailed: (exception) {
-            print(exception.code);
+        phoneNumber: phonenumber,
+        timeout: Duration(seconds: 30),
+        verificationCompleted:
+            (AuthCredential credential) async {
+          print(credential);
+          print('Code Is Recived');
+        },
+        verificationFailed:
+            (exception) {
+          print(exception.code);
 
-            if (exception.code == 'missing-client-identifier') {
-              Dialogs().showtoast('Something went wrong, try again later');
-            } else {
-              Dialogs()
-                  .showtoast(getLang(context: context, key: "Phone_valid"));
-            }
+          if (exception.code ==
+              'missing-client-identifier') {
+            Dialogs().showtoast(
+              'Something went wrong, try again later',
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: context,
+                key: "Phone_valid",
+              ),
+            );
+          }
+
+          user.hideSpinner();
+        },
+        codeSent: (
+          String verificationId,
+          [int? forceResendingToken]
+        ) {
+          verificationid = verificationId;
+
+          DismissGlopalLoading();
+
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).hideSpinner();
+
+          Navigator.pushNamed(
+            context,
+            AppConstants.EnterCodeSignUp_Screan,
+          );
+        },
+        codeAutoRetrievalTimeout:
+            (message) {
+          if (user.sendcodestate == 1) {
             user.hideSpinner();
-          },
-          codeSent: (String verificationId, [int? forceResendingToken]) {
-            verificationid = verificationId;
-            DismissGlopalLoading();
 
-            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
-            Navigator.pushNamed(context, AppConstants.EnterCodeSignUp_Screan);
-          },
-          codeAutoRetrievalTimeout: (message) {
-            if (user.sendcodestate == 1) {
-              //Navigator.pop(context);
-              user.hideSpinner();
-              print('print www');
-              Dialogs()
-                  .showtoast(getLang(context: context, key: "code_expired"));
-              user.updatesendcodestate(value: 0);
-            }
-          });
+            print('print www');
+
+            Dialogs().showtoast(
+              getLang(
+                context: context,
+                key: "code_expired",
+              ),
+            );
+
+            user.updatesendcodestate(
+              value: 0,
+            );
+          }
+        },
+      );
     } catch (error) {
       print('rwtvasd');
-      Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
-      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
+
+      Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      ).hideSpinner();
+
+      Dialogs().showtoast(
+        getLang(
+          context: context,
+          key: "Phone_valid",
+        ),
+      );
     }
-    ;
   }
 
-  Future<MyVipmodel?> ByeVip({VipModel? Vip, context}) async {
+  Future<MyVipmodel?> ByeVip({
+    VipModel? Vip,
+    context,
+  }) async {
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "vip_id": Vip?.id.toString(),
         "days": Vip?.day.toString(),
@@ -1020,24 +1635,40 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-        myvip = MyVipmodel.fromJson(response2.data['MyVip']);
+        myvip = MyVipmodel.fromJson(
+          response2.data['MyVip'],
+        );
       }
     } catch (e) {
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return myvip;
   }
 
-  Future<MyVipmodel?> UseVip({MyVipmodel? Vip}) async {
+  Future<MyVipmodel?> UseVip({
+    MyVipmodel? Vip,
+  }) async {
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "Myvip_id": Vip?.id.toString(),
       });
@@ -1048,17 +1679,26 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-        myvip = MyVipmodel.fromJson(response2.data);
+        myvip = MyVipmodel.fromJson(
+          response2.data,
+        );
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return myvip;
   }
 
-  Future<bool> ByeBackages({coins, cost, kind, context}) async {
+  Future<bool> ByeBackages({
+    coins,
+    cost,
+    kind,
+    context,
+  }) async {
     bool Status = false;
+
     try {
       FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
@@ -1076,44 +1716,70 @@ class userapi extends UserRepository {
         Status = true;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       Status = false;
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          print(errNum);
+
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return Status;
   }
 
-  Future<bool?> RemoveVip({MyVipmodel? MyVip}) async {
+  Future<bool?> RemoveVip({
+    MyVipmodel? MyVip,
+  }) async {
     bool remove = false;
+
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "user_id": UserId.toString(),
         "Myvip_id": MyVip?.id.toString(),
       });
+
       Response response2 = await dio.post(
         'api/RemoveVip',
         data: formData,
       );
+
       print(response2.data);
+
       if (response2.statusCode == 200) {
         remove = true;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
+
       remove = false;
     }
 
     return remove;
   }
 
-  Future<usermodel> CheckRegester({name, phone, context}) async {
+  Future<usermodel> CheckRegester({
+    name,
+    phone,
+    context,
+  }) async {
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData = FormData.fromMap({
         "name": name.toString(),
         "phone_number": phone.toString(),
       });
@@ -1125,103 +1791,177 @@ class userapi extends UserRepository {
 
       if (response2.statusCode == 200) {}
     } catch (e) {
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
+
     print(userinfo);
+
     return userinfo;
   }
 
   @override
-  Future<usermodel> UserLoginVerify({context, Parimater}) async {
+  Future<usermodel> UserLoginVerify({
+    context,
+    Parimater,
+  }) async {
     try {
       var map = {
         "user_id": UserId.toString(),
         "notifi_token": notifitoken.toString(),
       };
-      FormData formData = new FormData.fromMap(map);
+
+      FormData formData =
+          FormData.fromMap(map);
+
       Response response2 = await dio.post(
         'api/Verifyaccount',
         data: formData,
       );
 
-      if (response2.statusCode == 200 || response2.statusCode == 201) {
+      if (response2.statusCode == 200 ||
+          response2.statusCode == 201) {
         print(notifitoken);
 
-        userinfo = usermodel.fromJson(response2.data['users']);
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
 
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        final newToken = (userinfo.rememperToken ?? '').toString();
+        SharedPreferences prefs =
+            await SharedPreferences.getInstance();
 
-// Never overwrite a good token with an empty one
+        final newToken =
+            (userinfo.rememperToken ?? '')
+                .toString();
+
         if (newToken.isNotEmpty) {
-          await prefs.setString('token', newToken);
+          await prefs.setString(
+            'token',
+            newToken,
+          );
+
           Token = newToken;
         } else {
-          print('Verifyaccount returned empty token – keeping existing token');
+          print(
+            'Verifyaccount returned empty token – '
+            'keeping existing token',
+          );
         }
 
-// Always save raw API map
         await prefs.setString(
           'UserData',
-          jsonEncode(response2.data['users']),
+          jsonEncode(
+            response2.data['users'],
+          ),
         );
 
         UserId = userinfo.id.toString();
-        if (userinfo.music != null && userinfo.music != '' && Gmail == null) {
-          Helper().PlaylinkMusic(path: userinfo.music);
+
+        if (userinfo.music != null &&
+            userinfo.music != '' &&
+            Gmail == null) {
+          Helper().PlaylinkMusic(
+            path: userinfo.music,
+          );
         }
 
-        Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
+        Navigator.pushNamed(
+          context,
+          AppConstants.Buttom_Navigation,
+        );
+
         DismissGlopalLoading();
       }
     } catch (e) {
+      final exception = _handleError(e);
+
       print('ksap');
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorRegesterToast(e.response?.data['errNum'], context);
-      } else {
-        print(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorRegesterToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     print(userinfo);
+
     return userinfo;
   }
 
   @override
-  Future<bool> SendReport(
-      {context, contact, feedback, feedback_type, contact_type, image}) async {
+  Future<bool> SendReport({
+    context,
+    contact,
+    feedback,
+    feedback_type,
+    contact_type,
+    image,
+  }) async {
     bool data = false;
+
     try {
       var map;
+
       if (image != null) {
         map = {
           "user_id": UserId.toString(),
           "feedback": feedback.toString(),
           "contact": contact.toString(),
-          "image": await MultipartFile.fromFile(image?.path,
-              filename: image?.path?.split('/')?.last),
-          "feedback_type": feedback_type.toString(),
-          "contact_type": contact_type.toString(),
+          "image": await MultipartFile.fromFile(
+            image?.path,
+            filename: image?.path?.split('/')?.last,
+          ),
+          "feedback_type":
+              feedback_type.toString(),
+          "contact_type":
+              contact_type.toString(),
         };
       } else {
         map = {
           "user_id": UserId.toString(),
           "feedback": feedback.toString(),
           "contact": contact.toString(),
-          "feedback_type": feedback_type.toString(),
-          "contact_type": contact_type.toString(),
+          "feedback_type":
+              feedback_type.toString(),
+          "contact_type":
+              contact_type.toString(),
         };
       }
-      print('2222222222222222222222222222222222');
 
-      FormData formData = new FormData.fromMap(map);
+      print(
+        '2222222222222222222222222222222222',
+      );
+
+      FormData formData =
+          FormData.fromMap(map);
+
       Response response2 = await dio.post(
         '/api/SendReport',
         data: formData,
@@ -1233,101 +1973,192 @@ class userapi extends UserRepository {
         data = false;
       }
     } catch (e) {
+      final exception = _handleError(e);
+      print(exception);
+
       data = false;
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {
-        print(e);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return data;
   }
 
-  Future<List> MyGifts({context}) async {
+  Future<List> MyGifts({
+    context,
+  }) async {
     List data = [];
+
     try {
-      FormData formData = new FormData.fromMap({
+      FormData formData =
+          FormData.fromMap({
         "user_id": UserId.toString(),
       });
+
       Response response2 = await dio.post(
         '/api/mygifts',
         data: formData,
       );
 
       if (response2.statusCode == 200) {
-        List list = response2.data['users']['giftssent'];
+        List list =
+            response2.data['users']
+                ['giftssent'];
 
         list.forEach((element) {
-          giftssent.add(Gifts.fromJson(element));
+          giftssent.add(
+            Gifts.fromJson(element),
+          );
         });
-        List list2 = response2.data['users']['giftscollect'];
+
+        List list2 =
+            response2.data['users']
+                ['giftscollect'];
+
         list2.forEach((element) {
-          giftscollect.add(Gifts.fromJson(element));
+          giftscollect.add(
+            Gifts.fromJson(element),
+          );
         });
 
         data.add(giftssent);
         data.add(giftscollect);
-      } else {}
+      }
     } catch (e) {
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return data;
   }
 
-  Future<usermodel> userinfoRoom({id, roomid, context}) async {
-    print('=============================>$roomid');
-    print('=============================>$id');
+  Future<usermodel> userinfoRoom({
+    id,
+    roomid,
+    context,
+  }) async {
+    print(
+      '=============================>$roomid',
+    );
+
+    print(
+      '=============================>$id',
+    );
+
     try {
       Response response2 = await dio.get(
         '/api/getuserRoom/$id/$roomid',
       );
 
       print(userinfo);
+
       if (response2.statusCode == 200) {
-        userinfo = usermodel.fromJson(response2.data['users']);
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
       }
     } catch (e) {
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
+
     print(userinfo);
 
     return userinfo;
   }
 
-  Future<usermodel> UserProfileData({id, context}) async {
+  Future<usermodel> UserProfileData({
+    id,
+    context,
+  }) async {
     try {
       Response response2 = await dio.get(
         '/api/UserProfileData/$id/$UserId',
       );
 
       if (response2.statusCode == 200) {
-        userinfo = usermodel.fromJson(response2.data['users']);
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
       }
     } catch (e) {
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
+
     print(userinfo);
 
     return userinfo;
   }
 
-  Future<usermodel> Userinfo({context}) async {
+  Future<usermodel> Userinfo({
+    context,
+  }) async {
     try {
-      FormData formData = FormData.fromMap({"": ''});
+      FormData formData =
+          FormData.fromMap({
+        "": '',
+      });
 
       Response response2 = await dio.post(
         '/api/userinfo',
@@ -1335,60 +2166,115 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-        userinfo = usermodel.fromJson(response2.data['users']);
-        Token = userinfo.rememperToken.toString();
-        UserId = userinfo.id.toString();
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('UserData', jsonEncode(response2.data['users']));
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
 
-        prefs.setString('token', userinfo.rememperToken.toString());
+        final newToken =
+            (userinfo.rememperToken ?? '')
+                .toString();
+
+        UserId =
+            userinfo.id.toString();
+
+        if (newToken.isNotEmpty) {
+          Token = newToken;
+
+          SharedPreferences prefs =
+              await SharedPreferences
+                  .getInstance();
+
+          await prefs.setString(
+            'token',
+            newToken,
+          );
+        }
+
+        SharedPreferences prefs =
+            await SharedPreferences.getInstance();
+
+        await prefs.setString(
+          'UserData',
+          jsonEncode(
+            response2.data['users'],
+          ),
+        );
       }
     } catch (e) {
-      Navigator.pushNamed(context, AppConstants.Login_Screan);
+      final exception = _handleError(e);
+      print(exception);
+
+      Navigator.pushNamed(
+        context,
+        AppConstants.Login_Screan,
+      );
     }
 
     return userinfo;
   }
 
-  Future<usermodel> UserinfoID({ID, context}) async {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-    dio.options.headers = {
-      'Authorization': Token,
-    };
+  Future<usermodel> UserinfoID({
+    ID,
+    context,
+  }) async {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
 
     try {
       Response response2 = await dio.get(
-        '/api/userinformation/${ID.toString()}/${user.userinfo?.id.toString()}',
+        '/api/userinformation/'
+        '${ID.toString()}/'
+        '${user.userinfo?.id.toString()}',
       );
 
       if (response2.statusCode == 200) {
-        userinfo = usermodel.fromJson(response2.data['users']);
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
       }
     } catch (e) {
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {
-        print(e);
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
       }
     }
 
     return userinfo;
   }
 
-  Future<usermodel> UpdatenormalProfile(
-      {Flag,
-      ginder,
-      Password,
-      day,
-      year,
-      month,
-      City,
-      Description,
-      context,
-      token,
-      name,
-      PhoneNumber,
-      Image}) async {
+  Future<usermodel> UpdatenormalProfile({
+    Flag,
+    ginder,
+    Password,
+    day,
+    year,
+    month,
+    City,
+    Description,
+    context,
+    token,
+    name,
+    PhoneNumber,
+    Image,
+  }) async {
     print(Password);
     print(name);
     print(City);
@@ -1397,22 +2283,26 @@ class userapi extends UserRepository {
     print(year);
     print(month);
     print(Password);
+
     var map;
+
     if (Image != null) {
       map = {
         "description": Description.toString(),
-
-        //"password":password.toString(),
         "name": name.toString(),
-        "image": await MultipartFile.fromFile(Image?.path,
-            filename: Image?.path?.split('/')?.last),
+        "image": await MultipartFile.fromFile(
+          Image?.path,
+          filename:
+              Image?.path?.split('/')?.last,
+        ),
         "City": City,
         "ginder": ginder.toString(),
         "day": day.toString(),
         "year": year.toString(),
         "month": month.toString(),
         "Flag": Flag.toString(),
-        "password": Password.toString(),
+        "password":
+            Password.toString(),
       };
     } else {
       map = {
@@ -1424,56 +2314,101 @@ class userapi extends UserRepository {
         "year": year.toString(),
         "month": month.toString(),
         "Flag": Flag.toString(),
-        "password": Password.toString(),
+        "password":
+            Password.toString(),
       };
     }
 
-    map.removeWhere((key, value) =>
-        key == null || value == null || value == '' || value == 'null');
+    map.removeWhere(
+      (key, value) =>
+          key == null ||
+          value == null ||
+          value == '' ||
+          value == 'null',
+    );
 
     try {
-      FormData formData = new FormData.fromMap(map);
+      FormData formData =
+          FormData.fromMap(map);
 
       Response response2 = await dio.post(
         'api/UpdateProfile',
         data: formData,
       );
+
       print(response2.data);
       print(response2.data);
+
       if (response2.statusCode == 200) {
-        userinfo = usermodel.fromJson(response2.data['users']);
-        Dialogs().showtoast('Profile Updated');
-        //Navigator.pushNamed(context, '${AppConstants.Buttom_Navigation}');
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
+
+        Dialogs().showtoast(
+          'Profile Updated',
+        );
       } else {
         print(response2.statusCode);
       }
     } catch (e) {
-      print(e);
-      if (e is DioError) {
-        print(e.response?.data['errNum']);
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {}
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
+      }
     }
+
     print(userinfo);
+
     return userinfo;
   }
 
-  FutureUpdatephoto({photo, context, token, avatar}) async {
+  FutureUpdatephoto({
+    photo,
+    context,
+    token,
+    avatar,
+  }) async {
     var map;
+
     if (photo != null) {
       map = {
-        "image": await MultipartFile.fromFile(photo?.path,
-            filename: photo?.path?.split('/')?.last),
+        "image": await MultipartFile.fromFile(
+          photo?.path,
+          filename:
+              photo?.path?.split('/')?.last,
+        ),
       };
     } else {
       map = {
         "image": avatar,
       };
     }
+
     String image = '';
-    map.removeWhere((key, value) => key == null || value == null);
+
+    map.removeWhere(
+      (key, value) =>
+          key == null ||
+          value == null,
+    );
+
     try {
-      FormData formData = new FormData.fromMap(map);
+      FormData formData =
+          FormData.fromMap(map);
 
       Response response2 = await dio.post(
         'api/Updatephoto',
@@ -1482,97 +2417,205 @@ class userapi extends UserRepository {
 
       if (response2.statusCode == 200) {
         image = response2.data['image'];
-        Dialogs().showtoast('Photo Updated');
-        //Navigator.pushNamed(context, '${AppConstants.Buttom_Navigation}');
+
+        Dialogs().showtoast(
+          'Photo Updated',
+        );
       } else {
         print(response2.statusCode);
       }
     } catch (e) {
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {}
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
+      }
     }
 
     print(userinfo);
+
     return image;
   }
 
   @override
   checklogin(context) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
+    SharedPreferences prefs =
+        await SharedPreferences.getInstance();
+
     Token = prefs.getString('token');
 
     FlutterNativeSplash.remove();
-    // Treat missing OR empty token as logged out
-    if (Token == null || Token!.trim().isEmpty) {
-      Navigator.pushNamed(context, AppConstants.Login_Screan);
+
+    if (Token == null ||
+        Token!.trim().isEmpty) {
+      Navigator.pushNamed(
+        context,
+        AppConstants.Login_Screan,
+      );
     } else {
       try {
-        var datauser = prefs.getString('UserData');
-        if (datauser == null || datauser.isEmpty) {
+        var datauser =
+            prefs.getString('UserData');
+
+        if (datauser == null ||
+            datauser.isEmpty) {
           await prefs.remove('token');
+
           Token = null;
-          Navigator.pushNamed(context, AppConstants.Login_Screan);
+
+          Navigator.pushNamed(
+            context,
+            AppConstants.Login_Screan,
+          );
+
           return;
         }
-        userinfo = usermodel.fromJson(jsonDecode(datauser));
-        UserId = userinfo.id.toString();
-        Provider.of<LoginViewmodel>(context, listen: false)
-            .MyUSERINFO(userinfo);
-        Provider.of<LoginViewmodel>(context, listen: false)
-            .waitingConstDate(context);
 
-        // Always go to home when session is valid
-        Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
+        userinfo =
+            usermodel.fromJson(
+          jsonDecode(datauser),
+        );
 
-        Provider.of<LoginViewmodel>(context, listen: false).userinformation(
+        UserId =
+            userinfo.id.toString();
+
+        Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        ).MyUSERINFO(userinfo);
+
+        Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        ).waitingConstDate(context);
+
+        Navigator.pushNamed(
+          context,
+          AppConstants.Buttom_Navigation,
+        );
+
+        Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        ).userinformation(
           context: context,
         );
       } catch (e) {
-        print('checklogin restore error: $e');
-        if (Token != null && Token!.trim().isNotEmpty) {
-          Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
+        print(
+          'checklogin restore error: $e',
+        );
+
+        if (Token != null &&
+            Token!.trim().isNotEmpty) {
+          Navigator.pushNamed(
+            context,
+            AppConstants.Buttom_Navigation,
+          );
         } else {
-          Navigator.pushNamed(context, AppConstants.Login_Screan);
+          Navigator.pushNamed(
+            context,
+            AppConstants.Login_Screan,
+          );
         }
       }
     }
   }
 
-  SendPhoneCodeResetPassword({context, phonenumber}) {
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-    user.updatesendcodestate(value: 1);
+  SendPhoneCodeResetPassword({
+    context,
+    phonenumber,
+  }) {
+    LoginViewmodel user =
+        Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
+
+    user.updatesendcodestate(
+      value: 1,
+    );
 
     try {
-      print('phone number $phonecode$phonenumber');
+      print(
+        'phone number $phonecode$phonenumber',
+      );
+
       _firebaseAuth.verifyPhoneNumber(
-          phoneNumber: "$phonecode$phonenumber",
-          timeout: Duration(seconds: 30),
-          verificationCompleted: (AuthCredential credential) async {
-            print(credential);
-            print('Code Is Recived');
-          },
-          verificationFailed: (exception) {
-            print(exception.code);
-            Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
-          },
-          codeSent: (String verificationId, [int? forceResendingToken]) {
-            verificationid = verificationId;
-            Provider.of<LoginViewmodel>(context, listen: false).hideSpinner();
-            Navigator.pushNamed(context, AppConstants.OTP_Screan);
-          },
-          codeAutoRetrievalTimeout: (message) {
-            if (user.sendcodestate == 1) {
-              Navigator.pop(context);
-              Dialogs()
-                  .showtoast(getLang(context: context, key: "code_expired"));
-              user.updatesendcodestate(value: 0);
-            }
-          });
+        phoneNumber:
+            "$phonecode$phonenumber",
+        timeout:
+            Duration(seconds: 30),
+        verificationCompleted:
+            (AuthCredential credential) async {
+          print(credential);
+          print('Code Is Recived');
+        },
+        verificationFailed:
+            (exception) {
+          print(exception.code);
+
+          Dialogs().showtoast(
+            getLang(
+              context: context,
+              key: "Phone_valid",
+            ),
+          );
+        },
+        codeSent: (
+          String verificationId,
+          [int? forceResendingToken]
+        ) {
+          verificationid =
+              verificationId;
+
+          Provider.of<LoginViewmodel>(
+            context,
+            listen: false,
+          ).hideSpinner();
+
+          Navigator.pushNamed(
+            context,
+            AppConstants.OTP_Screan,
+          );
+        },
+        codeAutoRetrievalTimeout:
+            (message) {
+          if (user.sendcodestate == 1) {
+            Navigator.pop(context);
+
+            Dialogs().showtoast(
+              getLang(
+                context: context,
+                key: "code_expired",
+              ),
+            );
+
+            user.updatesendcodestate(
+              value: 0,
+            );
+          }
+        },
+      );
     } catch (error) {
-      Dialogs().showtoast(getLang(context: context, key: "Phone_valid"));
+      Dialogs().showtoast(
+        getLang(
+          context: context,
+          key: "Phone_valid",
+        ),
+      );
     }
-    ;
   }
 
   getAllconstant(context) async {
@@ -1597,7 +2640,12 @@ class userapi extends UserRepository {
       );
 
       return response.data;
-    } on DioException catch (exception) {
+    } on DioException catch (
+      exception
+    ) {
+      final apiException =
+          _handleError(exception);
+
       print(
         'GET CONST DATA DIO ERROR: '
         '${exception.type}',
@@ -1618,8 +2666,13 @@ class userapi extends UserRepository {
         '${exception.message}',
       );
 
+      print(apiException);
+
       return null;
-    } catch (exception, stackTrace) {
+    } catch (
+      exception,
+      stackTrace
+    ) {
       print(
         'GET CONST DATA ERROR: '
         '$exception',
@@ -1635,10 +2688,17 @@ class userapi extends UserRepository {
   }
 
   Future getReportImage() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
     if (pickedFile != null) {
-      var Signupimage = File(pickedFile.path);
+      var Signupimage =
+          File(pickedFile.path);
+
       print(Signupimage);
+
       return Signupimage;
     } else {
       print('No image selected.');
@@ -1646,39 +2706,54 @@ class userapi extends UserRepository {
   }
 
   Future getImageGalary() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
+    final pickedFile =
+        await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
     if (pickedFile != null) {
-      var Signupimage = File(pickedFile.path);
+      var Signupimage =
+          File(pickedFile.path);
+
       print(Signupimage);
+
       return Signupimage;
     } else {
       print('No image selected.');
     }
   }
 
-  Future<usermodel> RegesterNewUser(
-      {context,
-      ginder,
-      Flag,
-      city,
-      image,
-      name,
-      phone_number,
-      year,
-      month,
-      day}) async {
+  Future<usermodel> RegesterNewUser({
+    context,
+    ginder,
+    Flag,
+    city,
+    image,
+    name,
+    phone_number,
+    year,
+    month,
+    day,
+  }) async {
     var map;
+
     try {
       if (Gmail == null) {
         map = {
           "name": name.toString(),
-          "phone_number": phone_number.toString(),
+          "phone_number":
+              phone_number.toString(),
           "year": year.toString(),
           "month": month.toString(),
           "day": day.toString(),
-          "image": await MultipartFile.fromFile(image?.path,
-              filename: image?.path?.split('/')?.last),
-          "notifi_token": notifitoken.toString(),
+          "image":
+              await MultipartFile.fromFile(
+            image?.path,
+            filename:
+                image?.path?.split('/')?.last,
+          ),
+          "notifi_token":
+              notifitoken.toString(),
           "city": city.toString(),
           "Flag": Flag.toString(),
           "ginder": ginder.toString(),
@@ -1689,17 +2764,23 @@ class userapi extends UserRepository {
           "year": year.toString(),
           "month": month.toString(),
           "day": day.toString(),
-          "image": await MultipartFile.fromFile(image?.path,
-              filename: image?.path?.split('/')?.last),
-          "notifi_token": notifitoken.toString(),
+          "image":
+              await MultipartFile.fromFile(
+            image?.path,
+            filename:
+                image?.path?.split('/')?.last,
+          ),
+          "notifi_token":
+              notifitoken.toString(),
           "city": city.toString(),
           "Flag": Flag.toString(),
           "ginder": ginder.toString(),
-          'email': Gmail.toString()
+          'email': Gmail.toString(),
         };
       }
 
-      FormData formData = new FormData.fromMap(map);
+      FormData formData =
+          FormData.fromMap(map);
 
       Response response2 = await dio.post(
         '/api/SignUpaccount',
@@ -1707,47 +2788,192 @@ class userapi extends UserRepository {
       );
 
       if (response2.statusCode == 200) {
-        userinfo = usermodel.fromJson(response2.data['users']);
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('token', userinfo.rememperToken.toString());
-        prefs.setString('UserData', jsonEncode(userinfo.toJson()));
-        print(userinfo.rememperToken);
-        Token = userinfo.rememperToken.toString();
-        UserId = userinfo.id.toString();
-        if (userinfo.music != null && userinfo.music != '' && Gmail != null) {
-          Helper().PlaylinkMusic(path: userinfo.music);
+        userinfo =
+            usermodel.fromJson(
+          response2.data['users'],
+        );
+
+        SharedPreferences prefs =
+            await SharedPreferences
+                .getInstance();
+
+        final tokenStr =
+            (userinfo.rememperToken ?? '')
+                .toString();
+
+        await prefs.setString(
+          'token',
+          tokenStr,
+        );
+
+        await prefs.setString(
+          'UserData',
+          jsonEncode(
+            response2.data['users'],
+          ),
+        );
+
+        print(
+          userinfo.rememperToken,
+        );
+
+        Token = tokenStr;
+        UserId =
+            userinfo.id.toString();
+
+        if (userinfo.music != null &&
+            userinfo.music != '' &&
+            Gmail != null) {
+          Helper().PlaylinkMusic(
+            path: userinfo.music,
+          );
         }
 
-        Navigator.pushNamed(context, AppConstants.Buttom_Navigation);
+        Navigator.pushNamed(
+          context,
+          AppConstants.Buttom_Navigation,
+        );
       }
     } catch (e) {
-      print(e);
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'], context);
-      } else {}
+      final exception = _handleError(e);
+      print(exception);
+
+      if (e is DioException) {
+        final responseData = e.response?.data;
+
+        final errNum = responseData is Map
+            ? responseData['errNum']
+            : null;
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
+        }
+      }
     }
 
     return userinfo;
   }
 
-  Future<bool> SignOut({context}) async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    print('Token is ======> $Token');
-    FormData formData = new FormData.fromMap({
-      "user_id": UserId.toString(),
-    });
+  Future<bool> SignOut({
+    context,
+  }) async {
+    final SharedPreferences prefs =
+        await SharedPreferences
+            .getInstance();
 
-    Response response2 = await dio.post(
-      '/api/logout',
-      data: formData,
+    // Save current values BEFORE clearing them.
+    final String logoutUserId =
+        UserId?.toString() ?? '';
+
+    final String logoutToken =
+        Token?.toString() ?? '';
+
+    final String logoutUserIP =
+        UserIP?.toString() ?? '';
+
+    print('');
+    print(
+      '========== LOGOUT ==========',
+    );
+    print(
+      'USER ID: $logoutUserId',
+    );
+    print(
+      'TOKEN PRESENT: '
+      '${logoutToken.isNotEmpty}',
+    );
+    print(
+      'TOKEN LENGTH: '
+      '${logoutToken.length}',
+    );
+    print(
+      'DEVICE ID: $deviceId',
+    );
+    print(
+      'USER IP: $logoutUserIP',
+    );
+    print(
+      'awqeASERQW: 8/325*mAIOEN',
+    );
+    print(
+      '============================',
     );
 
-    if (response2.statusCode == 200) {
-      prefs.remove('token');
-      prefs.remove('uuid');
-      return true;
-    } else {
+    try {
+      final Response response =
+          await dio.post(
+        '/api/logout',
+        data: FormData.fromMap({
+          'user_id': logoutUserId,
+        }),
+        options: Options(
+          headers: {
+            // Keep explicit logout headers.
+            // ApiInterceptors will also apply the same
+            // current session headers automatically.
+            'awqeASERQW': '8/325*mAIOEN',
+            'Authorization': logoutToken,
+            'userid': logoutUserId,
+            'UserIP': logoutUserIP,
+            'DeviceId': deviceId,
+            'Accept': 'application/json',
+          },
+        ),
+      );
+
+      print(
+        'LOGOUT RESPONSE STATUS: '
+        '${response.statusCode}',
+      );
+
+      print(
+        'LOGOUT RESPONSE DATA: '
+        '${response.data}',
+      );
+
+      return response.statusCode == 200 ||
+          response.statusCode == 201;
+    } catch (e) {
+      final exception = _handleError(e);
+
+      print(
+        'LOGOUT ERROR: $exception',
+      );
+
+      if (e is DioException) {
+        print(
+          'LOGOUT STATUS: '
+          '${e.response?.statusCode}',
+        );
+
+        print(
+          'LOGOUT RESPONSE: '
+          '${e.response?.data}',
+        );
+      }
+
       return false;
+    } finally {
+      // Clear local session AFTER the logout request.
+      await prefs.remove('token');
+      await prefs.remove('uuid');
+      await prefs.remove('UserData');
+
+      Token = null;
+      UserId = null;
+      UserIP = null;
+      userinfo = usermodel();
+
+      print(
+        'LOCAL SESSION CLEARED',
+      );
+
+      print(
+        '============================',
+      );
     }
   }
 }

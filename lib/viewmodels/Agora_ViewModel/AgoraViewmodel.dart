@@ -145,33 +145,51 @@ class AgoraViewmodel extends ChangeNotifier {
   }
 
   bool playmusic = false;
-
+bool isAudioMixingActive = false;
   List PlaySong = [];
 
   int index = 0;
 
-  StartAudioMexing({
-    required filePath,
-    required duration,
-    required tittle,
-    required indexsong,
-  }) async {
-    PlaySong.clear();
+  Future<void> StartAudioMexing({
+  required filePath,
+  required duration,
+  required tittle,
+  required indexsong,
+}) async {
+  PlaySong.clear();
 
-    playmusic = true;
+  playmusic = true;
 
-    index = indexsong;
+  index = indexsong;
 
-    PlaySong.add(tittle);
+  PlaySong.add(tittle);
 
-    await _engine?.startAudioMixing(
-      filePath: filePath,
-      loopback: false,
-      cycle: -1,
+  try {
+    if (_engine != null) {
+      await _engine!.startAudioMixing(
+        filePath: filePath,
+        loopback: false,
+        cycle: -1,
+      );
+
+      isAudioMixingActive = true;
+    }
+  } on AgoraRtcException catch (e) {
+    isAudioMixingActive = false;
+
+    debugPrint(
+      '⚠️ startAudioMixing failed: code=${e.code}, message=${e.message}',
     );
+  } catch (e) {
+    isAudioMixingActive = false;
 
-    notifyListeners();
+    debugPrint(
+      '⚠️ startAudioMixing unexpected error: $e',
+    );
   }
+
+  notifyListeners();
+}
 
   next(context) async {
     MusicViewModel music = Provider.of<MusicViewModel>(
@@ -233,59 +251,123 @@ class AgoraViewmodel extends ChangeNotifier {
   }
 
   //
-  stopAudioMexing(context) async {
-    playmusic = false;
+Future<void> stopAudioMexing(context) async {
+  playmusic = false;
 
-    MusicViewModel music = Provider.of<MusicViewModel>(
-      context,
-      listen: false,
+  Provider.of<MusicViewModel>(
+    context,
+    listen: false,
+  );
+
+  if (!isAudioMixingActive) {
+    notifyListeners();
+    return;
+  }
+
+  try {
+    if (_engine != null) {
+      await _engine!.pauseAudioMixing();
+    }
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '⚠️ pauseAudioMixing failed: code=${e.code}, message=${e.message}',
     );
-
-    await _engine?.pauseAudioMixing();
-
-    // music.player.pause();
-
-    notifyListeners();
-  }
-
-  resumAudioMexing(context) async {
-    MusicViewModel music = Provider.of<MusicViewModel>(
-      context,
-      listen: false,
+  } catch (e) {
+    debugPrint(
+      '⚠️ pauseAudioMixing unexpected error: $e',
     );
-
-    playmusic = true;
-
-    await _engine?.resumeAudioMixing();
-
-    // music.player.play();
-
-    notifyListeners();
+  } finally {
+    isAudioMixingActive = false;
   }
 
-  muteusermic(uid) async {
-    await _engine?.muteRemoteAudioStream(
-      uid: uid,
-      mute: true,
+  notifyListeners();
+}
+
+Future<void> resumAudioMexing(context) async {
+  Provider.of<MusicViewModel>(
+    context,
+    listen: false,
+  );
+
+  try {
+    if (_engine != null) {
+      await _engine!.resumeAudioMixing();
+      isAudioMixingActive = true;
+      playmusic = true;
+    }
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '⚠️ resumeAudioMixing failed: code=${e.code}, message=${e.message}',
     );
-
-    notifyListeners();
-  }
-
-  unmuteusermic(uid) async {
-    await _engine?.muteRemoteAudioStream(
-      uid: uid,
-      mute: false,
+  } catch (e) {
+    debugPrint(
+      '⚠️ resumeAudioMixing unexpected error: $e',
     );
-
-    notifyListeners();
   }
 
-  pauseAudioMixing() async {
-    await _engine?.pauseAudioMixing();
+  notifyListeners();
+}
 
-    notifyListeners();
+Future<void> muteusermic(uid) async {
+  try {
+    if (_engine != null) {
+      await _engine!.muteRemoteAudioStream(
+        uid: uid,
+        mute: true,
+      );
+    }
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '⚠️ muteRemoteAudioStream failed: code=${e.code}, message=${e.message}',
+    );
+  } catch (e) {
+    debugPrint(
+      '⚠️ muteRemoteAudioStream unexpected error: $e',
+    );
   }
+
+  notifyListeners();
+}
+
+Future<void> unmuteusermic(uid) async {
+  try {
+    if (_engine != null) {
+      await _engine!.muteRemoteAudioStream(
+        uid: uid,
+        mute: false,
+      );
+    }
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '⚠️ unmuteRemoteAudioStream failed: code=${e.code}, message=${e.message}',
+    );
+  } catch (e) {
+    debugPrint(
+      '⚠️ unmuteRemoteAudioStream unexpected error: $e',
+    );
+  }
+
+  notifyListeners();
+}
+
+Future<void> pauseAudioMixing() async {
+  try {
+    if (_engine != null) {
+      await _engine!.pauseAudioMixing();
+    }
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '⚠️ pauseAudioMixing failed: code=${e.code}, message=${e.message}',
+    );
+  } catch (e) {
+    debugPrint(
+      '⚠️ pauseAudioMixing unexpected error: $e',
+    );
+  }
+
+  notifyListeners();
+}
+
 
   resumeAudioMixing() async {
     await _engine?.resumeAudioMixing();

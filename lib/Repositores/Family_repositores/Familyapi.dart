@@ -1,5 +1,3 @@
-
-
 import 'dart:io';
 
 import 'package:ahlachat/Repositores/Moment_repositores/Moment_repository.dart';
@@ -7,501 +5,539 @@ import 'package:ahlachat/models/FamilyModel.dart';
 import 'package:ahlachat/models/FamilyRequest.dart';
 import 'package:ahlachat/models/FamilyRequestModel.dart';
 import 'package:ahlachat/models/Leaderboardusermodel.dart';
-import 'package:ahlachat/models/RoomModel.dart';
 import 'package:ahlachat/models/Usermodel.dart';
-import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
+
 class Familyapi extends MomentRepository {
+  final Dio _dio = ApiClient.instance.dio;
 
-  @override
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Connection': 'Keep-Alive',
-        'Authorization':Token,
-        'awqeASERQW':'8/325*mAIOEN',
-        'userid':UserId.toString(),
-        'UserIP':UserIP,
-      },
-    ),
-  );
-  List<FamilyModel> AllFamily=[];
-  FamilyModel  FamilyProfile=FamilyModel();
+  final List<FamilyModel> AllFamily = [];
+  FamilyModel FamilyProfile = FamilyModel();
 
-  List<FamilyRequest>RequestesFamily=[];
-  List<usermodel> FamilyMembers=[];
-  final ImagePicker _picker= ImagePicker();
-  Future<List<FamilyModel>>  SearchFamily( tittle)async {
+  final List<FamilyRequest> RequestesFamily = [];
+  final List<usermodel> FamilyMembers = [];
 
+  final ImagePicker _picker = ImagePicker();
+
+  ApiException _handleError(dynamic error) {
+    if (error is DioException) {
+      final response = error.response;
+
+      return ApiException(
+        statusCode: response?.statusCode,
+        message: response?.data?['message']?.toString() ??
+            response?.data?['error']?.toString() ??
+            error.message ??
+            'Something went wrong',
+        data: response?.data,
+      );
+    }
+
+    return ApiException(
+      message: error.toString(),
+      data: error,
+    );
+  }
+
+  Future<List<FamilyModel>> SearchFamily(tittle) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/SearchFAmily/$tittle',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Family'];
-        list.forEach((element) {
-          AllFamily.add(FamilyModel.fromJson(element));
-        });
+      final List list = response.data['Family'] ?? [];
 
+      AllFamily.clear();
+
+      for (final element in list) {
+        AllFamily.add(
+          FamilyModel.fromJson(element),
+        );
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return AllFamily;
-
   }
+
   Future getImageGalary() async {
-    final pickedFile = await _picker.pickImage(source: ImageSource.gallery);
-    if (pickedFile!= null) {
-      var  Signupimage = File(pickedFile.path);
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+    );
+
+    if (pickedFile != null) {
+      final Signupimage = File(pickedFile.path);
+
       print(Signupimage);
+
       return Signupimage;
     } else {
       print('No image selected.');
     }
   }
-  Future<ListoflEaderboardcategory?>GetMembersLeaderboard( id)async {
-    ListoflEaderboardcategory ? Leaderboardsupported;
+
+  Future<ListoflEaderboardcategory?> GetMembersLeaderboard(id) async {
+    ListoflEaderboardcategory? Leaderboardsupported;
+
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetFamilyStar/$id',
       );
-      if (response2.statusCode == 200) {
 
-
-        Leaderboardsupported=ListoflEaderboardcategory.fromJson(response2.data['Leaderboard']['supporter']);
-
-
-
-      }
+      Leaderboardsupported =
+          ListoflEaderboardcategory.fromJson(
+        response.data['Leaderboard']['supporter'],
+      );
     } catch (e) {
-print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
-    return Leaderboardsupported ;
-
+    return Leaderboardsupported;
   }
-  Future<FamilyModel>  GetFamilyProfile({id})async {
 
-
+  Future<FamilyModel> GetFamilyProfile({id}) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetFamilyProfile/$id',
       );
-print(response2.data);
-      if (response2.statusCode == 200) {
 
+      print(response.data);
 
-
-          FamilyProfile=FamilyModel.fromJson(response2.data['Family'] );
-
-
-      }
+      FamilyProfile = FamilyModel.fromJson(
+        response.data['Family'],
+      );
     } catch (e) {
-print(e);
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return FamilyProfile;
-
   }
 
-
-
-
-  Future<List<FamilyRequest>>  GetFamilyRequest( id)async {
-
-
+  Future<List<FamilyRequest>> GetFamilyRequest(id) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetRequestFamily/$id',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Families'] ;
+      final List list = response.data['Families'] ?? [];
 
-        list.forEach((element) {
-          RequestesFamily.add(FamilyRequest.fromJson(element));
-        });
+      RequestesFamily.clear();
 
+      for (final element in list) {
+        RequestesFamily.add(
+          FamilyRequest.fromJson(element),
+        );
       }
     } catch (e) {
-      print(e);
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return RequestesFamily;
-
   }
-  Future<List<usermodel>>  GetFamilyMembers( id)async {
 
-
+  Future<List<usermodel>> GetFamilyMembers(id) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetFamilyMembers/$id',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['users'] ;
+      final List list = response.data['users'] ?? [];
 
-        list.forEach((element) {
-          FamilyMembers.add(usermodel.fromJson(element));
-        });
+      FamilyMembers.clear();
 
+      for (final element in list) {
+        FamilyMembers.add(
+          usermodel.fromJson(element),
+        );
       }
     } catch (e) {
-      print(e);
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return FamilyMembers;
-
   }
 
-
-  Future<bool>  EditFamilyNames( id,name)async {
-
-
-    var send=false;
+  Future<bool> EditFamilyNames(id, name) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/EditFamilyyName/$id/$name',
       );
 
-      if (response2.statusCode == 200) {
-       send=true;
-      }
+      return response.statusCode == 200;
     } catch (e) {
-      print(e);
-      send=false;
+      final exception = _handleError(e);
+      print(exception);
+
+      return false;
     }
-
-    return send;
-
   }
-  Future<bool>  ExchangeFamily( id)async {
 
-
-    var send=false;
+  Future<bool> ExchangeFamily(id) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/ExchangeFamilyCoins/$id',
       );
 
-      if (response2.statusCode == 200) {
-        send=true;
-      }
+      return response.statusCode == 200;
     } catch (e) {
-      print(e);
-      send=false;
+      final exception = _handleError(e);
+      print(exception);
+
+      return false;
     }
-
-    return send;
-
   }
-  Future<bool> SentjoinRequesr({ context,  familyid}) async {
 
-    var send=true;
+  Future<bool> SentjoinRequesr({
+    context,
+    familyid,
+  }) async {
+    var send = true;
+
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":UserId,
-        "Family_id": familyid.toString(),
-
+      final formData = FormData.fromMap({
+        'user_id': UserId,
+        'Family_id': familyid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/joinFamily',
         data: formData,
       );
-print(response2.data);
-      if (response2.statusCode == 200) {
-        LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
 
-        FamilyRequestModel Requtest  = FamilyRequestModel.fromJson(response2.data['Families'])  ;
-        user.AddFamilyRequest(Requtest.familyId??0);
+      print(response.data);
+
+      if (response.statusCode == 200) {
+        final LoginViewmodel user =
+            Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        );
+
+        final FamilyRequestModel Requtest =
+            FamilyRequestModel.fromJson(
+          response.data['Families'],
+        );
+
+        user.AddFamilyRequest(
+          Requtest.familyId ?? 0,
+        );
+
         print(Requtest.id);
-        send=true;
-       }else{
 
-        send=false;
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
+      send = false;
     }
 
     return send;
   }
-  Future<FamilyModel> CreateFamily({ context,name,describtion,image}) async {
 
-    FamilyModel Requtest=FamilyModel();
+  Future<FamilyModel> CreateFamily({
+    context,
+    name,
+    describtion,
+    image,
+  }) async {
+    FamilyModel Requtest = FamilyModel();
+
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":UserId,
-        "image":await MultipartFile.fromFile(image?.path, filename: image?.path?.split('/')?.last),
-
-        "describtion": describtion.toString(),
-        "name": name.toString(),
+      final formData = FormData.fromMap({
+        'user_id': UserId,
+        'image': await MultipartFile.fromFile(
+          image?.path,
+          filename: image?.path?.split('/').last,
+        ),
+        'describtion': describtion.toString(),
+        'name': name.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/CreateFamily',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
 
+      print(response.data);
 
-         Requtest  = FamilyModel.fromJson(response2.data['Families'])  ;
-
-         
+      if (response.statusCode == 200) {
+        Requtest = FamilyModel.fromJson(
+          response.data['Families'],
+        );
       }
     } catch (e) {
-      print(e);
-
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return Requtest;
   }
 
+  Future<bool> LeaveMyFamily({
+    context,
+    familyid,
+  }) async {
+    var send = true;
 
-  Future<bool> LeaveMyFamily({ context,  familyid}) async {
-
-    var send=true;
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":UserId,
-        "Family_id": familyid.toString(),
-
+      final formData = FormData.fromMap({
+        'user_id': UserId,
+        'Family_id': familyid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/LeaveFamily',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
-        LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
+
+      print(response.data);
+
+      if (response.statusCode == 200) {
+        final LoginViewmodel user =
+            Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        );
 
         user.LeaveFamily(familyid);
 
-        send=true;
-
-      }else{
-
-        send=false;
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
-
+      send = false;
     }
 
     return send;
   }
-  Future<bool> RemoveFamilyMember({ userid,  familyid}) async {
 
-    var send=true;
+  Future<bool> RemoveFamilyMember({
+    userid,
+    familyid,
+  }) async {
+    var send = true;
+
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":userid,
-        "Family_id": familyid.toString(),
-
+      final formData = FormData.fromMap({
+        'user_id': userid,
+        'Family_id': familyid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/LeaveFamily',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
 
+      print(response.data);
 
-
-
-        send=true;
-       }else{
-
-        send=false;
+      if (response.statusCode == 200) {
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
-
+      send = false;
     }
 
     return send;
   }
-  Future<bool> AcceptFamilyRequest({   joinid}) async {
 
-    var send=true;
+  Future<bool> AcceptFamilyRequest({
+    joinid,
+  }) async {
+    var send = true;
+
     try {
-      FormData formData =   FormData.fromMap({
-
-        "join_id": joinid.toString(),
-
+      final formData = FormData.fromMap({
+        'join_id': joinid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/Acceptjoin',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
 
+      print(response.data);
 
-        send=true;
-
-      }else{
-
-        send=false;
+      if (response.statusCode == 200) {
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
-     
+      send = false;
     }
 
     return send;
   }
 
+  Future<bool> RemoveAdmin({
+    context,
+    familyid,
+    id,
+  }) async {
+    var send = true;
 
-
-  Future<bool> RemoveAdmin({ context,  familyid,id}) async {
-
-    var send=true;
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":id.toString(),
-        "Family_id": familyid.toString(),
-
+      final formData = FormData.fromMap({
+        'user_id': id.toString(),
+        'Family_id': familyid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/RemoveAdmin',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
 
+      print(response.data);
 
-
-
-        send=true;
-         
-      }else{
-
-        send=false;
+      if (response.statusCode == 200) {
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
+      send = false;
     }
 
     return send;
   }
 
-  Future<bool> AddAdmin({ context,  familyid,id}) async {
+  Future<bool> AddAdmin({
+    context,
+    familyid,
+    id,
+  }) async {
+    var send = true;
 
-    var send=true;
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":id.toString(),
-        "Family_id": familyid.toString(),
-
+      final formData = FormData.fromMap({
+        'user_id': id.toString(),
+        'Family_id': familyid.toString(),
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/AddAdmins',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
-        LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
 
+      print(response.data);
 
+      if (response.statusCode == 200) {
+        final LoginViewmodel user =
+            Provider.of<LoginViewmodel>(
+          context,
+          listen: false,
+        );
 
-        send=true;
-         
-      }else{
-
-        send=false;
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
+      send = false;
     }
 
     return send;
   }
-  Future<bool> CanclejoinRequesr({    Familyid}) async {
 
-    var send=true;
+  Future<bool> CanclejoinRequesr({
+    Familyid,
+  }) async {
+    var send = true;
+
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":UserId,
-        "family_id":Familyid,
-
+      final formData = FormData.fromMap({
+        'user_id': UserId,
+        'family_id': Familyid,
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/Canclejoin',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
 
-        send=true;
-       }else{
+      print(response.data);
 
-        send=false;
+      if (response.statusCode == 200) {
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
-
+      send = false;
     }
 
     return send;
   }
-  Future<bool> CancleMemberjoinRequesr({    Familyid,userid}) async {
 
-    var send=true;
+  Future<bool> CancleMemberjoinRequesr({
+    Familyid,
+    userid,
+  }) async {
+    var send = true;
+
     try {
-      FormData formData =   FormData.fromMap({
-        "user_id":userid,
-        "family_id":Familyid,
-
+      final formData = FormData.fromMap({
+        'user_id': userid,
+        'family_id': Familyid,
       });
 
-      Response response2 = await dio.post(
+      final response = await _dio.post(
         'api/Canclejoin',
         data: formData,
       );
-      print(response2.data);
-      if (response2.statusCode == 200) {
 
-        send=true;
-      }else{
+      print(response.data);
 
-        send=false;
+      if (response.statusCode == 200) {
+        send = true;
+      } else {
+        send = false;
       }
     } catch (e) {
-      print(e);
+      final exception = _handleError(e);
+      print(exception);
 
-
+      send = false;
     }
 
     return send;
   }
-
 }

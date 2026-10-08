@@ -1,369 +1,310 @@
-
 import 'package:ahlachat/models/JoinRequestModel.dart';
 import 'package:ahlachat/models/Leaderboardusermodel.dart';
+import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
-import 'package:dio/dio.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/AgencyModel.dart';
 import '../../models/Joinagency.dart';
 import '../../models/Usermodel.dart';
-import '../../util/Dialogs.dart';
-import '../../util/app_constants.dart';
+import '../../core/network/api_client.dart';
 import '../Moment_repositores/Moment_repository.dart';
 
-int Indexxx=2;
-int Indexxx2=2;
+int Indexxx = 2;
+int Indexxx2 = 2;
+
 class Agencyapi extends MomentRepository {
-  List<Agencymodel> Agences=[];
-  List<joinagincy> joinagincys=[];
-  List<usermodel> useragincys=[];
-  List<Agencymodel> Searchagency=[];
-  @override
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Connection': 'Keep-Alive',
-        'Authorization':Token,
-        'awqeASERQW':'8/325*mAIOEN',
-        'userid':UserId.toString(),
-        'UserIP':UserIP,
-      },
-    ),
-  );
-  Future<bool>  EditAgencyNames( id,name)async {
+  final _dio = ApiClient.instance.dio;
 
+  final List<Agencymodel> Agences = [];
+  final List<joinagincy> joinagincys = [];
+  final List<usermodel> useragincys = [];
+  final List<Agencymodel> Searchagency = [];
+  final List<JoinRequestModel> JoinRequestes = [];
 
-    var send=false;
+  AgencyLeaderBoard Leader = AgencyLeaderBoard();
+
+  Future<bool> EditAgencyNames(id, name) async {
     try {
-      Response response2 = await dio.get(
+      await _dio.get(
         '/api/EditAgencyName/$id/$name',
       );
 
-      if (response2.statusCode == 200) {
-        send=true;
-      }
+      return true;
     } catch (e) {
       print(e);
-      send=false;
+      return false;
     }
-
-    return send;
-
   }
 
-  List<JoinRequestModel> JoinRequestes=[];
-  Future<List<JoinRequestModel>>  GetJoinRequests({id})async {
-
+  Future<List<JoinRequestModel>> GetJoinRequests({id}) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetJoinRequests/$id',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['request'];
-        list.forEach((element) {
-          JoinRequestes.add(JoinRequestModel.fromJson(element));
-        });
+      final List list = response.data['request'] ?? [];
 
+      JoinRequestes.clear();
+
+      for (final element in list) {
+        JoinRequestes.add(
+          JoinRequestModel.fromJson(element),
+        );
       }
     } catch (e) {
       print(e);
     }
 
     return JoinRequestes;
-
   }
 
-  Future<bool> AcceptJoinRequests({id})async{
-    bool suceed=false;
+  Future<bool> AcceptJoinRequests({id}) async {
     try {
-
-      Response response2 = await dio.get(
+      await _dio.get(
         '/api/AcceptJoinRequests/$id',
       );
-      if (response2.statusCode == 200 || response2.statusCode == 201) {
 
-
-        suceed=true;
-
-
-      }else{
-        suceed=false;
-      }
-
+      return true;
     } catch (e) {
-      suceed=false;
-
+      print(e);
+      return false;
     }
-
-
-    return suceed;
-
   }
 
-  Future<bool> refuseJoinRequests({id})async{
-    bool suceed=false;
+  Future<bool> refuseJoinRequests({id}) async {
     try {
-
-      Response response2 = await dio.get(
+      await _dio.get(
         '/api/refuseJoinRequests/$id',
       );
-      if (response2.statusCode == 200 || response2.statusCode == 201) {
 
-
-        suceed=true;
-
-
-      }else{
-        suceed=false;
-      }
-
+      return true;
     } catch (e) {
-      suceed=false;
-
+      print(e);
+      return false;
     }
-
-
-    return suceed;
-
   }
 
+  Future<List<Agencymodel>> Agency(context) async {
+    Indexxx = 2;
 
-  Future<List<Agencymodel>>  Agency(context)async {
-
-    Indexxx=2;
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetAgency',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Agency']['data'];
+      final List list = response.data['Agency']['data'] ?? [];
 
-        list.forEach((element) {
-          Agences.add(Agencymodel.fromJson(element));
-        });
+      Agences.clear();
 
+      for (final element in list) {
+        Agences.add(
+          Agencymodel.fromJson(element),
+        );
       }
     } catch (e) {
       print(e);
     }
 
     return Agences;
-
   }
 
-  Future<List<Agencymodel>>  AgencyImportant(context)async {
-
-
+  Future<List<Agencymodel>> AgencyImportant(context) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetImportantAgancy',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Agency'];
+      final List list = response.data['Agency'] ?? [];
 
-        list.forEach((element) {
-          Agences.add(Agencymodel.fromJson(element));
-        });
+      Agences.clear();
 
+      for (final element in list) {
+        Agences.add(
+          Agencymodel.fromJson(element),
+        );
       }
     } catch (e) {
       print(e);
     }
 
     return Agences;
-
   }
 
-  Future<List<usermodel>>  JoinAgency({context, id})async {
+  Future<List<usermodel>> JoinAgency({
+    context,
+    id,
+  }) async {
+    Indexxx2 = 2;
 
-    Indexxx2=2;
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetJoinAgency/$id/$UserId',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Agency']['Members']['data'];
-        Provider.of<LoginViewmodel>(context,listen: false).updateMenuit(response2.data['Agency']['menuit']);
-        list.forEach((element) {
-          useragincys.add(usermodel.fromJson(element));
-        });
+      final List list =
+          response.data['Agency']['Members']['data'] ?? [];
 
+      useragincys.clear();
+
+      Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      ).updateMenuit(
+        response.data['Agency']['menuit'],
+      );
+
+      for (final element in list) {
+        useragincys.add(
+          usermodel.fromJson(element),
+        );
       }
     } catch (e) {
       print(e);
     }
 
     return useragincys;
-
   }
-  Future<List<Agencymodel>>  AddmoreAgency(context)async {
-     try {
-      Response response2 = await dio.get(
-        '/api/GetAgency?page=${Indexxx.toString()}',
+
+  Future<List<Agencymodel>> AddmoreAgency(context) async {
+    try {
+      final response = await _dio.get(
+        '/api/GetAgency?page=$Indexxx',
       );
 
-      if (response2.statusCode == 200) {
+      final List list = response.data['Agency']['data'] ?? [];
 
-        List list =response2.data['Agency']['data'];
-
-        if(list.isNotEmpty){
-          Indexxx=Indexxx+1;
-
-        }
-        print("INDEX IS $Indexxx");
-        list.forEach((element){
-          Agences.add(Agencymodel.fromJson(element));
-        });
-        print(Agences);
+      if (list.isNotEmpty) {
+        Indexxx++;
       }
+
+      print('INDEX IS $Indexxx');
+
+      for (final element in list) {
+        Agences.add(
+          Agencymodel.fromJson(element),
+        );
+      }
+
+      print(Agences);
     } catch (e) {
-       print(e);
+      print(e);
     }
 
     return Agences;
-
   }
-  Future<List<usermodel>>  AddmoreAgencyMembers(context,id)async {
-     try {
-      Response response2 = await dio.get(
-        '/api/GetJoinAgency/${id.toString()}?page=${Indexxx2.toString()}',
+
+  Future<List<usermodel>> AddmoreAgencyMembers(
+    context,
+    id,
+  ) async {
+    try {
+      final response = await _dio.get(
+        '/api/GetJoinAgency/$id?page=$Indexxx2',
       );
 
-      if (response2.statusCode == 200) {
+      final List list = response.data['Agency']['data'] ?? [];
 
-        List list =response2.data['Agency']['data'];
-        print('Getten List is list');
-        print(list);
-        print('Getten List is list');
-        if(list.isNotEmpty){
-          Indexxx2=Indexxx2+1;
-          print("INDEX IS $Indexxx2");
-          print("INDEX IS ${Indexxx2+1}");
-        }
-        print("INDEX IS $Indexxx2");
-        list.forEach((element){
-          useragincys.add(usermodel.fromJson(element));
-        });
-        print(joinagincys);
+      print('Getten List is list');
+      print(list);
+
+      if (list.isNotEmpty) {
+        Indexxx2++;
+        print('INDEX IS $Indexxx2');
       }
+
+      for (final element in list) {
+        useragincys.add(
+          usermodel.fromJson(element),
+        );
+      }
+
+      print('INDEX IS $Indexxx2');
     } catch (e) {
-       print(e);
+      print(e);
     }
 
     return useragincys;
-
   }
 
-  Future<List<Agencymodel>>  SearchAgency({tittle})async {
-
+  Future<List<Agencymodel>> SearchAgency({tittle}) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/SearchAgency/$tittle',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Agency'];
-        list.forEach((element) {
-          Searchagency.add(Agencymodel.fromJson(element));
-        });
+      final List list = response.data['Agency'] ?? [];
 
+      Searchagency.clear();
+
+      for (final element in list) {
+        Searchagency.add(
+          Agencymodel.fromJson(element),
+        );
       }
     } catch (e) {
       print(e);
     }
 
     return Searchagency;
-
   }
 
-  AgencyLeaderBoard Leader=AgencyLeaderBoard();
-  Future<AgencyLeaderBoard>  GetAgencyLeaderBoard(context,tittle)async {
-
+  Future<AgencyLeaderBoard> GetAgencyLeaderBoard(
+    context,
+    tittle,
+  ) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/AgencysLeaderBoard',
       );
 
-      if (response2.statusCode == 200) {
-
-
-        Leader=AgencyLeaderBoard.fromJson(response2.data['Leaderboard']);
-      }
+      Leader = AgencyLeaderBoard.fromJson(
+        response.data['Leaderboard'],
+      );
     } catch (e) {
       print(e);
     }
 
     return Leader;
-
   }
 
-
-  Future<bool> LeaveAgency({context,Agancyid}) async {
-    bool check=false;
+  Future<bool> LeaveAgency({
+    context,
+    Agancyid,
+  }) async {
     try {
-      FormData formData = new FormData.fromMap({
-        "user_id": UserId.toString(),
-        "agancy_id": Agancyid.toString(),
-
-      });
-
-      Response response2 = await dio.post(
-        'api/LeaveAgency',
-        data: formData,
+      final response = await _dio.post(
+        '/api/LeaveAgency',
+        data: {
+          'user_id': UserId.toString(),
+          'agancy_id': Agancyid.toString(),
+        },
       );
 
-      if (response2.statusCode == 200) {
-         
-        check=true;
-
-      }else{
-
-        check=false;
-      }
+      return response.statusCode == 200;
     } catch (e) {
-      check=false;
       print(e);
+      return false;
     }
-
-    return check;
   }
 
-  Future<bool> RequsetJoinAgency({context,Agancyid}) async {
-    bool check=false;
+  Future<bool> RequsetJoinAgency({
+    context,
+    Agancyid,
+  }) async {
     try {
-      FormData formData = new FormData.fromMap({
-        "user_id": UserId.toString(),
-        "agancy_id": Agancyid.toString(),
-
-      });
-
-      Response response2 = await dio.post(
-        'api/RequestJoinAgency',
-        data: formData,
+      final response = await _dio.post(
+        '/api/RequestJoinAgency',
+        data: {
+          'user_id': UserId.toString(),
+          'agancy_id': Agancyid.toString(),
+        },
       );
 
-      if (response2.statusCode == 200) {
-         
-        check=true;
-
-      }else{
-
-        check=false;
-      }
+      return response.statusCode == 200;
     } catch (e) {
-      check=false;
       print(e);
-
+      return false;
     }
-
-    return check;
   }
-
 }

@@ -4,11 +4,11 @@ import 'package:ahlachat/util/images.dart';
 import 'package:ahlachat/util/styles.dart';
 import 'package:ahlachat/view/Screans/MainScreans/MessageScrean/MessageScrean.dart';
 import 'package:ahlachat/view/Screans/SearchScrean/SearchScrean.dart';
-import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:tab_indicator_styler/tab_indicator_styler.dart';
+
 class MessageTaps extends StatefulWidget {
   const MessageTaps({Key? key}) : super(key: key);
 
@@ -16,144 +16,111 @@ class MessageTaps extends StatefulWidget {
   State<MessageTaps> createState() => _MessageTapsState();
 }
 
-class _MessageTapsState extends State<MessageTaps>with SingleTickerProviderStateMixin{
-
-
-  int ?viewicon=0;
-  late TabController _tabController;
-  bool _swipeIsInProgress = false;
-  bool _tapIsBeingExecuted = false;
-  int _selectedIndex = 0;
-  int _prevIndex = 1;
-
+class _MessageTapsState extends State<MessageTaps>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
 
   @override
   void initState() {
     super.initState();
 
+    _tabController = TabController(
+      length: 1,
+      initialIndex: 0,
+      vsync: this,
+    );
+  }
 
-    _tabController = TabController(initialIndex: _selectedIndex, length: 1, vsync: this);
-    _tabController.animation?.addListener(() {
-      print(_tabController.index);
-      if (!_tapIsBeingExecuted &&
-          !_swipeIsInProgress &&
-          (_tabController.offset >= 0.5 || _tabController.offset <= -0.5)) {
-        // detects if a swipe is being executed. limits set to 0.5 and -0.5 to make sure the swipe gesture triggered
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
-        int newIndex = _tabController.offset > 0 ? _tabController.index + 1 : _tabController.index - 1;
+  void _openSearch() {
+    final room = Provider.of<RoomViewmodel>(
+      context,
+      listen: false,
+    );
 
-        _swipeIsInProgress = true;
-        _prevIndex = _selectedIndex;
-        setState(() {
-          _selectedIndex = newIndex;
-          viewicon=newIndex;
-        });
-        print(_selectedIndex);
-        // if(_selectedIndex==1){
-        //
-        // }
+    room.SearchController.clear();
+    room.SearchRooms.clear();
 
-      } else {
-        if (!_tapIsBeingExecuted &&
-            _swipeIsInProgress &&
-            ((_tabController.offset < 0.5 && _tabController.offset > 0) ||
-                (_tabController.offset > -0.5 && _tabController.offset < 0))) {
-          // detects if a swipe is being reversed. the
-
-          _swipeIsInProgress = false;
-          setState(() {
-            _selectedIndex = _prevIndex;
-          });
-        }
-      }
-    });
-    _tabController.addListener(() {
-      _swipeIsInProgress = false;
-      setState(() {
-        _selectedIndex = _tabController.index;
-      });
-      if (_tapIsBeingExecuted == true) {
-        _tapIsBeingExecuted = false;
-      } else {
-        if (_tabController.indexIsChanging) {
-          // this is only true when the tab is changed via tap
-          _tapIsBeingExecuted = true;
-        }
-      }
-    });
+    navigateTo(
+      context: context,
+      screen: SearchScrean(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    RoomViewmodel Room=  Provider.of<RoomViewmodel>(context,listen: true);
+    return Scaffold(
+      backgroundColor: Colors.transparent,
 
-    return DefaultTabController(
-      length:1,
-      child: Scaffold(backgroundColor: Colors.transparent
-          ,appBar: AppBar(backgroundColor: Colors.transparent,titleSpacing: 0,automaticallyImplyLeading: false,
-        title:  Builder(
-            builder: (context) {
-              return Row(mainAxisAlignment: MainAxisAlignment.start,
-                children: [
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 0,
+        automaticallyImplyLeading: false,
 
-                  Expanded(
-                    child: TabBar(  indicator: MaterialIndicator(
-                      height: 5,
-                      topLeftRadius: 0,
-                      topRightRadius: 0,
-                      bottomLeftRadius: 5,horizontalPadding: 25,
-                      bottomRightRadius: 5,
-                      tabPosition: TabPosition.bottom,
+        title: Row(
+          children: [
+            Expanded(
+              child: TabBar(
+                controller: _tabController,
+
+                // There is only one tab.
+                // Do not make the TabBar horizontally scrollable.
+                isScrollable: false,
+
+                indicator: MaterialIndicator(
+                  height: 5,
+                  topLeftRadius: 0,
+                  topRightRadius: 0,
+                  bottomLeftRadius: 5,
+                  bottomRightRadius: 5,
+
+                  // Keep this safely below half of the tab width.
+                  horizontalPadding: 8,
+
+                  tabPosition: TabPosition.bottom,
+                ),
+
+                labelStyle: style2,
+                labelColor: Colors.black,
+                unselectedLabelColor: Colors.black45,
+
+                tabs: [
+                  Tab(
+                    text: getLang(
+                      context: context,
+                      key: "Messages",
                     ),
-                        isScrollable: true,controller: _tabController,
-                        labelStyle: style2,
-                        unselectedLabelColor: Colors.black45,
-                        labelColor: Colors.black,
-                        onTap: (val){
-
-                          viewicon=val;
-
-                          setState(() {
-
-                          });
-                        },
-
-                        tabs:    [
-                          Tab(
-                            text: getLang( context: context, key: "Messages"),
-                          ),
-
-
-                        ]
-                    ),
-                  ),
-
-                  //   if(viewicon==1)
-
-                    IconButton(
-                    icon: Image.asset(Images.SearchIcon,height: 25),
-                    onPressed: (){
-                      Room.SearchController.clear();
-                      Room.SearchRooms.clear();
-                      navigateTo(context: context,screen: SearchScrean());
-
-                    },
                   ),
                 ],
-              );
-            }
+              ),
+            ),
+
+            IconButton(
+              icon: Image.asset(
+                Images.SearchIcon,
+                height: 25,
+              ),
+              onPressed: _openSearch,
+            ),
+          ],
         ),
       ),
-          body:  Padding(
-            padding: const EdgeInsets.only(top: 10),
-            child: TabBarView(controller: _tabController,children: [
-              MessageScrean(),
 
-            ],),
-          )
+      body: Padding(
+        padding: const EdgeInsets.only(top: 10),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            MessageScrean(),
+          ],
+        ),
       ),
-
     );
   }
-
 }

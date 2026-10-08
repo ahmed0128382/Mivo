@@ -10,122 +10,413 @@ import 'package:ahlachat/util/styles.dart';
 import 'package:badges/badges.dart' as badges;
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:provider/provider.dart';
-class MessageScrean extends StatefulWidget {
 
-var kind;
-  MessageScrean({this.kind});
+class MessageScrean extends StatefulWidget {
+  final dynamic kind;
+
+  const MessageScrean({
+    Key? key,
+    this.kind,
+  }) : super(key: key);
+
   @override
   State<MessageScrean> createState() => _MessageScreanState();
 }
 
 class _MessageScreanState extends State<MessageScrean> {
-
   @override
   Widget build(BuildContext context) {
-    InboxroomViewModel    Inboxrooms= Provider.of<InboxroomViewModel>(context,listen: true);
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: true);
-
-    return RefreshIndicator(
-        onRefresh: () async{
-          Provider.of<InboxroomViewModel>(context,listen: false).GetInboxroom(context: context);
-        },
-        child: CustomScrollView( physics: BouncingScrollPhysics(),
-          slivers: [
-            SliverPadding(padding: EdgeInsets.symmetric(vertical: 10)),
-            SliverToBoxAdapter(child:Column(
-              children:List.generate(Inboxrooms.Inboxrooms.length, (index){
-                List<InboxRoomModel> sortedchat=Inboxrooms.Inboxrooms..sort((a, b) => a.updatedAt!.compareTo(b.updatedAt!),) ;
-                List<InboxRoomModel> Chat=sortedchat.reversed.toList();
-                return  InkWell(onLongPress: (){
-                  showDialog(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        backgroundColor: Colors.white,
-                        content: Column(mainAxisSize: MainAxisSize.min,
-                          mainAxisAlignment: MainAxisAlignment.start,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                          Text('World Team',style: style2.copyWith(fontSize: 20),),
-                           SizedBox(height: 10,),
-                           InkWell(onTap: (){
-                             Navigator.pop(context);
-                             Inboxrooms.DeleteInboxroom(context: context,inboxid:Chat[index].id );
-                           },child: Text(getLang(context: context,key: "Delete_Conv"),style: style5.copyWith(fontSize: 15),)),
-                          SizedBox(height: 10,),
-                            InkWell(onTap: (){
-                              Navigator.pop(context);
-
-                              Inboxrooms.DeleteAndBlockUserInboxroom(context: context,inboxid:Chat[index].id );
-                            },child: Text(getLang(context: context,key: "Block_User"),style: style5.copyWith(fontSize: 15),)),
-
-                          ],
-                        ),
-                      )
-                  );
-                },
-
-                  onTap:() {
-
-                    Inboxrooms. ReadInboxRoom(id:Chat[index].id ,context: context);
-                    Provider.of<InboxroomViewModel>(context,listen: false).textEditingController.clear();
-                    Chat[index].numberUnread=0;
-                    user.RemoveMessage();
-                    navigateTo(context: context, screen: ChatScrean(InboxContent: Chat[index]));
-                  },
-                  child: Container(width: SizeConfig.screenWidth,color: Colors.transparent,
-
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 5),
-                      child: Row(
-                          children: [
-
-                            CircleAvatar(backgroundColor: Colors.transparent,radius: 30,backgroundImage: CachedNetworkImageProvider(user.checkuserkind(context: context,id:Chat[index].user?.id)?Chat[index].sender?.image??'':Chat[index].user?.image??'')),
-                            const SizedBox(width: 10,),
-                            Expanded(
-                              child: Column(mainAxisAlignment: MainAxisAlignment.start,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text( user.checkuserkind(context: context,id:Chat[index].user?.id)?Helper().utf8convert(Chat[index].sender?.name??''):Helper().utf8convert(Chat[index].user?.name??'') ,style:Namestyle.copyWith(fontWeight: FontWeight.bold),),
-                                      Text(Helper().getTimeago(time: Chat[index].updatedAt),style: style6.copyWith(fontSize: 10, color: Colors.black45,)),
-                                    ],
-                                  ),
-                                  Row(
-                                    children: [
-                                      if (Chat[index].message?.isNotEmpty??false)Container(width: 200,child: Text(Chat[index].message?.last.status==1?getLang(context: context,key: "IMage"):Chat[index].message?.last.status==2?'Gift🎁':Chat[index].message?.last.message??'',style: TextStyle().copyWith(
-                                          color: Colors.black45,fontSize: 12),maxLines: 1,overflow: TextOverflow.ellipsis,)),
-                                      const Spacer(),
-                                      Chat[index].numberUnread==0?const SizedBox():
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(horizontal:10 ).copyWith(top:10),
-                                        child: badges.Badge(badgeStyle: badges.BadgeStyle(badgeColor: MainColor),
-                                          child: Icon(Icons.notifications_active_outlined,size: 19),
-                                        ),
-                                      )
-
-
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-
-
-                          ]),
-                    ),
-                  ),
-                );
-              } ),
-            )),
-            SliverPadding(padding: EdgeInsets.symmetric(vertical: 10)),
-          ],
-        )
+    final inboxRooms = Provider.of<InboxroomViewModel>(
+      context,
+      listen: true,
     );
 
+    final user = Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
 
+    // Create a copy instead of sorting the original provider list.
+    final List<InboxRoomModel> chats =
+        List<InboxRoomModel>.from(inboxRooms.Inboxrooms);
 
+    // Sort newest conversations first.
+    chats.sort((a, b) {
+      final aDate = a.updatedAt;
+      final bDate = b.updatedAt;
 
+      if (aDate == null && bDate == null) {
+        return 0;
+      }
+
+      if (aDate == null) {
+        return 1;
+      }
+
+      if (bDate == null) {
+        return -1;
+      }
+
+      return bDate.compareTo(aDate);
+    });
+
+    return RefreshIndicator(
+      onRefresh: () async {
+        await inboxRooms.GetInboxroom(
+          context: context,
+        );
+      },
+
+      child: CustomScrollView(
+        physics: const AlwaysScrollableScrollPhysics(
+          parent: BouncingScrollPhysics(),
+        ),
+
+        slivers: [
+          const SliverPadding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+          ),
+
+          SliverToBoxAdapter(
+            child: chats.isEmpty
+                ? _buildEmptyState(context)
+                : Column(
+                    children: List.generate(
+                      chats.length,
+                      (index) {
+                        final chat = chats[index];
+
+                        return _buildChatItem(
+                          context: context,
+                          chat: chat,
+                          inboxRooms: inboxRooms,
+                          user: user,
+                        );
+                      },
+                    ),
+                  ),
+          ),
+
+          const SliverPadding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildChatItem({
+    required BuildContext context,
+    required InboxRoomModel chat,
+    required InboxroomViewModel inboxRooms,
+    required LoginViewmodel user,
+  }) {
+    final bool isSender = user.checkuserkind(
+      context: context,
+      id: chat.user?.id,
+    );
+
+    final String imageUrl = isSender
+        ? chat.sender?.image ?? ''
+        : chat.user?.image ?? '';
+
+    final String displayName = isSender
+        ? Helper().utf8convert(
+            chat.sender?.name ?? '',
+          )
+        : Helper().utf8convert(
+            chat.user?.name ?? '',
+          );
+
+    final String lastMessage = _getLastMessage(
+      context: context,
+      chat: chat,
+    );
+
+    return InkWell(
+      onLongPress: () {
+        _showConversationActions(
+          context: context,
+          chat: chat,
+          inboxRooms: inboxRooms,
+        );
+      },
+      onTap: () {
+        _openChat(
+          context: context,
+          chat: chat,
+          inboxRooms: inboxRooms,
+          user: user,
+        );
+      },
+      child: Container(
+        width: SizeConfig.screenWidth,
+        color: Colors.transparent,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 10,
+            vertical: 5,
+          ),
+          child: Row(
+            children: [
+              _buildAvatar(
+                imageUrl: imageUrl,
+              ),
+
+              const SizedBox(width: 10),
+
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            displayName,
+                            style: Namestyle.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+
+                        const SizedBox(width: 8),
+
+                        Text(
+                          Helper().getTimeago(
+                            time: chat.updatedAt,
+                          ),
+                          style: style6.copyWith(
+                            fontSize: 10,
+                            color: Colors.black45,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: 2),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            lastMessage,
+                            style: const TextStyle(
+                              color: Colors.black45,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+
+                        if (chat.numberUnread != 0)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                            ).copyWith(
+                              top: 10,
+                            ),
+                            child: badges.Badge(
+                              badgeStyle: badges.BadgeStyle(
+                                badgeColor: MainColor,
+                              ),
+                              child: const Icon(
+                                Icons.notifications_active_outlined,
+                                size: 19,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar({
+    required String imageUrl,
+  }) {
+    if (imageUrl.isEmpty) {
+      return const CircleAvatar(
+        radius: 30,
+        backgroundColor: Colors.black12,
+        child: Icon(
+          Icons.person,
+          color: Colors.white,
+          size: 30,
+        ),
+      );
+    }
+
+    return CircleAvatar(
+      radius: 30,
+      backgroundColor: Colors.transparent,
+      backgroundImage: CachedNetworkImageProvider(
+        imageUrl,
+      ),
+    );
+  }
+
+  String _getLastMessage({
+    required BuildContext context,
+    required InboxRoomModel chat,
+  }) {
+    final messages = chat.message;
+
+    if (messages == null || messages.isEmpty) {
+      return '';
+    }
+
+    final last = messages.last;
+
+    if (last.status == 1) {
+      return getLang(
+        context: context,
+        key: "IMage",
+      );
+    }
+
+    if (last.status == 2) {
+      return 'Gift🎁';
+    }
+
+    return last.message ?? '';
+  }
+
+  void _openChat({
+    required BuildContext context,
+    required InboxRoomModel chat,
+    required InboxroomViewModel inboxRooms,
+    required LoginViewmodel user,
+  }) {
+    // Mark the inbox room as read.
+    inboxRooms.ReadInboxRoom(
+      id: chat.id,
+      context: context,
+    );
+
+    // Clear the message input.
+    inboxRooms.textEditingController.clear();
+
+    // Clear local unread state.
+    chat.numberUnread = 0;
+
+    // Update global message/unread state.
+    user.RemoveMessage();
+
+    // Open the chat.
+    navigateTo(
+      context: context,
+      screen: ChatScrean(
+        InboxContent: chat,
+      ),
+    );
+  }
+
+  void _showConversationActions({
+    required BuildContext context,
+    required InboxRoomModel chat,
+    required InboxroomViewModel inboxRooms,
+  }) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'World Team',
+                style: style2.copyWith(
+                  fontSize: 20,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              InkWell(
+                onTap: () {
+                  Navigator.pop(dialogContext);
+
+                  inboxRooms.DeleteInboxroom(
+                    context: context,
+                    inboxid: chat.id,
+                  );
+                },
+                child: Text(
+                  getLang(
+                    context: context,
+                    key: "Delete_Conv",
+                  ),
+                  style: style5.copyWith(
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              InkWell(
+                onTap: () {
+                  Navigator.pop(dialogContext);
+
+                  inboxRooms.DeleteAndBlockUserInboxroom(
+                    context: context,
+                    inboxid: chat.id,
+                  );
+                },
+                child: Text(
+                  getLang(
+                    context: context,
+                    key: "Block_User",
+                  ),
+                  style: style5.copyWith(
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return SizedBox(
+      width: SizeConfig.screenWidth,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 30,
+          vertical: 60,
+        ),
+        child: Center(
+          child: Text(
+            getLang(
+              context: context,
+              key: "No_Messages",
+            ),
+            textAlign: TextAlign.center,
+            style: style6.copyWith(
+              fontSize: 14,
+              color: Colors.black45,
+            ),
+          ),
+        ),
+      ),
+    );
   }
 }

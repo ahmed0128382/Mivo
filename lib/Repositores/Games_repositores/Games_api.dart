@@ -1,109 +1,135 @@
 import 'package:dio/dio.dart';
 
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../models/GameModel.dart';
 import '../../util/Dialogs.dart';
-import '../../util/app_constants.dart';
 import '../Moment_repositores/Moment_repository.dart';
 
-int GameIndex=2;
+int GameIndex = 2;
+
 class Gamesapi extends MomentRepository {
-  List<GamesModel> GamesList=[];
-  @override
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Connection': 'Keep-Alive',
-        'Authorization':Token,
+  final Dio _dio = ApiClient.instance.dio;
 
-        'awqeASERQW':'8/325*mAIOEN',
-         'userid':UserId.toString(),
-        'UserIP':UserIP,
-      },
-    ),
-  );
-  Future<List<GamesModel>>  AllGames(context)async {
+  final List<GamesModel> GamesList = [];
 
-    GameIndex=2;
+  ApiException _handleError(dynamic error) {
+    if (error is DioException) {
+      final response = error.response;
+
+      return ApiException(
+        statusCode: response?.statusCode,
+        message: response?.data?['message']?.toString() ??
+            response?.data?['error']?.toString() ??
+            response?.data?['errNum']?.toString() ??
+            error.message ??
+            'Something went wrong',
+        data: response?.data,
+      );
+    }
+
+    return ApiException(
+      message: error.toString(),
+      data: error,
+    );
+  }
+
+  Future<List<GamesModel>> AllGames(context) async {
+    GameIndex = 2;
+
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetAllGames',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['games']['data'];
+      final List list = response.data['games']['data'] ?? [];
 
-        list.forEach((element) {
-          GamesList.add(GamesModel.fromJson(element));
-        });
+      GamesList.clear();
 
+      for (final element in list) {
+        GamesList.add(
+          GamesModel.fromJson(element),
+        );
       }
     } catch (e) {
-      if (e is DioError) {
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-        if (e.response!.data['errNum'] == '3500') {
+      final exception = _handleError(e);
 
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
+
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
         }
-      } else {
-        print(e);
+
+        if (errNum == '3500') {
+          // Preserve existing behavior.
+        }
       }
+
+      print(exception);
     }
 
     return GamesList;
-
   }
-  Future<List<GamesModel>>  GetMoreGames(context)async {
-    
 
+  Future<List<GamesModel>> GetMoreGames(context) async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetAllGames?page=${GameIndex.toString()}',
       );
 
-      if (response2.statusCode == 200) {
+      final List list = response.data['games']['data'] ?? [];
 
-        List list =response2.data['games']['data'];
-        if(list.isNotEmpty){
-          GameIndex++;
-        }
-        
-        list.forEach((element){
-          GamesList.add(GamesModel.fromJson(element));
-        });
-        print(GamesList);
+      if (list.isNotEmpty) {
+        GameIndex++;
       }
+
+      for (final element in list) {
+        GamesList.add(
+          GamesModel.fromJson(element),
+        );
+      }
+
+      print(GamesList);
     } catch (e) {
-      if (e is DioError) {
+      final exception = _handleError(e);
 
-        Dialogs().ShowErrorToast(e.response!.data['errNum'],context);
-        if (e.response!.data['errNum'] == '3500') {
+      if (e is DioException) {
+        final errNum = e.response?.data?['errNum'];
 
+        if (errNum != null) {
+          Dialogs().ShowErrorToast(
+            errNum,
+            context,
+          );
         }
-      } else {
-        print(e);
+
+        if (errNum == '3500') {
+          // Preserve existing behavior.
+        }
       }
+
+      print(exception);
     }
 
     return GamesList;
-
   }
-  Future<bool>  Increament({id})async {
 
-
+  Future<bool> Increament({
+    id,
+  }) async {
     try {
-      Response response2 = await dio.get(
+      await _dio.get(
         '/api/incrementuser/$id',
       );
-
-      if (response2.statusCode == 200) {
-
-      }
     } catch (e) {
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return true;
-
   }
 }

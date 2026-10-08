@@ -91,9 +91,16 @@ class _RoomScreanState extends State<RoomScrean> with TickerProviderStateMixin ,
       child: Scaffold(resizeToAvoidBottomInset: true,
         backgroundColor: Colors.transparent,
         body: Stack(
-          children: [
-           Container(width: SizeConfig.screenWidth!,height: SizeConfig.screenHeight!,child:CachedNetworkImage (
-            imageUrl:Room.Currentroom?.animateimage??'',height: SizeConfig.screenHeight!,width: SizeConfig.screenWidth!,fit: BoxFit.cover,)),
+  fit: StackFit.expand,
+  children: [
+    Positioned.fill(
+      child: CachedNetworkImage(
+        imageUrl: Room.Currentroom?.animateimage ?? '',
+        fit: BoxFit.cover,
+        placeholder: (context, url) => const SizedBox.expand(),
+        errorWidget: (context, url, error) => const SizedBox.expand(),
+      ),
+    ),
 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 5),

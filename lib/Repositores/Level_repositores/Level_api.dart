@@ -1,54 +1,56 @@
-
 import 'package:ahlachat/models/AchiveModel.dart';
 import 'package:dio/dio.dart';
 
-
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../models/LevelGifts.dart';
-import '../../util/Dialogs.dart';
-import '../../util/app_constants.dart';
-
 import '../Moment_repositores/Moment_repository.dart';
 
 class Levelapi extends MomentRepository {
-  @override
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Connection': 'Keep-Alive',
-        'Authorization':Token,
-        'awqeASERQW':'8/325*mAIOEN',
-        'userid':UserId.toString(),
-        'UserIP':UserIP,
-      },
-    ),
-  );
-  List<AchiveModels> AchiveModelss=[];
+  final Dio _dio = ApiClient.instance.dio;
 
-  Future<List<AchiveModels> >  GetModels( )async {
+  final List<AchiveModels> AchiveModelss = [];
 
+  ApiException _handleError(dynamic error) {
+    if (error is DioException) {
+      final response = error.response;
+
+      return ApiException(
+        statusCode: response?.statusCode,
+        message: response?.data?['message']?.toString() ??
+            response?.data?['error']?.toString() ??
+            error.message ??
+            'Something went wrong',
+        data: response?.data,
+      );
+    }
+
+    return ApiException(
+      message: error.toString(),
+      data: error,
+    );
+  }
+
+  Future<List<AchiveModels>> GetModels() async {
     try {
-      Response response2 = await dio.get(
+      final response = await _dio.get(
         '/api/GetModels',
       );
 
-      if (response2.statusCode == 200) {
-        List list =response2.data['Models'];
+      final List list = response.data['Models'] ?? [];
 
-        list.forEach((element) {
-          AchiveModelss.add(AchiveModels.fromJson(element));
-        });
+      AchiveModelss.clear();
 
-
+      for (final element in list) {
+        AchiveModelss.add(
+          AchiveModels.fromJson(element),
+        );
       }
     } catch (e) {
-      print(e);
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
     return AchiveModelss;
-
   }
-
 }

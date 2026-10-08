@@ -1,68 +1,77 @@
-
+import 'package:ahlachat/util/app_constants.dart';
 import 'package:dio/dio.dart';
-import 'package:on_audio_query/on_audio_query.dart';
 import 'package:flutter/services.dart' show rootBundle;
+import 'package:on_audio_query/on_audio_query.dart';
+
+import '../../core/network/api_client.dart';
+import '../../core/network/api_exception.dart';
 import '../../models/UserMusic.dart';
-import '../../models/VipModel.dart';
-import '../../util/Dialogs.dart';
-import '../../util/app_constants.dart';
 import '../Moment_repositores/Moment_repository.dart';
 
-
 class Musicapi extends MomentRepository {
-  @override
-  var dio = Dio(
-    BaseOptions(
-      baseUrl: AppConstants.BASE_URL,
-      headers: {
-        'Accept': 'application/json',
-        'Connection': 'Keep-Alive',
-        'Authorization':Token,
-        'awqeASERQW':'8/325*mAIOEN',
-        'userid':UserId.toString(),
-        'UserIP':UserIP,
-      },
-    ),
-  );
+  final Dio _dio = ApiClient.instance.dio;
 
+  ApiException _handleError(dynamic error) {
+    if (error is DioException) {
+      final response = error.response;
 
-  Future<usermusic> AddMusic({ context,SongModel? Music}) async {
+      return ApiException(
+        statusCode: response?.statusCode,
+        message: response?.data?['message']?.toString() ??
+            response?.data?['error']?.toString() ??
+            error.message ??
+            'Something went wrong',
+        data: response?.data,
+      );
+    }
 
-print(Music?.data.runtimeType);
-    print(Music?.data );
-print('11111111111111111111111111111111111111111111' );
-var musicsss=await MultipartFile.fromFile(Music?.data??'', filename: Music?.data.split('/').last);
-print(musicsss);
-print(musicsss.runtimeType);
-print(musicsss.filename);
+    return ApiException(
+      message: error.toString(),
+      data: error,
+    );
+  }
 
+  Future<usermusic> AddMusic({
+    context,
+    SongModel? Music,
+  }) async {
+    print(Music?.data.runtimeType);
+    print(Music?.data);
+    print('11111111111111111111111111111111111111111111');
 
-// Method
+    final musicFile = await MultipartFile.fromFile(
+      Music?.data ?? '',
+      filename: Music?.data.split('/').last,
+    );
 
-  usermusic ?music;
+    print(musicFile);
+    print(musicFile.runtimeType);
+    print(musicFile.filename);
+
+    usermusic? music;
+
     try {
-      FormData formData = new FormData.fromMap({
-        "music": musicsss,
-        "user_id":UserId.toString(),
-        "name":Music?.title.toString()
-
+      final formData = FormData.fromMap({
+        'music': musicFile,
+        'user_id': UserId.toString(),
+        'name': Music?.title.toString(),
       });
-      Response response2 = await dio.post(
+
+      final response = await _dio.post(
         'api/AddUserMusic',
         data: formData,
       );
 
-      if (response2.statusCode == 200) {
-
-        music=usermusic.fromJson(response2.data['UserMusic']);
-
+      if (response.statusCode == 200) {
+        music = usermusic.fromJson(
+          response.data['UserMusic'],
+        );
       }
     } catch (e) {
-print(e);
-
-
+      final exception = _handleError(e);
+      print(exception);
     }
 
-   return music!;
+    return music!;
   }
 }

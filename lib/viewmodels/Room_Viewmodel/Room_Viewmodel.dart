@@ -195,635 +195,530 @@ class RoomViewmodel extends ChangeNotifier {
     notifyListeners();
   }
 
-  EnterRoom({
-    required id,
-    required context,
-    required adminId,
-  }) async {
-    if (LeaveLoading == true) {
-      Dialogs().showtoast('رجاء انتظر ترك الغرفه');
-      return 'asd';
-    }
-
-    if (Currentroom?.id.toString() == id.toString()) {
-      Provider.of<SvgViewmodel>(
-        context,
-        listen: false,
-      ).animationController?.clear();
-
-      Provider.of<RoomViewmodel>(
-        context,
-        listen: false,
-      ).initscrollcontroller();
-
-      Provider.of<GiftsViewModel>(
-        context,
-        listen: false,
-      ).DeleteGlopal();
-
-      Provider.of<AgoraViewmodel>(
-        context,
-        listen: false,
-      ).stopAudioMexing(context);
-
-      HideEnterWidget();
-
-      Navigator.pushNamed(
-        context,
-        AppConstants.Room_Screan,
-      );
-    } else {
-      await TrackRoomPassword(id).then(
-        (password) {
-          if (password == true &&
-              adminId.toString() != UserId &&
-              Provider.of<LoginViewmodel>(
-                    context,
-                    listen: false,
-                  ).userinfo?.Hidden ==
-                  0) {
-            DismissGlopalLoading();
-
-            TextEditingController EnterPasswordRoom =
-                TextEditingController();
-
-            showDialog(
-              barrierDismissible: true,
-              context: context,
-              builder: (_) => AlertDialog(
-                actions: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            getLang(
-                              context: context,
-                              key: "Enter_Password",
-                            ),
-                            style: style1,
-                          ),
-                          SizedBox(height: 25),
-                          PinCodeTextField(
-                            keyboardType:
-                                TextInputType.number,
-                            length: 4,
-                            obscureText: false,
-                            textStyle: TextStyle(
-                              color: Color(0xFFeae2be),
-                            ),
-                            animationType:
-                                AnimationType.fade,
-                            pinTheme: PinTheme(
-                              borderWidth: 0.0,
-                              shape:
-                                  PinCodeFieldShape.box,
-                              fieldOuterPadding:
-                                  EdgeInsets.symmetric(
-                                horizontal: 3,
-                              ),
-                              activeColor:
-                                  Color(0xFFeae2be),
-                              borderRadius:
-                                  BorderRadius.circular(
-                                10,
-                              ),
-                              selectedColor:
-                                  Color(0xFFeae2be),
-                              inactiveColor:
-                                  Color(0xFFeae2be),
-                              fieldHeight: 40,
-                              fieldWidth: 40,
-                              activeFillColor:
-                                  Color(0xFFeae2be),
-                            ),
-                            animationDuration:
-                                Duration(
-                              milliseconds: 300,
-                            ),
-                            cursorColor:
-                                Color(0xFFeae2be),
-                            enablePinAutofill: true,
-                            enableActiveFill: false,
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .spaceAround,
-                            enabled: true,
-                            controller:
-                                EnterPasswordRoom,
-                            onCompleted: (v) {},
-                            onChanged: (value) {},
-                            beforeTextPaste:
-                                (text) {
-                              return true;
-                            },
-                            appContext: context,
-                          ),
-                          InkWell(
-                            onTap: () {
-                              if (EnterPasswordRoom
-                                      .text.length <
-                                  4) {
-                              } else {
-                                Navigator.pop(context);
-
-                                EnterTrackRoomPassword(
-                                  id: id,
-                                  pass: EnterPasswordRoom
-                                      .text,
-                                ).then(
-                                  (value) {
-                                    if (value == true) {
-                                      Provider.of<
-                                          GiftsViewModel>(
-                                        context,
-                                        listen: false,
-                                      ).hidpanner2();
-
-                                      Provider.of<
-                                          SvgViewmodel>(
-                                        context,
-                                        listen: false,
-                                      ).dispose();
-
-                                      JoinRoom4(
-                                        Roomid: id,
-                                        context: context,
-                                      );
-                                    } else {
-                                      DismissGlopalLoading();
-
-                                      Dialogs().showtoast(
-                                        getLang(
-                                          context: context,
-                                          key:
-                                              "Wrong_Password",
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              }
-                            },
-                            child: Container(
-                              child: Center(
-                                child: Text(
-                                  getLang(
-                                    context: context,
-                                    key: "Done",
-                                  ),
-                                  style:
-                                      style6.copyWith(
-                                    fontSize: 15,
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              width:
-                                  SizeConfig.screenWidth!,
-                              height: 37,
-                              decoration:
-                                  BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  10,
-                                ),
-                                color:
-                                    Color(0xFFeae2be),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                backgroundColor:
-                    Color(0xFF2b2f3b),
-              ),
-            );
-          } else {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
-
-            Provider.of<SvgViewmodel>(
-              context,
-              listen: false,
-            ).dispose();
-
-            JoinRoom4(
-              Roomid: id,
-              context: context,
-            );
-          }
-        },
-      );
-    }
+ EnterRoom({
+  required id,
+  required context,
+  required adminId,
+}) async {
+  if (LeaveLoading == true) {
+    Dialogs().showtoast('رجاء انتظر ترك الغرفه');
+    return 'asd';
   }
 
-  SelectedLeader(val) {
+  if (Currentroom?.id.toString() == id.toString()) {
+    Provider.of<SvgViewmodel>(
+      context,
+      listen: false,
+    ).animationController?.clear();
+
+    Provider.of<RoomViewmodel>(
+      context,
+      listen: false,
+    ).initscrollcontroller();
+
+    Provider.of<GiftsViewModel>(
+      context,
+      listen: false,
+    ).DeleteGlopal();
+
+    Provider.of<AgoraViewmodel>(
+      context,
+      listen: false,
+    ).stopAudioMexing(context);
+
+    HideEnterWidget();
+
+    Navigator.pushNamed(
+      context,
+      AppConstants.Room_Screan,
+    );
+  } else {
+    await TrackRoomPassword(id).then(
+      (password) {
+        if (password == true &&
+            adminId.toString() != UserId &&
+            Provider.of<LoginViewmodel>(
+                  context,
+                  listen: false,
+                ).userinfo?.Hidden ==
+                0) {
+          DismissGlopalLoading();
+
+          final TextEditingController EnterPasswordRoom =
+              TextEditingController();
+
+          showDialog(
+            barrierDismissible: true,
+            context: context,
+            builder: (_) => AlertDialog(
+              actions: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          getLang(
+                            context: context,
+                            key: "Enter_Password",
+                          ),
+                          style: style1,
+                        ),
+                        SizedBox(height: 25),
+                        PinCodeTextField(
+                          keyboardType: TextInputType.number,
+                          length: 4,
+                          obscureText: false,
+                          textStyle: TextStyle(
+                            color: Color(0xFFeae2be),
+                          ),
+                          animationType: AnimationType.fade,
+                          pinTheme: PinTheme(
+                            borderWidth: 0.0,
+                            shape: PinCodeFieldShape.box,
+                            fieldOuterPadding:
+                                EdgeInsets.symmetric(horizontal: 3),
+                            activeColor: Color(0xFFeae2be),
+                            borderRadius: BorderRadius.circular(10),
+                            selectedColor: Color(0xFFeae2be),
+                            inactiveColor: Color(0xFFeae2be),
+                            fieldHeight: 40,
+                            fieldWidth: 40,
+                            activeFillColor: Color(0xFFeae2be),
+                          ),
+                          animationDuration:
+                              Duration(milliseconds: 300),
+                          cursorColor: Color(0xFFeae2be),
+                          enablePinAutofill: true,
+                          enableActiveFill: false,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceAround,
+                          enabled: true,
+                          controller: EnterPasswordRoom,
+                          onCompleted: (v) {},
+                          onChanged: (value) {},
+                          beforeTextPaste: (text) {
+                            return true;
+                          },
+                          appContext: context,
+                        ),
+                        InkWell(
+                          onTap: () {
+                            if (EnterPasswordRoom.text.length < 4) {
+                              return;
+                            }
+
+                            Navigator.pop(context);
+
+                            EnterTrackRoomPassword(
+                              id: id,
+                              pass: EnterPasswordRoom.text,
+                            ).then(
+                              (value) {
+                                if (value == true) {
+                                  Provider.of<GiftsViewModel>(
+                                    context,
+                                    listen: false,
+                                  ).hidpanner2();
+
+                                  // IMPORTANT:
+                                  // Do NOT call SvgViewmodel.dispose().
+                                  // Provider owns the SvgViewmodel lifecycle.
+
+                                  JoinRoom4(
+                                    Roomid: id,
+                                    context: context,
+                                  );
+                                } else {
+                                  DismissGlopalLoading();
+
+                                  Dialogs().showtoast(
+                                    getLang(
+                                      context: context,
+                                      key: "Wrong_Password",
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                          child: Container(
+                            child: Center(
+                              child: Text(
+                                getLang(
+                                  context: context,
+                                  key: "Done",
+                                ),
+                                style: style6.copyWith(
+                                  fontSize: 15,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                            width: SizeConfig.screenWidth!,
+                            height: 37,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                              color: Color(0xFFeae2be),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              backgroundColor: Color(0xFF2b2f3b),
+            ),
+          );
+        } else {
+          Provider.of<GiftsViewModel>(
+            context,
+            listen: false,
+          ).hidpanner2();
+
+          JoinRoom4(
+            Roomid: id,
+            context: context,
+          );
+        }
+      },
+    );
+  }
+}
+
+SelectedLeader(val) {
     LeaderShipColor = LeaderShipColors[val];
     LeaderShipBack = LeaderShipBacks[val];
     SelectedRank = RankInmages[val];
     notifyListeners();
   }
 
-  EnterRoom2({
-    id,
-    context,
-  }) async {
-    if (LeaveLoading == true) {
-      Dialogs().showtoast('رجاء انتظر ترك الغرفه');
-      return 'asd';
-    }
-
-    if (Currentroom?.id.toString() == id.toString()) {
-    } else {
-      await TrackRoomPassword(id).then(
-        (password) {
-          if (password == true) {
-            DismissGlopalLoading();
-
-            TextEditingController EnterPasswordRoom =
-                TextEditingController();
-
-            showDialog(
-              barrierDismissible: true,
-              context: context,
-              builder: (_) => AlertDialog(
-                actions: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            getLang(
-                              context: context,
-                              key: "Enter_Password",
-                            ),
-                            style: style1,
-                          ),
-                          SizedBox(height: 25),
-                          PinCodeTextField(
-                            keyboardType:
-                                TextInputType.number,
-                            length: 4,
-                            obscureText: false,
-                            textStyle: TextStyle(
-                              color: Color(0xFFeae2be),
-                            ),
-                            animationType:
-                                AnimationType.fade,
-                            pinTheme: PinTheme(
-                              borderWidth: 0.0,
-                              shape:
-                                  PinCodeFieldShape.box,
-                              fieldOuterPadding:
-                                  EdgeInsets.symmetric(
-                                horizontal: 3,
-                              ),
-                              activeColor:
-                                  Color(0xFFeae2be),
-                              borderRadius:
-                                  BorderRadius.circular(
-                                10,
-                              ),
-                              selectedColor:
-                                  Color(0xFFeae2be),
-                              inactiveColor:
-                                  Color(0xFFeae2be),
-                              fieldHeight: 40,
-                              fieldWidth: 40,
-                              activeFillColor:
-                                  Color(0xFFeae2be),
-                            ),
-                            animationDuration:
-                                Duration(
-                              milliseconds: 300,
-                            ),
-                            cursorColor:
-                                Color(0xFFeae2be),
-                            enablePinAutofill: true,
-                            enableActiveFill: false,
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .spaceAround,
-                            enabled: true,
-                            controller:
-                                EnterPasswordRoom,
-                            onCompleted: (v) {},
-                            onChanged: (value) {},
-                            beforeTextPaste:
-                                (text) {
-                              return true;
-                            },
-                            appContext: context,
-                          ),
-                          InkWell(
-                            onTap: () {
-                              if (EnterPasswordRoom
-                                      .text.length <
-                                  4) {
-                              } else {
-                                Navigator.pop(context);
-
-                                EnterTrackRoomPassword(
-                                  id: id,
-                                  pass:
-                                      EnterPasswordRoom
-                                          .text,
-                                ).then(
-                                  (value) {
-                                    if (value == true) {
-                                      Provider.of<
-                                          GiftsViewModel>(
-                                        context,
-                                        listen: false,
-                                      ).hidpanner2();
-
-                                      Provider.of<
-                                          SvgViewmodel>(
-                                        context,
-                                        listen: false,
-                                      ).dispose();
-
-                                      JoinRoom4(
-                                        context: context,
-                                        Roomid: id,
-                                      );
-                                    } else {
-                                      DismissGlopalLoading();
-
-                                      Dialogs().showtoast(
-                                        getLang(
-                                          context: context,
-                                          key:
-                                              "Wrong_Password",
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              }
-                            },
-                            child: Container(
-                              child: Center(
-                                child: Text(
-                                  getLang(
-                                    context: context,
-                                    key: "Done",
-                                  ),
-                                  style:
-                                      style6.copyWith(
-                                    fontSize: 15,
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              width:
-                                  SizeConfig.screenWidth!,
-                              height: 37,
-                              decoration:
-                                  BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  10,
-                                ),
-                                color:
-                                    Color(0xFFeae2be),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-                backgroundColor:
-                    Color(0xFF2b2f3b),
-              ),
-            );
-          } else {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
-
-            Provider.of<SvgViewmodel>(
-              context,
-              listen: false,
-            ).dispose();
-
-            JoinRoom4(
-              context: context,
-              Roomid: id,
-            );
-          }
-        },
-      );
-    }
+EnterRoom2({
+  id,
+  context,
+}) async {
+  if (LeaveLoading == true) {
+    Dialogs().showtoast('رجاء انتظر ترك الغرفه');
+    return 'asd';
   }
 
-  EnterRoom3({
-    id,
-    context,
-  }) async {
-    if (LeaveLoading == true) {
-      Dialogs().showtoast('رجاء انتظر ترك الغرفه');
-      return 'asd';
-    }
+  if (Currentroom?.id.toString() == id.toString()) {
+    return;
+  } else {
+    await TrackRoomPassword(id).then(
+      (password) {
+        if (password == true) {
+          DismissGlopalLoading();
 
-    if (Currentroom?.id.toString() == id.toString()) {
-    } else {
-      await TrackRoomPassword(id).then(
-        (password) {
-          if (password == true) {
-            DismissGlopalLoading();
+          final TextEditingController EnterPasswordRoom =
+              TextEditingController();
 
-            TextEditingController EnterPasswordRoom =
-                TextEditingController();
-
-            showDialog(
-              barrierDismissible: true,
-              context: context,
-              builder: (_) => AlertDialog(
-                actions: [
-                  Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(8.0),
-                      child: Column(
-                        children: [
-                          Text(
-                            getLang(
-                              context: context,
-                              key: "Enter_Password",
-                            ),
-                            style: style1,
+          showDialog(
+            barrierDismissible: true,
+            context: context,
+            builder: (_) => AlertDialog(
+              actions: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          getLang(
+                            context: context,
+                            key: "Enter_Password",
                           ),
-                          SizedBox(height: 25),
-                          PinCodeTextField(
-                            keyboardType:
-                                TextInputType.number,
-                            length: 4,
-                            obscureText: false,
-                            textStyle: TextStyle(
+                          style: style1,
+                        ),
+                        SizedBox(height: 25),
+                        PinCodeTextField(
+                          keyboardType: TextInputType.number,
+                          length: 4,
+                          obscureText: false,
+                          textStyle: TextStyle(
+                            color: Color(0xFFeae2be),
+                          ),
+                          animationType: AnimationType.fade,
+                          pinTheme: PinTheme(
+                            borderWidth: 0.0,
+                            shape: PinCodeFieldShape.box,
+                            fieldOuterPadding:
+                                EdgeInsets.symmetric(horizontal: 3),
+                            activeColor: Color(0xFFeae2be),
+                            borderRadius: BorderRadius.circular(10),
+                            selectedColor: Color(0xFFeae2be),
+                            inactiveColor: Color(0xFFeae2be),
+                            fieldHeight: 40,
+                            fieldWidth: 40,
+                            activeFillColor: Color(0xFFeae2be),
+                          ),
+                          animationDuration:
+                              Duration(milliseconds: 300),
+                          cursorColor: Color(0xFFeae2be),
+                          enablePinAutofill: true,
+                          enableActiveFill: false,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceAround,
+                          enabled: true,
+                          controller: EnterPasswordRoom,
+                          onCompleted: (v) {},
+                          onChanged: (value) {},
+                          beforeTextPaste: (text) {
+                            return true;
+                          },
+                          appContext: context,
+                        ),
+                        InkWell(
+                          onTap: () {
+                            if (EnterPasswordRoom.text.length < 4) {
+                              return;
+                            }
+
+                            Navigator.pop(context);
+
+                            EnterTrackRoomPassword(
+                              id: id,
+                              pass: EnterPasswordRoom.text,
+                            ).then(
+                              (value) {
+                                if (value == true) {
+                                  Provider.of<GiftsViewModel>(
+                                    context,
+                                    listen: false,
+                                  ).hidpanner2();
+
+                                  // IMPORTANT:
+                                  // Do NOT call SvgViewmodel.dispose().
+                                  // Provider owns the SvgViewmodel lifecycle.
+
+                                  JoinRoom4(
+                                    context: context,
+                                    Roomid: id,
+                                  );
+                                } else {
+                                  DismissGlopalLoading();
+
+                                  Dialogs().showtoast(
+                                    getLang(
+                                      context: context,
+                                      key: "Wrong_Password",
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                          child: Container(
+                            child: Center(
+                              child: Text(
+                                getLang(
+                                  context: context,
+                                  key: "Done",
+                                ),
+                                style: style6.copyWith(
+                                  fontSize: 15,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                            width: SizeConfig.screenWidth!,
+                            height: 37,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(10),
                               color: Color(0xFFeae2be),
                             ),
-                            animationType:
-                                AnimationType.fade,
-                            pinTheme: PinTheme(
-                              borderWidth: 0.0,
-                              shape:
-                                  PinCodeFieldShape.box,
-                              fieldOuterPadding:
-                                  EdgeInsets.symmetric(
-                                horizontal: 3,
-                              ),
-                              activeColor:
-                                  Color(0xFFeae2be),
-                              borderRadius:
-                                  BorderRadius.circular(
-                                10,
-                              ),
-                              selectedColor:
-                                  Color(0xFFeae2be),
-                              inactiveColor:
-                                  Color(0xFFeae2be),
-                              fieldHeight: 40,
-                              fieldWidth: 40,
-                              activeFillColor:
-                                  Color(0xFFeae2be),
-                            ),
-                            animationDuration:
-                                Duration(
-                              milliseconds: 300,
-                            ),
-                            cursorColor:
-                                Color(0xFFeae2be),
-                            enablePinAutofill: true,
-                            enableActiveFill: false,
-                            mainAxisAlignment:
-                                MainAxisAlignment
-                                    .spaceAround,
-                            enabled: true,
-                            controller:
-                                EnterPasswordRoom,
-                            onCompleted: (v) {},
-                            onChanged: (value) {},
-                            beforeTextPaste:
-                                (text) {
-                              return true;
-                            },
-                            appContext: context,
                           ),
-                          InkWell(
-                            onTap: () {
-                              if (EnterPasswordRoom
-                                      .text.length <
-                                  4) {
-                              } else {
-                                Navigator.pop(context);
-
-                                EnterTrackRoomPassword(
-                                  id: id,
-                                  pass:
-                                      EnterPasswordRoom
-                                          .text,
-                                ).then(
-                                  (value) {
-                                    if (value == true) {
-                                      Provider.of<
-                                          GiftsViewModel>(
-                                        context,
-                                        listen: false,
-                                      ).hidpanner2();
-
-                                      Provider.of<
-                                          SvgViewmodel>(
-                                        context,
-                                        listen: false,
-                                      ).dispose();
-
-                                      JoinRoom2(
-                                        context: context,
-                                        Roomid: id,
-                                      );
-                                    } else {
-                                      DismissGlopalLoading();
-
-                                      Dialogs().showtoast(
-                                        getLang(
-                                          context: context,
-                                          key:
-                                              "Wrong_Password",
-                                        ),
-                                      );
-                                    }
-                                  },
-                                );
-                              }
-                            },
-                            child: Container(
-                              child: Center(
-                                child: Text(
-                                  getLang(
-                                    context: context,
-                                    key: "Done",
-                                  ),
-                                  style:
-                                      style6.copyWith(
-                                    fontSize: 15,
-                                    height: 1,
-                                  ),
-                                ),
-                              ),
-                              width:
-                                  SizeConfig.screenWidth!,
-                              height: 37,
-                              decoration:
-                                  BoxDecoration(
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  10,
-                                ),
-                                color:
-                                    Color(0xFFeae2be),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-                backgroundColor:
-                    Color(0xFF2b2f3b),
-              ),
-            );
-          } else {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
+                ),
+              ],
+              backgroundColor: Color(0xFF2b2f3b),
+            ),
+          );
+        } else {
+          Provider.of<GiftsViewModel>(
+            context,
+            listen: false,
+          ).hidpanner2();
 
-            Provider.of<SvgViewmodel>(
-              context,
-              listen: false,
-            ).dispose();
+          // IMPORTANT:
+          // Do NOT call SvgViewmodel.dispose() here.
 
-            JoinRoom2(
-              context: context,
-              Roomid: id,
-            );
-          }
-        },
-      );
-    }
+          JoinRoom4(
+            context: context,
+            Roomid: id,
+          );
+        }
+      },
+    );
   }
+}
+
+EnterRoom3({
+  id,
+  context,
+}) async {
+  if (LeaveLoading == true) {
+    Dialogs().showtoast('رجاء انتظر ترك الغرفه');
+    return 'asd';
+  }
+
+  if (Currentroom?.id.toString() == id.toString()) {
+    return;
+  } else {
+    await TrackRoomPassword(id).then(
+      (password) {
+        if (password == true) {
+          DismissGlopalLoading();
+
+          final TextEditingController EnterPasswordRoom =
+              TextEditingController();
+
+          showDialog(
+            barrierDismissible: true,
+            context: context,
+            builder: (_) => AlertDialog(
+              actions: [
+                Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: [
+                        Text(
+                          getLang(
+                            context: context,
+                            key: "Enter_Password",
+                          ),
+                          style: style1,
+                        ),
+                        SizedBox(height: 25),
+                        PinCodeTextField(
+                          keyboardType: TextInputType.number,
+                          length: 4,
+                          obscureText: false,
+                          textStyle: TextStyle(
+                            color: Color(0xFFeae2be),
+                          ),
+                          animationType: AnimationType.fade,
+                          pinTheme: PinTheme(
+                            borderWidth: 0.0,
+                            shape: PinCodeFieldShape.box,
+                            fieldOuterPadding:
+                                EdgeInsets.symmetric(horizontal: 3),
+                            activeColor: Color(0xFFeae2be),
+                            borderRadius: BorderRadius.circular(10),
+                            selectedColor: Color(0xFFeae2be),
+                            inactiveColor: Color(0xFFeae2be),
+                            fieldHeight: 40,
+                            fieldWidth: 40,
+                            activeFillColor: Color(0xFFeae2be),
+                          ),
+                          animationDuration:
+                              Duration(milliseconds: 300),
+                          cursorColor: Color(0xFFeae2be),
+                          enablePinAutofill: true,
+                          enableActiveFill: false,
+                          mainAxisAlignment:
+                              MainAxisAlignment.spaceAround,
+                          enabled: true,
+                          controller: EnterPasswordRoom,
+                          onCompleted: (v) {},
+                          onChanged: (value) {},
+                          beforeTextPaste: (text) {
+                            return true;
+                          },
+                          appContext: context,
+                        ),
+                        InkWell(
+                          onTap: () {
+                            if (EnterPasswordRoom.text.length < 4) {
+                              return;
+                            }
+
+                            Navigator.pop(context);
+
+                            EnterTrackRoomPassword(
+                              id: id,
+                              pass: EnterPasswordRoom.text,
+                            ).then(
+                              (value) {
+                                if (value == true) {
+                                  Provider.of<GiftsViewModel>(
+                                    context,
+                                    listen: false,
+                                  ).hidpanner2();
+
+                                  // IMPORTANT:
+                                  // Do NOT call SvgViewmodel.dispose().
+                                  // Provider owns the SvgViewmodel lifecycle.
+
+                                  JoinRoom2(
+                                    context: context,
+                                    Roomid: id,
+                                  );
+                                } else {
+                                  DismissGlopalLoading();
+
+                                  Dialogs().showtoast(
+                                    getLang(
+                                      context: context,
+                                      key: "Wrong_Password",
+                                    ),
+                                  );
+                                }
+                              },
+                            );
+                          },
+                          child: Container(
+                            child: Center(
+                              child: Text(
+                                getLang(
+                                  context: context,
+                                  key: "Done",
+                                ),
+                                style: style6.copyWith(
+                                  fontSize: 15,
+                                  height: 1,
+                                ),
+                              ),
+                            ),
+                            width: SizeConfig.screenWidth!,
+                            height: 37,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                              color: Color(0xFFeae2be),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+              backgroundColor: Color(0xFF2b2f3b),
+            ),
+          );
+        } else {
+          Provider.of<GiftsViewModel>(
+            context,
+            listen: false,
+          ).hidpanner2();
+
+          JoinRoom2(
+            context: context,
+            Roomid: id,
+          );
+        }
+      },
+    );
+  }
+}
 
   List<Map> RankInmages = [
     {
@@ -3120,8 +3015,7 @@ class RoomViewmodel extends ChangeNotifier {
   required city,
   required File backgroundimage,
 }) async {
-  final LoginViewmodel user =
-      Provider.of<LoginViewmodel>(
+  final LoginViewmodel user = Provider.of<LoginViewmodel>(
     context,
     listen: false,
   );
@@ -3193,8 +3087,7 @@ class RoomViewmodel extends ChangeNotifier {
       listen: false,
     ).disableAudioroomvoice();
 
-    final RoomModel value =
-        await Roomapi().CreateRoom(
+    final RoomModel value = await Roomapi().CreateRoom(
       RoomAds: RoomAds.text.trim(),
       context: context,
       name: name,
@@ -3246,46 +3139,42 @@ class RoomViewmodel extends ChangeNotifier {
       context,
       listen: false,
     ).changeHasRoomstate(true);
-final String agoraChannel =
-    value.id?.toString().trim() ?? '';
 
-final String agoraToken =
-    value.Token?.toString().trim() ?? '';
+    final String agoraChannel =
+        value.id?.toString().trim() ?? '';
 
-print('========== CREATE ROOM AGORA ==========');
-print('DB ROOM ID: ${value.id}');
-print('AGORA ROOM ID / CHANNEL: "$agoraChannel"');
-print('AGORA TOKEN PRESENT: ${agoraToken.isNotEmpty}');
-print('AGORA TOKEN LENGTH: ${agoraToken.length}');
-print('========================================');
+    final String agoraToken =
+        value.Token?.toString().trim() ?? '';
 
-if (agoraChannel.isEmpty) {
-  print('CREATE ROOM AGORA ERROR: RoomID is empty');
-  return false;
-}
+    print('========== CREATE ROOM AGORA ==========');
+    print('DB ROOM ID: ${value.id}');
+    print('AGORA ROOM ID / CHANNEL: "$agoraChannel"');
+    print('AGORA TOKEN PRESENT: ${agoraToken.isNotEmpty}');
+    print('AGORA TOKEN LENGTH: ${agoraToken.length}');
+    print('========================================');
 
-if (agoraToken.isEmpty) {
-  print('CREATE ROOM AGORA ERROR: Token is empty');
-  return false;
-}
+    if (agoraChannel.isEmpty) {
+      print(
+        'CREATE ROOM AGORA ERROR: RoomID is empty',
+      );
+      return false;
+    }
 
-await Provider.of<AgoraViewmodel>(
-  context,
-  listen: false,
-).initialize(
-  role: ClientRole.Broadcaster,
-  Token: agoraToken,
-  channelName: agoraChannel,
-);
+    if (agoraToken.isEmpty) {
+      print(
+        'CREATE ROOM AGORA ERROR: Token is empty',
+      );
+      return false;
+    }
 
-    // Provider.of<AgoraViewmodel>(
-    //   context,
-    //   listen: false,
-    // ).initialize(
-    //   role: ClientRole.Broadcaster,
-    //   channelName: value.agoratoken.toString(),
-    //   Token: value.Token,
-//    );
+    await Provider.of<AgoraViewmodel>(
+      context,
+      listen: false,
+    ).initialize(
+      role: ClientRole.Broadcaster,
+      Token: agoraToken,
+      channelName: agoraChannel,
+    );
 
     Provider.of<RoomPlayViewModel>(
       context,
@@ -3297,14 +3186,20 @@ await Provider.of<AgoraViewmodel>(
       listen: false,
     ).DeleteGlopal();
 
-    Provider.of<AgoraViewmodel>(
-      roomcontext,
-      listen: false,
-    ).unmuteusermic(
-      int.parse(
-        user.userinfo?.id.toString() ?? '',
-      ),
+    final int? userId = int.tryParse(
+      user.userinfo?.id.toString() ?? '',
     );
+
+    if (userId != null) {
+      Provider.of<AgoraViewmodel>(
+        roomcontext,
+        listen: false,
+      ).unmuteusermic(userId);
+    } else {
+      print(
+        'CREATE ROOM: Unable to parse current user id',
+      );
+    }
 
     return true;
   } catch (e, stackTrace) {
@@ -3337,25 +3232,19 @@ JoinRoom4({
   Currentroom?.id = 0;
   Currentroom = null;
 
-  AgoraViewmodel Agora =
+  final AgoraViewmodel agora =
       Provider.of<AgoraViewmodel>(
     context,
     listen: false,
   );
 
-  await Agora.EndAgora();
-
-  SvgViewmodel svga =
-      Provider.of<SvgViewmodel>(
-    context,
-    listen: false,
-  );
-
-  LoginViewmodel user =
+  final LoginViewmodel user =
       Provider.of<LoginViewmodel>(
     context,
     listen: false,
   );
+
+  await agora.EndAgora();
 
   await Roomapi()
       .joinRooms(
@@ -3368,13 +3257,11 @@ JoinRoom4({
 
       if (value.state == 1) {
         Rooms.removeWhere(
-          (element) =>
-              element.id == Roomid,
+          (element) => element.id == Roomid,
         );
 
         NewRooms.removeWhere(
-          (element) =>
-              element.id == Roomid,
+          (element) => element.id == Roomid,
         );
 
         Dialogs().showtoast(
@@ -3386,233 +3273,253 @@ JoinRoom4({
             key: "Room_Disbanded",
           ),
         );
-      } else {
-        if (value.id != null) {
-          JoinChairs = false;
 
-          final String agoraChannel =
-              value.id?.toString().trim() ?? '';
-
-          final String agoraToken =
-              value.Token?.toString().trim() ?? '';
-
-          final bool isAdmin =
-              value.admin?.id.toString() ==
-                  UserId.toString();
-
-          print(
-            '========== JOIN ROOM 4 AGORA =========='
-          );
-          print(
-            'DB ROOM ID: ${value.id}',
-          );
-          print(
-            'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
-          );
-          print(
-            'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
-          );
-          print(
-            'TOKEN LENGTH: ${agoraToken.length}',
-          );
-          print(
-            'USER ID: $UserId',
-          );
-          print(
-            'IS ADMIN: $isAdmin',
-          );
-          print(
-            '========================================',
-          );
-
-          if (agoraChannel.isEmpty) {
-            print(
-              'JOIN ROOM 4 AGORA ERROR: RoomID is empty',
-            );
-            return;
-          }
-
-          if (agoraToken.isEmpty) {
-            print(
-              'JOIN ROOM 4 AGORA ERROR: Token is empty',
-            );
-            return;
-          }
-
-          if (isAdmin) {
-            JoinChairs = true;
-
-            await Provider.of<AgoraViewmodel>(
-              context,
-              listen: false,
-            ).initialize(
-              role: ClientRole.Broadcaster,
-              Token: agoraToken,
-              channelName: agoraChannel,
-            );
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].mute = 0;
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].adminleaved = 0;
-
-            print(
-              'You Are Admin',
-            );
-          } else {
-            await Provider.of<AgoraViewmodel>(
-              context,
-              listen: false,
-            ).initialize(
-              role: ClientRole.Audience,
-              Token: agoraToken,
-              channelName: agoraChannel,
-            );
-          }
-
-          Future.delayed(
-            const Duration(seconds: 2),
-            () {
-              Provider.of<GiftsViewModel>(
-                context,
-                listen: false,
-              ).sidepanner();
-
-              Provider.of<SvgViewmodel>(
-                context,
-                listen: false,
-              ).getcontroller(
-                enterImage:
-                    user.userinfo?.image,
-                entername:
-                    user.userinfo?.name,
-                svga:
-                    user.userinfo?.entry ??
-                        '',
-              );
-            },
-          );
-
-          Provider.of<GiftsViewModel>(
-            context,
-            listen: false,
-          ).hidpanner();
-
-          svga.animationController?.clear();
-
-          Currentroom = value;
-
-          Provider.of<RoomViewmodel>(
-            context,
-            listen: false,
-          ).initscrollcontroller();
-
-          Provider.of<SocketViewmodel>(
-            context,
-            listen: false,
-          ).ConnectRoomScocket(
-            context,
-            Roomid,
-          );
-
-          Provider.of<RoomPlayViewModel>(
-            context,
-            listen: false,
-          ).changeHasRoomstate(
-            true,
-          );
-
-          Provider.of<RoomPlayViewModel>(
-            context,
-            listen: false,
-          ).changeIsRoomstate(
-            true,
-          );
-
-          if (Currentroom?.RoomAds != null) {
-            Currentroom?.chatroom?.add(
-              Chatroom(
-                kind: 1,
-                user: Currentroom?.admin,
-                id: 0,
-                content:
-                    Currentroom?.RoomAds,
-                userId: Currentroom
-                    ?.admin
-                    ?.id
-                    .toString(),
-                updatedAt:
-                    Currentroom?.updatedAt,
-                roomId: Currentroom
-                    ?.id
-                    .toString(),
-                createdAt:
-                    Currentroom?.createdAt,
-              ),
-            );
-          }
-
-          if (checkadmin(
-            context: context,
-          )) {
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].mute = 0;
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].adminleaved = 0;
-          }
-
-          Provider.of<AgoraViewmodel>(
-            context,
-            listen: false,
-          ).KickedFromChair = false;
-
-          Provider.of<GiftsViewModel>(
-            context,
-            listen: false,
-          ).DeleteGlopal();
-
-          HideEnterWidget();
-
-          final int? userId =
-              int.tryParse(
-            user.userinfo?.id.toString() ?? '',
-          );
-
-          if (userId != null) {
-            Provider.of<AgoraViewmodel>(
-              roomcontext,
-              listen: false,
-            ).unmuteusermic(
-              userId,
-            );
-          }
-
-          Navigator.pushNamed(
-            context,
-            AppConstants.Room_Screan,
-          );
-        } else {
-          print(
-            'JOIN ROOM 4 ERROR: value.id is null',
-          );
-        }
+        return;
       }
+
+      if (value.id == null) {
+        print(
+          'JOIN ROOM 4 ERROR: value.id is null',
+        );
+        return;
+      }
+
+      JoinChairs = false;
+
+      final String agoraChannel =
+          value.id?.toString().trim() ?? '';
+
+      final String agoraToken =
+          value.Token?.toString().trim() ?? '';
+
+      final bool isAdmin =
+          value.admin?.id.toString() ==
+              UserId.toString();
+
+      print(
+        '========== JOIN ROOM 4 AGORA ==========',
+      );
+      print(
+        'DB ROOM ID: ${value.id}',
+      );
+      print(
+        'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
+      );
+      print(
+        'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
+      );
+      print(
+        'TOKEN LENGTH: ${agoraToken.length}',
+      );
+      print(
+        'USER ID: $UserId',
+      );
+      print(
+        'IS ADMIN: $isAdmin',
+      );
+      print(
+        '========================================',
+      );
+
+      if (agoraChannel.isEmpty) {
+        print(
+          'JOIN ROOM 4 AGORA ERROR: RoomID is empty',
+        );
+        return;
+      }
+
+      if (agoraToken.isEmpty) {
+        print(
+          'JOIN ROOM 4 AGORA ERROR: Token is empty',
+        );
+        return;
+      }
+
+      if (isAdmin) {
+        JoinChairs = true;
+
+        print(
+          'JOIN ROOM 4: User is ADMIN',
+        );
+
+        await Provider.of<AgoraViewmodel>(
+          context,
+          listen: false,
+        ).initialize(
+          role: ClientRole.Broadcaster,
+          Token: agoraToken,
+          channelName: agoraChannel,
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].mute = 0;
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].adminleaved = 0;
+      } else {
+        print(
+          'JOIN ROOM 4: User is NOT ADMIN',
+        );
+
+        await Provider.of<AgoraViewmodel>(
+          context,
+          listen: false,
+        ).initialize(
+          role: ClientRole.Audience,
+          Token: agoraToken,
+          channelName: agoraChannel,
+        );
+      }
+
+      // Set the room BEFORE scheduling the delayed entry animation.
+      Currentroom = value;
+
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).hidpanner();
+
+      Provider.of<SvgViewmodel>(
+        context,
+        listen: false,
+      ).animationController?.clear();
+
+      Provider.of<RoomViewmodel>(
+        context,
+        listen: false,
+      ).initscrollcontroller();
+
+      Provider.of<SocketViewmodel>(
+        context,
+        listen: false,
+      ).ConnectRoomScocket(
+        context,
+        Roomid,
+      );
+
+      Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      ).changeHasRoomstate(true);
+
+      Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      ).changeIsRoomstate(true);
+
+      if (Currentroom?.RoomAds != null) {
+        Currentroom?.chatroom?.add(
+          Chatroom(
+            kind: 1,
+            user: Currentroom?.admin,
+            id: 0,
+            content: Currentroom?.RoomAds,
+            userId: Currentroom?.admin?.id.toString(),
+            updatedAt: Currentroom?.updatedAt,
+            roomId: Currentroom?.id.toString(),
+            createdAt: Currentroom?.createdAt,
+          ),
+        );
+      }
+
+      if (checkadmin(context: context)) {
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].mute = 0;
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].adminleaved = 0;
+      }
+
+      Provider.of<AgoraViewmodel>(
+        context,
+        listen: false,
+      ).KickedFromChair = false;
+
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).DeleteGlopal();
+
+      HideEnterWidget();
+
+      final int? userId = int.tryParse(
+        user.userinfo?.id.toString() ?? '',
+      );
+
+      if (userId != null) {
+        Provider.of<AgoraViewmodel>(
+          roomcontext,
+          listen: false,
+        ).unmuteusermic(userId);
+      }
+
+      /*
+       * IMPORTANT:
+       * We do NOT call SvgViewmodel.dispose().
+       *
+       * SvgViewmodel is owned by Provider.
+       * Its dispose() must only happen when Provider removes
+       * the ViewModel from the widget tree.
+       *
+       * getcontroller() itself must safely handle its lifecycle.
+       */
+      Future.delayed(
+        const Duration(seconds: 2),
+        () {
+          if (!context.mounted) {
+            return;
+          }
+
+          try {
+            Provider.of<GiftsViewModel>(
+              context,
+              listen: false,
+            ).sidepanner();
+
+            final String entry =
+                user.userinfo?.entry?.trim() ?? '';
+
+            if (entry.isEmpty) {
+              print(
+                'JOIN ROOM 4 SVGA: No entry animation',
+              );
+              return;
+            }
+
+            Provider.of<SvgViewmodel>(
+              context,
+              listen: false,
+            ).getcontroller(
+              enterImage: user.userinfo?.image,
+              entername: user.userinfo?.name,
+              svga: entry,
+            );
+          } catch (e, stackTrace) {
+            print(
+              'JOIN ROOM 4 DELAYED SVGA ERROR: $e',
+            );
+            print(stackTrace);
+          }
+        },
+      );
+
+      Navigator.pushNamed(
+        context,
+        AppConstants.Room_Screan,
+      );
     },
   );
 
   notifyListeners();
 }
-
 
 JoinRoom2({
   context,
@@ -3625,7 +3532,7 @@ JoinRoom2({
     id: Currentroom?.id,
   );
 
-  LoginViewmodel user =
+  final LoginViewmodel user =
       Provider.of<LoginViewmodel>(
     context,
     listen: false,
@@ -3635,19 +3542,13 @@ JoinRoom2({
     'JoinRoom2JoinRoom2JoinRoom2JoinRoom2JoinRoom2JoinRoom2',
   );
 
-  AgoraViewmodel Agora =
+  final AgoraViewmodel agora =
       Provider.of<AgoraViewmodel>(
     context,
     listen: false,
   );
 
-  await Agora.EndAgora();
-
-  SvgViewmodel svga =
-      Provider.of<SvgViewmodel>(
-    context,
-    listen: false,
-  );
+  await agora.EndAgora();
 
   showSpinner3();
 
@@ -3667,13 +3568,11 @@ JoinRoom2({
 
       if (value.state == 1) {
         Rooms.removeWhere(
-          (element) =>
-              element.id == Roomid,
+          (element) => element.id == Roomid,
         );
 
         NewRooms.removeWhere(
-          (element) =>
-              element.id == Roomid,
+          (element) => element.id == Roomid,
         );
 
         hideSpinner3();
@@ -3687,215 +3586,228 @@ JoinRoom2({
             key: "Room_Disbanded",
           ),
         );
-      } else {
-        if (value.id != null) {
-          Provider.of<SocketViewmodel>(
-            context,
-            listen: false,
-          ).DisConnect(
-            id: Currentroom?.id,
-          );
 
-          JoinChairs = false;
-
-          final String agoraChannel =
-              value.id?.toString().trim() ?? '';
-
-          final String agoraToken =
-              value.Token?.toString().trim() ?? '';
-
-          final bool isAdmin =
-              value.admin?.id.toString() ==
-                  UserId.toString();
-
-          print(
-            '========== JOIN ROOM 2 AGORA =========='
-          );
-          print(
-            'DB ROOM ID: ${value.id}',
-          );
-          print(
-            'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
-          );
-          print(
-            'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
-          );
-          print(
-            'TOKEN LENGTH: ${agoraToken.length}',
-          );
-          print(
-            'USER ID: $UserId',
-          );
-          print(
-            'IS ADMIN: $isAdmin',
-          );
-          print(
-            '========================================',
-          );
-
-          if (agoraChannel.isEmpty) {
-            print(
-              'JOIN ROOM 2 AGORA ERROR: RoomID is empty',
-            );
-            hideSpinner3();
-            return;
-          }
-
-          if (agoraToken.isEmpty) {
-            print(
-              'JOIN ROOM 2 AGORA ERROR: Token is empty',
-            );
-            hideSpinner3();
-            return;
-          }
-
-          if (isAdmin) {
-            JoinChairs = true;
-
-            await Provider.of<AgoraViewmodel>(
-              context,
-              listen: false,
-            ).initialize(
-              role: ClientRole.Broadcaster,
-              Token: agoraToken,
-              channelName: agoraChannel,
-            );
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].mute = 0;
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].adminleaved = 0;
-          } else {
-            await Provider.of<AgoraViewmodel>(
-              context,
-              listen: false,
-            ).initialize(
-              role: ClientRole.Audience,
-              Token: agoraToken,
-              channelName: agoraChannel,
-            );
-          }
-
-          Provider.of<GiftsViewModel>(
-            context,
-            listen: false,
-          ).hidpanner();
-
-          svga.animationController?.clear();
-
-          Currentroom = value;
-
-          Future.delayed(
-            const Duration(seconds: 2),
-            () {
-              Provider.of<GiftsViewModel>(
-                context,
-                listen: false,
-              ).sidepanner();
-
-              if (user.userinfo?.entry != null &&
-                  user.userinfo?.entry != '') {
-                Provider.of<SvgViewmodel>(
-                  context,
-                  listen: false,
-                ).getcontroller(
-                  enterImage:
-                      user.userinfo?.image,
-                  entername:
-                      user.userinfo?.name,
-                  svga:
-                      user.userinfo?.entry ??
-                          '',
-                );
-              }
-            },
-          );
-
-          if (checkadmin(
-            context: context,
-          )) {
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].mute = 0;
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].adminleaved = 0;
-          }
-
-          Provider.of<RoomViewmodel>(
-            context,
-            listen: false,
-          ).initscrollcontroller();
-
-          Currentroom?.userNumber =
-              (Currentroom?.userNumber ?? 0) + 1;
-
-          Provider.of<SocketViewmodel>(
-            context,
-            listen: false,
-          ).ConnectRoomScocket(
-            context,
-            Currentroom?.id,
-          );
-
-          Provider.of<RoomPlayViewModel>(
-            context,
-            listen: false,
-          ).changeHasRoomstate(
-            true,
-          );
-
-          if (Currentroom?.RoomAds != null) {
-            Currentroom?.chatroom?.add(
-              Chatroom(
-                user: Currentroom?.admin,
-                id: 0,
-                content:
-                    Currentroom?.RoomAds,
-                userId: Currentroom
-                    ?.admin
-                    ?.id
-                    .toString(),
-                updatedAt:
-                    Currentroom?.updatedAt,
-                roomId: Currentroom
-                    ?.id
-                    ?.toString(),
-                createdAt:
-                    Currentroom?.createdAt,
-              ),
-            );
-          }
-
-          Provider.of<AgoraViewmodel>(
-            context,
-            listen: false,
-          ).KickedFromChair = false;
-
-          Provider.of<RoomPlayViewModel>(
-            context,
-            listen: false,
-          ).changeIsRoomstate(
-            true,
-          );
-
-          HideEnterWidget();
-        } else {
-          print(
-            'JOIN ROOM 2 ERROR: value.id is null',
-          );
-        }
-
-        hideSpinner3();
+        return;
       }
+
+      if (value.id == null) {
+        print(
+          'JOIN ROOM 2 ERROR: value.id is null',
+        );
+        hideSpinner3();
+        return;
+      }
+
+      Provider.of<SocketViewmodel>(
+        context,
+        listen: false,
+      ).DisConnect(
+        id: Currentroom?.id,
+      );
+
+      JoinChairs = false;
+
+      final String agoraChannel =
+          value.id?.toString().trim() ?? '';
+
+      final String agoraToken =
+          value.Token?.toString().trim() ?? '';
+
+      final bool isAdmin =
+          value.admin?.id.toString() ==
+              UserId.toString();
+
+      print(
+        '========== JOIN ROOM 2 AGORA ==========',
+      );
+      print(
+        'DB ROOM ID: ${value.id}',
+      );
+      print(
+        'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
+      );
+      print(
+        'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
+      );
+      print(
+        'TOKEN LENGTH: ${agoraToken.length}',
+      );
+      print(
+        'USER ID: $UserId',
+      );
+      print(
+        'IS ADMIN: $isAdmin',
+      );
+      print(
+        '========================================',
+      );
+
+      if (agoraChannel.isEmpty) {
+        print(
+          'JOIN ROOM 2 AGORA ERROR: RoomID is empty',
+        );
+        hideSpinner3();
+        return;
+      }
+
+      if (agoraToken.isEmpty) {
+        print(
+          'JOIN ROOM 2 AGORA ERROR: Token is empty',
+        );
+        hideSpinner3();
+        return;
+      }
+
+      if (isAdmin) {
+        JoinChairs = true;
+
+        await Provider.of<AgoraViewmodel>(
+          context,
+          listen: false,
+        ).initialize(
+          role: ClientRole.Broadcaster,
+          Token: agoraToken,
+          channelName: agoraChannel,
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].mute = 0;
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].adminleaved = 0;
+      } else {
+        await Provider.of<AgoraViewmodel>(
+          context,
+          listen: false,
+        ).initialize(
+          role: ClientRole.Audience,
+          Token: agoraToken,
+          channelName: agoraChannel,
+        );
+      }
+
+      Currentroom = value;
+
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).hidpanner();
+
+      Provider.of<SvgViewmodel>(
+        context,
+        listen: false,
+      ).animationController?.clear();
+
+      Provider.of<RoomViewmodel>(
+        context,
+        listen: false,
+      ).initscrollcontroller();
+
+      Currentroom?.userNumber =
+          (Currentroom?.userNumber ?? 0) + 1;
+
+      Provider.of<SocketViewmodel>(
+        context,
+        listen: false,
+      ).ConnectRoomScocket(
+        context,
+        Currentroom?.id,
+      );
+
+      Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      ).changeHasRoomstate(true);
+
+      if (Currentroom?.RoomAds != null) {
+        Currentroom?.chatroom?.add(
+          Chatroom(
+            user: Currentroom?.admin,
+            id: 0,
+            content: Currentroom?.RoomAds,
+            userId: Currentroom?.admin?.id.toString(),
+            updatedAt: Currentroom?.updatedAt,
+            roomId: Currentroom?.id?.toString(),
+            createdAt: Currentroom?.createdAt,
+          ),
+        );
+      }
+
+      Provider.of<AgoraViewmodel>(
+        context,
+        listen: false,
+      ).KickedFromChair = false;
+
+      Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      ).changeIsRoomstate(true);
+
+      if (checkadmin(context: context)) {
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].mute = 0;
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].adminleaved = 0;
+      }
+
+      HideEnterWidget();
+
+      /*
+       * IMPORTANT:
+       * No SvgViewmodel.dispose().
+       *
+       * The ViewModel is still owned by Provider.
+       */
+      Future.delayed(
+        const Duration(seconds: 2),
+        () {
+          if (!context.mounted) {
+            return;
+          }
+
+          try {
+            Provider.of<GiftsViewModel>(
+              context,
+              listen: false,
+            ).sidepanner();
+
+            final String entry =
+                user.userinfo?.entry?.trim() ?? '';
+
+            if (entry.isEmpty) {
+              print(
+                'JOIN ROOM 2 SVGA: No entry animation',
+              );
+              return;
+            }
+
+            Provider.of<SvgViewmodel>(
+              context,
+              listen: false,
+            ).getcontroller(
+              enterImage: user.userinfo?.image,
+              entername: user.userinfo?.name,
+              svga: entry,
+            );
+          } catch (e, stackTrace) {
+            print(
+              'JOIN ROOM 2 DELAYED SVGA ERROR: $e',
+            );
+            print(stackTrace);
+          }
+        },
+      );
+
+      hideSpinner3();
     },
   );
 
@@ -3921,21 +3833,15 @@ JoinRoom5({
     'Test ============================> 1',
   );
 
-  AgoraViewmodel Agora =
+  final AgoraViewmodel agora =
       Provider.of<AgoraViewmodel>(
     context,
     listen: false,
   );
 
-  await Agora.EndAgora();
+  await agora.EndAgora();
 
-  SvgViewmodel svga =
-      Provider.of<SvgViewmodel>(
-    context,
-    listen: false,
-  );
-
-  LoginViewmodel user =
+  final LoginViewmodel user =
       Provider.of<LoginViewmodel>(
     context,
     listen: false,
@@ -3960,13 +3866,11 @@ JoinRoom5({
         );
 
         Rooms.removeWhere(
-          (element) =>
-              element.id == Roomid,
+          (element) => element.id == Roomid,
         );
 
         NewRooms.removeWhere(
-          (element) =>
-              element.id == Roomid,
+          (element) => element.id == Roomid,
         );
 
         hideSpinner3();
@@ -3980,272 +3884,281 @@ JoinRoom5({
             key: "Room_Disbanded",
           ),
         );
-      } else {
+
+        return;
+      }
+
+      if (value.id == null) {
         print(
-          'Test ============================> 5',
+          'JOIN ROOM 5 ERROR: value.id is null',
+        );
+        hideSpinner3();
+        return;
+      }
+
+      JoinChairs = false;
+
+      print(
+        'Test ============================> 6',
+      );
+
+      final String agoraChannel =
+          value.id?.toString().trim() ?? '';
+
+      final String agoraToken =
+          value.Token?.toString().trim() ?? '';
+
+      final bool isAdmin =
+          value.admin?.id.toString() ==
+              UserId.toString();
+
+      print(
+        '========== JOIN ROOM 5 AGORA ==========',
+      );
+      print(
+        'DB ROOM ID: ${value.id}',
+      );
+      print(
+        'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
+      );
+      print(
+        'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
+      );
+      print(
+        'TOKEN LENGTH: ${agoraToken.length}',
+      );
+      print(
+        'USER ID: $UserId',
+      );
+      print(
+        'IS ADMIN: $isAdmin',
+      );
+      print(
+        '========================================',
+      );
+
+      if (agoraChannel.isEmpty) {
+        print(
+          'JOIN ROOM 5 AGORA ERROR: RoomID is empty',
+        );
+        hideSpinner3();
+        return;
+      }
+
+      if (agoraToken.isEmpty) {
+        print(
+          'JOIN ROOM 5 AGORA ERROR: Token is empty',
+        );
+        hideSpinner3();
+        return;
+      }
+
+      if (isAdmin) {
+        JoinChairs = true;
+
+        await Provider.of<AgoraViewmodel>(
+          context,
+          listen: false,
+        ).initialize(
+          role: ClientRole.Broadcaster,
+          Token: agoraToken,
+          channelName: agoraChannel,
         );
 
-        if (value.id != null) {
-          JoinChairs = false;
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].mute = 0;
 
-          print(
-            'Test ============================> 6',
-          );
-
-          final String agoraChannel =
-              value.id?.toString().trim() ?? '';
-
-          final String agoraToken =
-              value.Token?.toString().trim() ?? '';
-
-          final bool isAdmin =
-              value.admin?.id.toString() ==
-                  UserId.toString();
-
-          print(
-            '========== JOIN ROOM 5 AGORA =========='
-          );
-          print(
-            'DB ROOM ID: ${value.id}',
-          );
-          print(
-            'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
-          );
-          print(
-            'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
-          );
-          print(
-            'TOKEN LENGTH: ${agoraToken.length}',
-          );
-          print(
-            'USER ID: $UserId',
-          );
-          print(
-            'IS ADMIN: $isAdmin',
-          );
-          print(
-            '========================================',
-          );
-
-          if (agoraChannel.isEmpty) {
-            print(
-              'JOIN ROOM 5 AGORA ERROR: RoomID is empty',
-            );
-            hideSpinner3();
-            return;
-          }
-
-          if (agoraToken.isEmpty) {
-            print(
-              'JOIN ROOM 5 AGORA ERROR: Token is empty',
-            );
-            hideSpinner3();
-            return;
-          }
-
-          if (isAdmin) {
-            JoinChairs = true;
-
-            await Provider.of<AgoraViewmodel>(
-              context,
-              listen: false,
-            ).initialize(
-              role: ClientRole.Broadcaster,
-              Token: agoraToken,
-              channelName: agoraChannel,
-            );
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].mute = 0;
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].adminleaved = 0;
-          } else {
-            await Provider.of<AgoraViewmodel>(
-              context,
-              listen: false,
-            ).initialize(
-              role: ClientRole.Audience,
-              Token: agoraToken,
-              channelName: agoraChannel,
-            );
-          }
-
-          Future.delayed(
-            const Duration(seconds: 2),
-            () {
-              print(
-                'Test ============================> 8',
-              );
-
-              Provider.of<GiftsViewModel>(
-                context,
-                listen: false,
-              ).sidepanner();
-
-              Provider.of<SvgViewmodel>(
-                context,
-                listen: false,
-              ).getcontroller(
-                enterImage:
-                    user.userinfo?.image,
-                entername:
-                    user.userinfo?.name,
-                svga:
-                    user.userinfo?.entry ??
-                        '',
-              );
-            },
-          );
-
-          Provider.of<GiftsViewModel>(
-            context,
-            listen: false,
-          ).hidpanner();
-
-          svga.animationController?.clear();
-
-          print(
-            'Test ============================> 9',
-          );
-
-          Currentroom = value;
-
-          print(
-            'CURRENT ROOM DB ID: ${Currentroom?.id}',
-          );
-
-          print(
-            'CURRENT ROOM PUBLIC ROOM ID: ${Currentroom?.RoomID}',
-          );
-
-          print(
-            'Test ============================> 10',
-          );
-
-          Provider.of<RoomViewmodel>(
-            context,
-            listen: false,
-          ).initscrollcontroller();
-
-          print(
-            'Number of users is '
-            '${Currentroom?.userNumber}',
-          );
-
-          print(
-            'Test ============================> 11',
-          );
-
-          Provider.of<SocketViewmodel>(
-            context,
-            listen: false,
-          ).ConnectRoomScocket(
-            context,
-            Roomid,
-          );
-
-          Provider.of<RoomPlayViewModel>(
-            context,
-            listen: false,
-          ).changeHasRoomstate(
-            true,
-          );
-
-          Provider.of<RoomPlayViewModel>(
-            context,
-            listen: false,
-          ).changeIsRoomstate(
-            true,
-          );
-
-          if (Currentroom?.RoomAds != null) {
-            print(
-              'Test ============================> 12',
-            );
-
-            Currentroom?.chatroom?.add(
-              Chatroom(
-                kind: 1,
-                user: Currentroom?.admin,
-                id: 0,
-                content:
-                    Currentroom?.RoomAds,
-                userId: Currentroom
-                    ?.admin
-                    ?.id
-                    .toString(),
-                updatedAt:
-                    Currentroom?.updatedAt,
-                roomId: Currentroom
-                    ?.id
-                    ?.toString(),
-                createdAt:
-                    Currentroom?.createdAt,
-              ),
-            );
-          }
-
-          if (checkadmin(
-            context: context,
-          )) {
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].mute = 0;
-
-            Provider.of<RoomViewmodel>(
-              roomcontext,
-              listen: false,
-            ).Currentroom?.chairs?[8].adminleaved = 0;
-          }
-
-          print(
-            'Test ============================> 13',
-          );
-
-          Provider.of<AgoraViewmodel>(
-            context,
-            listen: false,
-          ).KickedFromChair = false;
-
-          Provider.of<GiftsViewModel>(
-            context,
-            listen: false,
-          ).DeleteGlopal();
-
-          HideEnterWidget();
-
-          final int? userId =
-              int.tryParse(
-            user.userinfo?.id.toString() ?? '',
-          );
-
-          if (userId != null) {
-            Provider.of<AgoraViewmodel>(
-              roomcontext,
-              listen: false,
-            ).unmuteusermic(
-              userId,
-            );
-          }
-
-          Navigator.pushNamed(
-            context,
-            AppConstants.Room_Screan,
-          );
-        } else {
-          print(
-            'JOIN ROOM 5 ERROR: value.id is null',
-          );
-        }
-
-        hideSpinner3();
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].adminleaved = 0;
+      } else {
+        await Provider.of<AgoraViewmodel>(
+          context,
+          listen: false,
+        ).initialize(
+          role: ClientRole.Audience,
+          Token: agoraToken,
+          channelName: agoraChannel,
+        );
       }
+
+      print(
+        'Test ============================> 8',
+      );
+
+      Currentroom = value;
+
+      print(
+        'CURRENT ROOM DB ID: ${Currentroom?.id}',
+      );
+
+      print(
+        'CURRENT ROOM PUBLIC ROOM ID: ${Currentroom?.RoomID}',
+      );
+
+      print(
+        'Test ============================> 9',
+      );
+
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).hidpanner();
+
+      Provider.of<SvgViewmodel>(
+        context,
+        listen: false,
+      ).animationController?.clear();
+
+      Provider.of<RoomViewmodel>(
+        context,
+        listen: false,
+      ).initscrollcontroller();
+
+      print(
+        'Number of users is '
+        '${Currentroom?.userNumber}',
+      );
+
+      print(
+        'Test ============================> 10',
+      );
+
+      Provider.of<SocketViewmodel>(
+        context,
+        listen: false,
+      ).ConnectRoomScocket(
+        context,
+        Roomid,
+      );
+
+      Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      ).changeHasRoomstate(true);
+
+      Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      ).changeIsRoomstate(true);
+
+      if (Currentroom?.RoomAds != null) {
+        print(
+          'Test ============================> 11',
+        );
+
+        Currentroom?.chatroom?.add(
+          Chatroom(
+            kind: 1,
+            user: Currentroom?.admin,
+            id: 0,
+            content: Currentroom?.RoomAds,
+            userId: Currentroom?.admin?.id.toString(),
+            updatedAt: Currentroom?.updatedAt,
+            roomId: Currentroom?.id?.toString(),
+            createdAt: Currentroom?.createdAt,
+          ),
+        );
+      }
+
+      if (checkadmin(context: context)) {
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].mute = 0;
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Currentroom?.chairs?[8].adminleaved = 0;
+      }
+
+      print(
+        'Test ============================> 12',
+      );
+
+      Provider.of<AgoraViewmodel>(
+        context,
+        listen: false,
+      ).KickedFromChair = false;
+
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).DeleteGlopal();
+
+      HideEnterWidget();
+
+      final int? userId = int.tryParse(
+        user.userinfo?.id.toString() ?? '',
+      );
+
+      if (userId != null) {
+        Provider.of<AgoraViewmodel>(
+          roomcontext,
+          listen: false,
+        ).unmuteusermic(userId);
+      }
+
+      /*
+       * IMPORTANT:
+       * Do NOT call SvgViewmodel.dispose().
+       * Provider owns the SvgViewmodel lifecycle.
+       */
+
+      Future.delayed(
+        const Duration(seconds: 2),
+        () {
+          if (!context.mounted) {
+            return;
+          }
+
+          try {
+            print(
+              'Test ============================> 13',
+            );
+
+            Provider.of<GiftsViewModel>(
+              context,
+              listen: false,
+            ).sidepanner();
+
+            final String entry =
+                user.userinfo?.entry?.trim() ?? '';
+
+            if (entry.isEmpty) {
+              print(
+                'JOIN ROOM 5 SVGA: No entry animation',
+              );
+              return;
+            }
+
+            Provider.of<SvgViewmodel>(
+              context,
+              listen: false,
+            ).getcontroller(
+              enterImage: user.userinfo?.image,
+              entername: user.userinfo?.name,
+              svga: entry,
+            );
+          } catch (e, stackTrace) {
+            print(
+              'JOIN ROOM 5 DELAYED SVGA ERROR: $e',
+            );
+            print(stackTrace);
+          }
+        },
+      );
+
+      Navigator.pushNamed(
+        context,
+        AppConstants.Room_Screan,
+      );
+
+      hideSpinner3();
     },
   );
 
