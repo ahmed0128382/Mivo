@@ -1,20 +1,20 @@
 import 'package:ahlachat/models/emoji.dart';
 
-class emojecategory {
+class EmojiCategory {
   int? id;
   String? name;
   String? status;
 
   List<emojimodel>? emoji;
 
-  emojecategory({
+  EmojiCategory({
     this.id,
     this.name,
     this.status,
     this.emoji,
   });
 
-  emojecategory.fromJson(Map<String, dynamic> json) {
+  EmojiCategory.fromJson(Map<String, dynamic> json) {
     id = json['id'] is int
         ? json['id']
         : int.tryParse(json['id']?.toString() ?? '');

@@ -1,63 +1,64 @@
+
 import 'dart:async';
-import 'dart:io';
 
 import 'package:ahlachat/main.dart';
-import 'package:ahlachat/models/FlagModel.dart';
-import 'package:ahlachat/models/KarismaCollectModel.dart';
-import 'package:ahlachat/models/Weeklystarmodel.dart';
-import 'package:ahlachat/models/guessGameModel.dart';
-import 'package:ahlachat/util/SizeConfig.dart';
 import 'package:ahlachat/util/helperclass.dart';
-import 'package:ahlachat/util/images.dart';
-import 'package:ahlachat/util/notification.dart';
-import 'package:ahlachat/util/styles.dart';
-import 'package:ahlachat/view/Screans/SearchScrean/widgets/SearchRoom.dart';
-import 'package:ahlachat/viewmodels/Music_Viewmodel/MusicViewmodel.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
+import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ahlachat/repositores/Room_repositores/Room_api.dart';
-import 'package:ahlachat/models/ChairModel.dart';
-import 'package:ahlachat/models/Chatroom.dart';
-import 'package:ahlachat/models/JoinRoomModel.dart';
-import 'package:ahlachat/models/Kickedusers.dart';
-import 'package:ahlachat/models/RoomKarismaModel.dart';
 import 'package:ahlachat/models/RoomModel.dart';
-import 'package:ahlachat/models/ShopModel.dart';
-import 'package:ahlachat/models/Usermodel.dart';
-import 'package:ahlachat/models/gifts.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/viewmodels/Agora_ViewModel/AgoraViewmodel.dart';
 import 'package:ahlachat/viewmodels/Animated_Viewmodel/ElementViewModel.dart';
-import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/RoomPlay_ViewModel/RoomPlayViewModel.dart';
-import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:pin_code_fields/pin_code_fields.dart';
 import 'package:provider/provider.dart';
-import 'package:pull_to_refresh/pull_to_refresh.dart';
-import 'package:timer_count_down/timer_controller.dart';
+
 import 'room_state_mixin.dart';
 import 'room_loading_mixin.dart';
 import 'room_join_mixin.dart';
 import 'room_ui_mixin.dart';
 
-mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiMixin {
-  GetRoomSupervisor() async {
+/// Compact diagnostic logging for room administration and chair invitations.
+///
+/// Logs are debug-only, kept to one short line, and truncated to avoid
+/// flooding Android Logcat. Do not pass tokens or complete API responses.
+void _roomAdminChairLog(String stage, [Object? details]) {
+  if (!kDebugMode) return;
+
+  final message = details == null
+      ? stage
+      : '$stage | $details';
+
+  final compactMessage = message
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+
+  const maxLength = 240;
+  final output = compactMessage.length > maxLength
+      ? '${compactMessage.substring(0, maxLength - 3)}...'
+      : compactMessage;
+
+  debugPrint('[ROOM_ADMIN] $output');
+}
+
+mixin RoomAdminMixin
+    on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiMixin {
+  getRoomSupervisor() async {
     ShowGlopalLoading();
 
     await Roomapi()
         .GetRoomSupercisors(
-      Roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        Currentroom?.supervisor = value;
-        DismissGlopalLoading();
-      },
-    );
+          Roomid: Currentroom?.id,
+        )
+        .then((value) {
+          Currentroom?.supervisor = value;
+          DismissGlopalLoading();
+        });
 
     notifyListeners();
   }
@@ -68,37 +69,33 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) async {
     await Roomapi()
         .Addsupervisors(
-      context: context,
-      Roomid: Currentroom?.id,
-      userid: userid,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+          context: context,
+          Roomid: Currentroom?.id,
+          userid: userid,
+        )
+        .then((value) {
+          if (value == true) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
 
-        hideSpinner31();
-      },
-    );
+          hideSpinner31();
+        });
 
     notifyListeners();
   }
@@ -108,20 +105,18 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) async {
     await Roomapi()
         .FollowRoom(
-      context: context,
-      Roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Currentroom?.FollowRoom = 1;
+          context: context,
+          Roomid: Currentroom?.id,
+        )
+        .then((value) {
+          if (value == true) {
+            Currentroom?.FollowRoom = 1;
+          } else {
+            Currentroom?.FollowRoom = 0;
+          }
+
           notifyListeners();
-        } else {
-          Currentroom?.FollowRoom = 0;
-          notifyListeners();
-        }
-      },
-    );
+        });
 
     notifyListeners();
   }
@@ -131,20 +126,18 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) async {
     await Roomapi()
         .RemoveFollowRoom(
-      context: context,
-      Roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Currentroom?.FollowRoom = 0;
+          context: context,
+          Roomid: Currentroom?.id,
+        )
+        .then((value) {
+          if (value == true) {
+            Currentroom?.FollowRoom = 0;
+          } else {
+            Currentroom?.FollowRoom = 1;
+          }
+
           notifyListeners();
-        } else {
-          Currentroom?.FollowRoom = 1;
-          notifyListeners();
-        }
-      },
-    );
+        });
 
     notifyListeners();
   }
@@ -154,19 +147,19 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
     Roominfo,
     context,
   }) {
-    RoomPlayViewModel playroom =
+    final RoomPlayViewModel playroom =
         Provider.of<RoomPlayViewModel>(
       context,
       listen: false,
     );
 
-    RoomViewmodel Room =
+    final RoomViewmodel room =
         Provider.of<RoomViewmodel>(
       context,
       listen: false,
     );
 
-    SvgViewmodel svga =
+    final SvgViewmodel svga =
         Provider.of<SvgViewmodel>(
       context,
       listen: false,
@@ -178,13 +171,28 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
       Dialogs().showdialog5(
         context: context,
         content:
-            '${user['name']} ${getLang(context: NavigationService.navigatorKey.currentContext, key: "INVITE_SET")}',
+            '${user['name']} ${getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: "INVITE_SET",
+        )}',
       );
     } else {
       Dialogs().showdialog(
         context: context,
         content:
-            '${user['name']} ${getLang(context: NavigationService.navigatorKey.currentContext, key: "inviteyou")} ${Roominfo['name']} ${getLang(context: NavigationService.navigatorKey.currentContext, key: "Room_now")}  ',
+            '${user['name']} ${getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: "inviteyou",
+        )} ${Roominfo['name']} ${getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: "Room_now",
+        )}  ',
         onTap: () {
           Navigator.pop(context);
 
@@ -196,7 +204,7 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
             svga.dispose();
 
-            Room.JoinRoom2(
+            room.JoinRoom2(
               Roomid: Roominfo['id'],
               context: context,
             );
@@ -208,7 +216,7 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
             svga.dispose();
 
-            Room.JoinRoom5(
+            room.JoinRoom5(
               Roomid: Roominfo['id'],
               context: context,
             );
@@ -225,101 +233,261 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
     notifyListeners();
   }
 
-  InviteToChair({
+  inviteToChair({
     user,
-    Roominfo,
-    Chair_id,
+    roominfo,
+    chairId,
     context,
   }) {
-    RoomPlayViewModel playroom =
+    final RoomPlayViewModel playroom =
         Provider.of<RoomPlayViewModel>(
       context,
       listen: false,
     );
 
-    RoomViewmodel Room =
+    final RoomViewmodel room =
         Provider.of<RoomViewmodel>(
       context,
       listen: false,
     );
 
-    SvgViewmodel svga =
+    final SvgViewmodel svga =
         Provider.of<SvgViewmodel>(
       context,
       listen: false,
     );
 
-    if (Roominfo['id'].toString() ==
-            Currentroom?.id.toString() &&
-        playroom.HasRoom) {
+    final bool isSameRoom =
+        roominfo['id'].toString() ==
+            Currentroom?.id.toString();
+
+    _roomAdminChairLog(
+      'Invite received',
+      'targetRoom=${roominfo['id']} '
+          'currentRoom=${Currentroom?.id} '
+          'chair=$chairId sameRoom=$isSameRoom '
+          'hasRoom=${playroom.HasRoom} '
+          'isRoom=${playroom.IsRoom}',
+    );
+
+    if (isSameRoom && playroom.HasRoom) {
       Dialogs().showdialog(
         context: context,
         content:
-            '${user['name']} ${getLang(context: NavigationService.navigatorKey.currentContext, key: "INVITE_SET")}',
+            '${user['name']} ${getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: "INVITE_SET",
+        )}',
         onTap: () {
           Navigator.pop(context);
 
           if (JoinChairs) {
+            _roomAdminChairLog(
+              'Invite rejected',
+              'reason=already_joining_chair',
+            );
+
             Dialogs().showtoast(
               getLang(
-                context:
-                    NavigationService
-                        .navigatorKey
-                        .currentContext,
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
                 key: "AlreadySet",
               ),
             );
-          } else {
-            if (Currentroom
-                    ?.chairs?[
-                        int.parse(Chair_id) - 1]
-                    .user ==
-                null) {
-              if (playroom.IsRoom) {
-                Room.JoinChair(
-                  index: int.parse(Chair_id) - 1,
-                  context: context,
-                  chairid: Chair_id,
-                );
-              } else {
-                svga.animationController?.clear();
+            return;
+          }
 
-                Provider.of<RoomViewmodel>(
-                  context,
-                  listen: false,
-                ).initscrollcontroller();
+          final String invitedChairId =
+              chairId?.toString() ?? '';
 
-                Provider.of<GiftsViewModel>(
-                  context,
-                  listen: false,
-                ).DeleteGlopal();
+          final chairs = Currentroom?.chairs;
 
-                Navigator.pushNamed(
-                  context,
-                  AppConstants.Room_Screan,
-                );
+          if (invitedChairId.isEmpty || chairs == null) {
+            _roomAdminChairLog(
+              'Invite rejected',
+              'reason=missing_chair_id_or_chair_list '
+                  'chairIdEmpty=${invitedChairId.isEmpty} '
+                  'chairsNull=${chairs == null}',
+            );
 
-                Future.delayed(
-                  Duration(seconds: 1),
-                  () => Room.JoinChair(
-                    index:
-                        int.parse(Chair_id) - 1,
-                    context: context,
-                    chairid: Chair_id,
-                  ),
-                );
-              }
-            } else {
-              Dialogs().showtoast(
-                getLang(
-                  context:
-                      NavigationService
-                          .navigatorKey
-                          .currentContext,
-                  key: "Another_Set",
-                ),
-              );
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+            return;
+          }
+
+          // An invitation provides a chair number, not necessarily a
+          // unique database ID. Proceed only when the number is unique.
+          final matchingIndexes = <int>[];
+
+          for (var i = 0; i < chairs.length; i++) {
+            if (chairs[i].chairId?.toString() ==
+                invitedChairId) {
+              matchingIndexes.add(i);
             }
+          }
+
+          if (matchingIndexes.isEmpty) {
+            _roomAdminChairLog(
+              'Invite rejected',
+              'reason=chair_not_found chair=$invitedChairId '
+                  'chairCount=${chairs.length}',
+            );
+
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+            return;
+          }
+
+          if (matchingIndexes.length > 1) {
+            _roomAdminChairLog(
+              'Invite rejected',
+              'reason=ambiguous_chair chair=$invitedChairId '
+                  'matches=${matchingIndexes.length}',
+            );
+
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+            return;
+          }
+
+          final int chairIndex = matchingIndexes.single;
+          final invitedChair = chairs[chairIndex];
+
+          _roomAdminChairLog(
+            'Chair resolved',
+            'index=$chairIndex chair=$invitedChairId '
+                'databaseId=${invitedChair.id}',
+          );
+
+          if (invitedChair.userId != null ||
+              invitedChair.user != null) {
+            _roomAdminChairLog(
+              'Invite rejected',
+              'reason=chair_occupied chair=$invitedChairId',
+            );
+
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Another_Set",
+              ),
+            );
+            return;
+          }
+
+          if (invitedChair.Lock == 1) {
+            _roomAdminChairLog(
+              'Invite rejected',
+              'reason=chair_locked chair=$invitedChairId',
+            );
+
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Chair_lock",
+              ),
+            );
+            return;
+          }
+
+          void joinInvitedChair() {
+            // Revalidate the list position and chair state before joining.
+            final currentChairs = Currentroom?.chairs;
+
+            if (currentChairs == null ||
+                chairIndex >= currentChairs.length) {
+              _roomAdminChairLog(
+                'Chair join aborted',
+                'reason=chair_list_changed index=$chairIndex',
+              );
+              return;
+            }
+
+            final currentChair = currentChairs[chairIndex];
+
+            if (currentChair.id != invitedChair.id ||
+                currentChair.chairId != invitedChair.chairId) {
+              _roomAdminChairLog(
+                'Chair join aborted',
+                'reason=chair_identity_changed index=$chairIndex',
+              );
+              return;
+            }
+
+            if (currentChair.userId != null ||
+                currentChair.user != null ||
+                currentChair.Lock == 1) {
+              _roomAdminChairLog(
+                'Chair join aborted',
+                'reason=chair_no_longer_available '
+                    'chair=${currentChair.chairId} '
+                    'locked=${currentChair.Lock == 1}',
+              );
+              return;
+            }
+
+            _roomAdminChairLog(
+              'Joining invited chair',
+              'index=$chairIndex chair=${currentChair.chairId}',
+            );
+
+            room.JoinChair(
+              index: chairIndex,
+              context: context,
+              chairid: currentChair.chairId,
+            );
+          }
+
+          if (playroom.IsRoom) {
+            joinInvitedChair();
+          } else {
+            _roomAdminChairLog(
+              'Opening room for chair invitation',
+              'room=${Currentroom?.id} chair=$invitedChairId',
+            );
+
+            svga.animationController?.clear();
+            room.initscrollcontroller();
+
+            Provider.of<GiftsViewModel>(
+              context,
+              listen: false,
+            ).DeleteGlopal();
+
+            Navigator.pushNamed(
+              context,
+              AppConstants.Room_Screan,
+            );
+
+            Future.delayed(
+              const Duration(seconds: 1),
+              joinInvitedChair,
+            );
           }
         },
         tittle: '',
@@ -329,35 +497,44 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
         ),
       );
     } else {
+      _roomAdminChairLog(
+        'Invite targets another room',
+        'targetRoom=${roominfo['id']} '
+            'currentRoom=${Currentroom?.id}',
+      );
+
       Dialogs().showdialog(
         context: context,
         content:
-            '${user['name']} ${getLang(context: NavigationService.navigatorKey.currentContext, key: "inviteyou")} ${Roominfo['name']} ${getLang(context: NavigationService.navigatorKey.currentContext, key: "Room_now")} ',
+            '${user['name']} ${getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: "inviteyou",
+        )} ${roominfo['name']} ${getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: "Room_now",
+        )} ',
         onTap: () {
           Navigator.pop(context);
 
+          Provider.of<GiftsViewModel>(
+            context,
+            listen: false,
+          ).hidpanner2();
+
+          svga.dispose();
+
           if (playroom.HasRoom) {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
-
-            svga.dispose();
-
-            Room.JoinRoom2(
-              Roomid: Roominfo['id'],
+            room.JoinRoom2(
+              Roomid: roominfo['id'],
               context: context,
             );
           } else {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
-
-            svga.dispose();
-
-            Room.JoinRoom5(
-              Roomid: Roominfo['id'],
+            room.JoinRoom5(
+              Roomid: roominfo['id'],
               context: context,
             );
           }
@@ -381,43 +558,39 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .Removesupervisors(
-      context: context,
-      Roomid: Currentroom?.id,
-      userid: userid,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
+          context: context,
+          Roomid: Currentroom?.id,
+          userid: userid,
+        )
+        .then((value) {
+          if (value == true) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
 
-          Currentroom?.supervisor?.removeWhere(
-            (element) => element.user?.id == userid,
-          );
+            Currentroom?.supervisor?.removeWhere(
+              (element) => element.user?.id == userid,
+            );
 
-          notifyListeners();
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+            notifyListeners();
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
 
-        DismissGlopalLoading();
-      },
-    );
+          DismissGlopalLoading();
+        });
 
     notifyListeners();
   }
@@ -428,10 +601,9 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }
 
   Removesupervisors({id}) {
-    Currentroom?.supervisorsId
-        ?.removeWhere(
-          (element) => element == id,
-        );
+    Currentroom?.supervisorsId?.removeWhere(
+      (element) => element == id,
+    );
 
     notifyListeners();
   }
@@ -444,32 +616,27 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .UpdateThroneChair(
-      context: context,
-      room_id: Currentroom?.id,
-      State: State,
-    )
-        .then(
-      (value) {
-        if (value != null) {
-          Dialogs().showtoast(
-            'updated',
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+          context: context,
+          room_id: Currentroom?.id,
+          State: State,
+        )
+        .then((value) {
+          if (value != null) {
+            Dialogs().showtoast('updated');
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
 
-        DismissGlopalLoading();
-        notifyListeners();
-      },
-    );
+          DismissGlopalLoading();
+          notifyListeners();
+        });
   }
 
   unkickuserRoom({
@@ -480,41 +647,37 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .UnkickeuserRoom(
-      context: context,
-      kickid: kickid,
-    )
-        .then(
-      (value) {
-        if (value != false) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
+          context: context,
+          kickid: kickid,
+        )
+        .then((value) {
+          if (value != false) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
 
-          BlockeduserRooms.removeWhere(
-            (element) => element.id == kickid,
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+            BlockeduserRooms.removeWhere(
+              (element) => element.id == kickid,
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
 
-        DismissGlopalLoading();
-        notifyListeners();
-      },
-    );
+          DismissGlopalLoading();
+          notifyListeners();
+        });
   }
 
   SentInviteChairRoom({
@@ -525,38 +688,34 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .SendInviteChairRoom(
-      context: context,
-      roomid: Currentroom?.id,
-      userid: user_id,
-    )
-        .then(
-      (value) {
-        if (value != false) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+          context: context,
+          roomid: Currentroom?.id,
+          userid: user_id,
+        )
+        .then((value) {
+          if (value != false) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
 
-        DismissGlopalLoading();
-        notifyListeners();
-      },
-    );
+          DismissGlopalLoading();
+          notifyListeners();
+        });
   }
 
   SetRoomPassword({
@@ -567,42 +726,38 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .SetRoomPssword(
-      context: context,
-      roomid: Currentroom?.id,
-      password: PasswordRoom.text,
-    )
-        .then(
-      (value) {
-        if (value != null) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
+          context: context,
+          roomid: Currentroom?.id,
+          password: PasswordRoom.text,
+        )
+        .then((value) {
+          if (value != null) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
 
-          PasswordRoom.clear();
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
+            PasswordRoom.clear();
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
 
-          PasswordRoom.clear();
-        }
+            PasswordRoom.clear();
+          }
 
-        Navigator.pop(context);
-        notifyListeners();
-      },
-    );
+          Navigator.pop(context);
+          notifyListeners();
+        });
   }
 
   RemoveRoomPassword({
@@ -612,37 +767,33 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .RemoveRoomPssword(
-      context: context,
-      roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value != null) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+          context: context,
+          roomid: Currentroom?.id,
+        )
+        .then((value) {
+          if (value != null) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
 
-        DismissGlopalLoading();
-        notifyListeners();
-      },
-    );
+          DismissGlopalLoading();
+          notifyListeners();
+        });
   }
 
   updatemute({
@@ -652,48 +803,41 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) async {
     await Roomapi()
         .Updatemute(
-      context: context,
-      room_id: Currentroom?.id,
-      state: state,
-      user_id: user_id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          if (state == 1) {
-            Provider.of<AgoraViewmodel>(
-              roomcontext,
-              listen: false,
-            ).muteusermic(
-              int.parse(
-                user_id.toString(),
-              ),
-            );
+          context: context,
+          room_id: Currentroom?.id,
+          state: state,
+          user_id: user_id,
+        )
+        .then((value) {
+          if (value == true) {
+            if (state == 1) {
+              Provider.of<AgoraViewmodel>(
+                roomcontext,
+                listen: false,
+              ).muteusermic(
+                int.parse(user_id.toString()),
+              );
+            } else {
+              Provider.of<AgoraViewmodel>(
+                roomcontext,
+                listen: false,
+              ).unmuteusermic(
+                int.parse(user_id.toString()),
+              );
+            }
           } else {
-            Provider.of<AgoraViewmodel>(
-              roomcontext,
-              listen: false,
-            ).unmuteusermic(
-              int.parse(
-                user_id.toString(),
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
               ),
             );
           }
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
 
-        notifyListeners();
-      },
-    );
+          notifyListeners();
+        });
   }
 
   GetUserJoin({
@@ -703,49 +847,57 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .Roomsjoinuser(
-      context: context,
-      room_id: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value.isNotEmpty) {
-          joinuserRooms = value;
-          notifyListeners();
-        }
+          context: context,
+          room_id: Currentroom?.id,
+        )
+        .then((value) {
+          if (value.isNotEmpty) {
+            joinuserRooms = value;
+            notifyListeners();
+          }
 
-        DismissGlopalLoading();
-        notifyListeners();
-      },
-    );
+          DismissGlopalLoading();
+          notifyListeners();
+        });
   }
 
   updateCurrentRoom({
     required RoomModel NewRoom,
   }) {
+    _roomAdminChairLog(
+      'Updating current room',
+      'currentRoom=${Currentroom?.id} '
+          'incomingRoom=${NewRoom.id} '
+          'currentChairs=${Currentroom?.chairs?.length ?? 0} '
+          'incomingChairs=${NewRoom.chairs?.length ?? 0}',
+    );
+
+    // Update room metadata only. Chair assignment state is left untouched.
     Currentroom?.name = NewRoom.name;
-    Currentroom?.animateimage =
-        NewRoom.animateimage;
+    Currentroom?.animateimage = NewRoom.animateimage;
     Currentroom?.locked = NewRoom.locked;
     Currentroom?.password = NewRoom.password;
     Currentroom?.image = NewRoom.image;
     Currentroom?.Category = NewRoom.Category;
-    Currentroom?.nothostedimage =
-        NewRoom.nothostedimage;
+    Currentroom?.nothostedimage = NewRoom.nothostedimage;
     Currentroom?.RoomAds = NewRoom.RoomAds;
 
-    Rooms.forEach(
-      (element) {
-        if (element.id == NewRoom.id) {
-          element.name = NewRoom.name;
-          element.image = NewRoom.image;
-          element.password = NewRoom.password;
-          element.RoomAds = NewRoom.RoomAds;
-          element.Category = NewRoom.Category;
-        }
-      },
-    );
+    Rooms.forEach((element) {
+      if (element.id == NewRoom.id) {
+        element.name = NewRoom.name;
+        element.image = NewRoom.image;
+        element.password = NewRoom.password;
+        element.RoomAds = NewRoom.RoomAds;
+        element.Category = NewRoom.Category;
+      }
+    });
 
     notifyListeners();
+
+    _roomAdminChairLog(
+      'Current room updated',
+      'room=${Currentroom?.id}',
+    );
   }
 
   updateCurrentRoomPassword({
@@ -754,15 +906,12 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) {
     Currentroom?.password = Password;
 
-    Rooms.forEach(
-      (element) {
-        if (element.id.toString() ==
-            Id.toString()) {
-          element.password = Password;
-          notifyListeners();
-        }
-      },
-    );
+    Rooms.forEach((element) {
+      if (element.id.toString() == Id.toString()) {
+        element.password = Password;
+        notifyListeners();
+      }
+    });
 
     notifyListeners();
   }
@@ -773,35 +922,31 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) async {
     await Roomapi()
         .KickJoinadminuser(
-      context: context,
-      user_id: user_id,
-      room_id: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
-      },
-    );
+          context: context,
+          user_id: user_id,
+          room_id: Currentroom?.id,
+        )
+        .then((value) {
+          if (value == true) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
+        });
   }
 
   InviteUserToSET({
@@ -810,35 +955,31 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
   }) async {
     await Roomapi()
         .InviteUserToSET(
-      context: context,
-      user_id: user_id,
-      room_id: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
-      },
-    );
+          context: context,
+          user_id: user_id,
+          room_id: Currentroom?.id,
+        )
+        .then((value) {
+          if (value == true) {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Done_Succ",
+              ),
+            );
+          } else {
+            Dialogs().showtoast(
+              getLang(
+                context: NavigationService
+                    .navigatorKey
+                    .currentContext,
+                key: "Sorry",
+              ),
+            );
+          }
+        });
   }
 
   GetKickeduser({
@@ -848,17 +989,14 @@ mixin RoomAdminMixin on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiM
 
     await Roomapi()
         .KickedUserRooms(
-      context: context,
-      roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        BlockeduserRooms = value;
-        DismissGlopalLoading();
-      },
-    );
+          context: context,
+          roomid: Currentroom?.id,
+        )
+        .then((value) {
+          BlockeduserRooms = value;
+          DismissGlopalLoading();
+        });
 
     notifyListeners();
   }
-
 }

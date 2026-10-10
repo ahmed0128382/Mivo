@@ -22,6 +22,14 @@
           }
         },
         {
+          "client_id": "348248283688-qg3ns3f8vg1j445eahg02uut18do1nt3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.mivo.social",
+            "certificate_hash": "c420f4cc9eaa4092bd5a6c38c0ba7ad2676917b5"
+          }
+        },
+        {
           "client_id": "348248283688-rsl6q5pbcbhrc0ms9va4t7b7d9ln6hlq.apps.googleusercontent.com",
           "client_type": 3
         }

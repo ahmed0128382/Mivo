@@ -1,7 +1,5 @@
 
-
 import 'dart:convert';
-import 'dart:developer';
 
 import 'package:ahlachat/models/guessGameModel.dart';
 import 'package:flutter/material.dart';
@@ -19,376 +17,1142 @@ import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/RoomPlay_ViewModel/RoomPlayViewModel.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:provider/provider.dart';
-
 import 'package:pusher_client/pusher_client.dart';
 import 'package:ahlachat/models/Usermodel.dart';
 import 'package:ahlachat/models/GiveGifts.dart';
 
 import '../../util/helperclass.dart';
-//ezgif.com_gif_maker_4_.json
+
+// ezgif.com_gif_maker_4_.json
 var roomcontext;
-class SocketViewmodel extends ChangeNotifier{
+
+class SocketViewmodel extends ChangeNotifier {
   PusherClient? pusher;
   Channel? channel;
-  Future ConnectRoomScocket( context,id)async {
 
-    pusher =  PusherClient(
-  "c131d267a74a0cbd3da9",
-  PusherOptions(cluster: 'mt1'),
-  enableLogging: true,
-);
-    pusher?.connect();
+  bool _isConnecting = false;
+  String? _subscribedChannelName;
 
-    pusher?.onConnectionStateChange((state) {
+  int? _toInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
 
-      log("previousState: ${state?.previousState}, currentState: ${state?.currentState}");
-    });
+  dynamic _decodeSocketPayload(dynamic rawData) {
+    if (rawData is Map) {
+      return Map<String, dynamic>.from(rawData);
+    }
 
-    pusher?.onConnectionError((error) {
-      log("error: ${error?.message}");
-    });
+    if (rawData is String && rawData.isNotEmpty) {
+      final decoded = jsonDecode(rawData);
 
-    channel = pusher?.subscribe('Room$id');
-    channel?.bind('Room', (e) {
-  print('');
-  print('========================================');
-  print('========== ROOM PUSHER EVENT ===========');
-  print('========================================');
-  print('CHANNEL: Room$id');
-  print('EVENT: Room');
-  print('RAW DATA: ${e?.data}');
+      if (decoded is Map) {
+        return Map<String, dynamic>.from(decoded);
+      }
+    }
 
-  try {
-    final decoded = jsonDecode(e?.data ?? '');
+    throw FormatException(
+      'Unexpected Pusher payload type: ${rawData.runtimeType}',
+    );
+  }
 
-    print('DECODED STATE: ${decoded['state']}');
-    print('DECODED DATA: ${decoded['data']}');
+  // ============================================================
+  // CONNECT SOCKET
+  // ============================================================
 
-    if (decoded['state'] == 4 || decoded['state'] == '4') {
-      print('========== CHAT MESSAGE EVENT ==========');
-      print('CHAT DATA: ${decoded['data']}');
+  Future ConnectRoomScocket(context, id) async {
+    final channelName = 'Room$id';
 
+    if (_isConnecting && _subscribedChannelName == channelName) {
+      return;
+    }
+
+    // Unsubscribe from the previous room channel before subscribing.
+    // This prevents duplicate callbacks when changing rooms.
+    if (_subscribedChannelName != null &&
+        _subscribedChannelName != channelName) {
       try {
-        final chat = Chatroom.fromJson(
-          Map<String, dynamic>.from(decoded['data']),
+        pusher?.unsubscribe(_subscribedChannelName!);
+      } catch (_) {
+        // Keep socket cleanup errors from interrupting room navigation.
+      }
+    }
+
+    roomcontext = context;
+    _isConnecting = true;
+    _subscribedChannelName = channelName;
+
+    try {
+      pusher = PusherClient(
+        'c131d267a74a0cbd3da9',
+        PusherOptions(cluster: 'mt1'),
+        enableLogging: false,
+      );
+
+      pusher?.onConnectionStateChange((state) {
+        _isConnecting = false;
+      });
+
+      pusher?.onConnectionError((error) {
+        _isConnecting = false;
+      });
+
+      channel = pusher?.subscribe(channelName);
+
+      channel?.bind('Room', (event) {
+        try {
+          final decoded = _decodeSocketPayload(event?.data);
+
+          final dynamic rawState = decoded['state'];
+
+          degisenMenu(
+            data: decoded,
+            state: rawState,
+          );
+        } catch (_) {
+          // Ignore malformed events instead of flooding the console.
+        }
+      });
+
+      pusher?.connect();
+
+      notifyListeners();
+    } catch (_) {
+      _isConnecting = false;
+      rethrow;
+    }
+  }
+
+  // ============================================================
+  // DISCONNECT SOCKET
+  // ============================================================
+
+  Future DisConnect({required id}) async {
+    final channelName = 'Room$id';
+
+    try {
+      pusher?.unsubscribe(channelName);
+
+      if (_subscribedChannelName == channelName) {
+        _subscribedChannelName = null;
+        channel = null;
+        _isConnecting = false;
+      }
+    } catch (_) {
+      // Do not print repetitive disconnect diagnostics.
+    }
+
+    notifyListeners();
+  }
+
+  // ============================================================
+  // SOCKET EVENT HANDLER
+  // ============================================================
+
+  degisenMenu({data, state, index}) async {
+    final parsedState = _toInt(state);
+
+    if (roomcontext == null || parsedState == null || data is! Map) {
+      return;
+    }
+
+    final AgoraViewmodel Agora = Provider.of<AgoraViewmodel>(
+      roomcontext,
+      listen: false,
+    );
+
+    final LoginViewmodel user = Provider.of<LoginViewmodel>(
+      roomcontext,
+      listen: false,
+    );
+
+    switch (parsedState) {
+      // --------------------------------------------------------
+      // STATE 0: USER ENTERS ROOM
+      // --------------------------------------------------------
+      case 0:
+        final userinfo = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data'] as Map),
         );
 
-        print('========== CHAT PARSED SUCCESSFULLY ==========');
-        print('CHAT ID: ${chat.id}');
-        print('CHAT USER ID: ${chat.userId}');
-        print('CHAT ROOM ID: ${chat.roomId}');
-        print('CHAT CONTENT: ${chat.content}');
-        print('CHAT USER: ${chat.user?.name}');
-      } catch (chatError, chatStack) {
-        print('========== CHAT PARSE FAILED ==========');
-        print('CHAT ERROR: $chatError');
-        print('CHAT STACK: $chatStack');
-      }
-    }
+        if (userinfo.Hidden == 0) {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).ShowEnterWidget(Info: userinfo);
 
-    print('========== CALLING degisenMenu ==========');
+          if (userinfo.entry != null && userinfo.entry != '') {
+            Provider.of<SvgViewmodel>(
+              roomcontext,
+              listen: false,
+            ).getcontroller(
+              enterImage: userinfo.image,
+              entername: userinfo.name,
+              svga: userinfo.entry ?? '',
+            );
 
-    degisenMenu(
-      data: decoded,
-      state: decoded['state'],
-    );
-  } catch (error, stackTrace) {
-    print('========== PUSHER JSON ERROR ==========');
-    print('ERROR: $error');
-    print('STACK: $stackTrace');
-  }
+            if (userinfo.id.toString() !=
+                    user.userinfo?.id.toString() &&
+                userinfo.Hidden != 1) {
+              if (userinfo.entry == null || userinfo.entry == '') {
+                EnterImage = userinfo.image;
+                Entername = userinfo.name;
+              }
 
-  print('========================================');
-  print('');
-});
-    pusher?.onConnectionStateChange((state) {
-
-      log("previousState: ${state?.previousState}, currentState: ${state?.currentState}");
-    });
-
-    pusher?.onConnectionError((error) {
-
-      log("error: ${error?.message}");
-    });
-
-    notifyListeners();
-  }
-
-
-
-  Future DisConnect({required id})async{
-    pusher?.unsubscribe('Room$id');
-    notifyListeners();
-  }
-  degisenMenu({data,state, index}) async{
-
-     AgoraViewmodel Agora=Provider.of<AgoraViewmodel>(roomcontext,listen: false);
-     LoginViewmodel user=  Provider.of<LoginViewmodel>(roomcontext,listen: false);
-      switch (state) {
-      case 0:
-      var  userinfo = usermodel.fromJson(data['data']);
-      if(userinfo.Hidden==0){
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).ShowEnterWidget(Info: userinfo);
-        if(userinfo.entry!=null&&userinfo.entry!=''){
-          Provider.of<SvgViewmodel>(roomcontext,listen: false).getcontroller(enterImage: userinfo.image,entername: userinfo.name,svga: userinfo.entry??'');
-          if(userinfo.id.toString()!=user.userinfo?.id.toString()&&userinfo.Hidden!=1){
-            if(userinfo.entry==null||userinfo.entry==''){
-              EnterImage=userinfo.image;
-              Entername=userinfo.name;
+              Provider.of<GiftsViewModel>(
+                roomcontext,
+                listen: false,
+              ).sidepanner();
             }
-
-            Provider.of<GiftsViewModel>(roomcontext,listen: false).sidepanner();
           }
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddChatRoom(
+            message: Chatroom(
+              kind: 3,
+              user: userinfo,
+              content: '${userinfo.name} Enter Room',
+            ),
+          );
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddusertoRoom(
+            JoinRoom: joinRoom(
+              user: userinfo,
+              id: 45,
+              index: 1,
+              roomId: Provider.of<RoomViewmodel>(
+                roomcontext,
+                listen: false,
+              ).Currentroom?.id,
+              userId: userinfo.id,
+              updatedAt: '',
+              createdAt: '',
+            ),
+            join: userinfo,
+            ctx: roomcontext,
+            index: index,
+          );
         }
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 3,user:userinfo,content: '${userinfo.name} Enter Room' ));
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).AddusertoRoom(JoinRoom:joinRoom(user: userinfo,id: 45,index: 1,roomId: Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id,userId: userinfo.id,updatedAt: '',createdAt: '' ),join:userinfo,ctx: roomcontext,index: index );
 
+        // Do not assign the admin to a fixed chair index here.
+        // Chair assignment must come from the server's chair event
+        // or the complete room update.
+        break;
 
-
-      }
-
-
-
-
-      if(userinfo.id.toString()==  Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.adminId.toString()){
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.chairs?[8].user=userinfo;
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.chairs?[8].userId=userinfo.id.toString();
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.chairs?[8].Karisma=0;
-                 Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.chairs?[8].mute=0;
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.chairs?[8].adminleaved=0;
-      }
-      break;
+      // --------------------------------------------------------
+      // STATE 1: USER JOINS A CHAIR
+      // --------------------------------------------------------
       case 1:
-        var  Chair = Chairs.fromJson(data['data']);
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).AddusertoChair(ctx:roomcontext, data:Chair );
+        try {
+          final chair = Chairs.fromJson(
+            Map<String, dynamic>.from(data['data'] as Map),
+          );
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddusertoChair(
+            ctx: roomcontext,
+            data: chair,
+          );
+        } catch (_) {
+          // Ignore invalid chair payloads.
+        }
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 2: USER LEAVES ROOM
+      // --------------------------------------------------------
       case 2:
-        var  userinfo = usermodel.fromJson(data['data']);
-        Provider.of<AgoraViewmodel>(roomcontext,listen: false).unmuteusermic(int.parse(userinfo.id.toString()));
-        if(userinfo.Hidden==0){
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 3,user:userinfo,content: '${userinfo.name} Leaved Room' ));
+        final userinfo = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data'] as Map),
+        );
 
+        Provider.of<AgoraViewmodel>(
+          roomcontext,
+          listen: false,
+        ).unmuteusermic(int.parse(userinfo.id.toString()));
+
+        if (userinfo.Hidden == 0) {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddChatRoom(
+            message: Chatroom(
+              kind: 3,
+              user: userinfo,
+              content: '${userinfo.name} Leaved Room',
+            ),
+          );
         }
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveuserfromRoom(id:userinfo.id.toString());
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).RemoveuserfromRoom(id: userinfo.id.toString());
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 3: REMOVE USER FROM CHAIR
+      // --------------------------------------------------------
       case 3:
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveuserfromChair(id:data['data'].toString());
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).RemoveuserfromChair(id: data['data'].toString());
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 4: CHAT MESSAGE
+      // --------------------------------------------------------
       case 4:
-        var  CHATROOM = Chatroom.fromJson(data['data']);
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: CHATROOM);
+        final chatroom = Chatroom.fromJson(
+          Map<String, dynamic>.from(data['data'] as Map),
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(message: chatroom);
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 5: GIFT
+      // --------------------------------------------------------
       case 5:
+        final give = givegifts.fromJson(data['data']['gift']);
+        final giftUser = usermodel.fromJson(data['data']['user']);
 
-        var  Give = givegifts.fromJson(data['data']['gift']);
+        give.ListUser.forEach((elements) {
+          final List? recipients = Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).Currentroom?.joinRooms
+              ?.where(
+                (element) =>
+                    element.userId.toString() == elements.toString(),
+              )
+              .toList();
 
-          var user=usermodel.fromJson(data['data']['user']);
-        Give.ListUser.forEach((elements) {
-         List ?SSS= Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.joinRooms?.where((element) => element.userId.toString()==elements.toString()).toList();
-        if(SSS?.length!=0 ){
-          usermodel ? userinfo=SSS?.first.user;
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).Addmessagetocurrentroom(message: Chatroom(kind:2 ,user: user,id: 0,content:'xxxxxxxxxx',userId:user.id.toString(),updatedAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.updatedAt,roomId:  Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString(),createdAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.createdAt,Gift:Give,RecevedUser: userinfo ));
-        }else{
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).Addmessagetocurrentroom(message: Chatroom(kind:2 ,user: user,id: 0,content:'xxxxxxxxxx',userId:user.id.toString(),updatedAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.updatedAt,roomId: Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString(),createdAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.createdAt,Gift:Give,RecevedUser:Provider.of<LoginViewmodel>(roomcontext,listen: false).userinfo  ));
+          if (recipients != null && recipients.isNotEmpty) {
+            final userinfo = recipients.first.user;
+
+            Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Addmessagetocurrentroom(
+              message: Chatroom(
+                kind: 2,
+                user: giftUser,
+                id: 0,
+                content: 'xxxxxxxxxx',
+                userId: giftUser.id.toString(),
+                updatedAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.updatedAt,
+                roomId: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.id.toString(),
+                createdAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.createdAt,
+                Gift: give,
+                RecevedUser: userinfo,
+              ),
+            );
+          } else {
+            Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Addmessagetocurrentroom(
+              message: Chatroom(
+                kind: 2,
+                user: giftUser,
+                id: 0,
+                content: 'xxxxxxxxxx',
+                userId: giftUser.id.toString(),
+                updatedAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.updatedAt,
+                roomId: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.id.toString(),
+                createdAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.createdAt,
+                Gift: give,
+                RecevedUser: Provider.of<LoginViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).userinfo,
+              ),
+            );
+          }
+        });
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).updatekaresma(
+          context: roomcontext,
+          Amount: give.ListUser.length *
+              give.price! *
+              int.parse(give.quantity ?? '0'),
+        );
+
+        if (data['data']['kind'] == 1 ||
+            data['data']['kind'] == '1') {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddKaresmaChair(
+            userids: give.ListUser,
+            Amount: (
+              (int.parse(give.quantity ?? '0') * (give.price ?? 0)) /
+              10
+            ).round(),
+          );
+        } else {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddKaresmaChair(
+            userids: give.ListUser,
+            Amount: int.parse(give.quantity ?? '0') * (give.price ?? 0),
+          );
         }
-         });
-        Provider.of<RoomViewmodel>(roomcontext,listen: false). updatekaresma( context:roomcontext,Amount: Give.ListUser.length*Give.price!* int.parse(Give.quantity??"0") );
-       if(data['data']['kind']==1||data['data']['kind']=='1'){
-         Provider.of<RoomViewmodel>(roomcontext,listen: false).AddKaresmaChair(userids: Give.ListUser,Amount: ((int.parse(Give.quantity??'0')*(Give.price??0))/10).round() ) ;
-       }else{
-         Provider.of<RoomViewmodel>(roomcontext,listen: false).AddKaresmaChair(userids: Give.ListUser,Amount:int.parse(Give.quantity??'0')*(Give.price??0) );
 
-       }
-        Provider.of<SvgViewmodel>(roomcontext,listen: false).getcontroller2(svga:Give.svga,Give: Give,context: roomcontext,userinfo:   user);
+        Provider.of<SvgViewmodel>(
+          roomcontext,
+          listen: false,
+        ).getcontroller2(
+          svga: give.svga,
+          Give: give,
+          context: roomcontext,
+          userinfo: giftUser,
+        );
 
         break;
+
+      // --------------------------------------------------------
+      // STATE 6: USER IS MUTED / REMOVED
+      // --------------------------------------------------------
       case 6:
+        final users = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data'] as Map),
+        );
 
-        var users=usermodel.fromJson(data['data']);
-        Provider.of<AgoraViewmodel>(roomcontext,listen: false).muteusermic(int.parse(users.id.toString()));
-        if(users.id.toString()==user.userinfo?.id.toString()){
-          Provider.of<SocketViewmodel>(roomcontext,listen: false).DisConnect(id: Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString());
-          Provider.of<SvgViewmodel>(roomcontext,listen: false).dispose();
-          Provider.of<RoomPlayViewModel>(roomcontext, listen: false).changeHasRoomstate(false);
-          Provider.of<RoomPlayViewModel>(roomcontext, listen: false).changeIsRoomstate( false);
-          JoinChairs=false;
+        Provider.of<AgoraViewmodel>(
+          roomcontext,
+          listen: false,
+        ).muteusermic(int.parse(users.id.toString()));
+
+        if (users.id.toString() == user.userinfo?.id.toString()) {
+          Provider.of<SocketViewmodel>(
+            roomcontext,
+            listen: false,
+          ).DisConnect(
+            id: Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Currentroom?.id.toString(),
+          );
+
+          Provider.of<SvgViewmodel>(
+            roomcontext,
+            listen: false,
+          ).dispose();
+
+          Provider.of<RoomPlayViewModel>(
+            roomcontext,
+            listen: false,
+          ).changeHasRoomstate(false);
+
+          Provider.of<RoomPlayViewModel>(
+            roomcontext,
+            listen: false,
+          ).changeIsRoomstate(false);
+
+          JoinChairs = false;
           Agora.EndAgora();
-          if(Provider.of<RoomPlayViewModel>(roomcontext, listen: false).IsRoom==true){
+
+          if (Provider.of<RoomPlayViewModel>(
+                roomcontext,
+                listen: false,
+              ).IsRoom ==
+              true) {
             Navigator.pop(roomcontext);
           }
-          Future.delayed(Duration(seconds: 1),() {
-            Provider.of<RoomViewmodel>(roomcontext,listen: false).ClearCurrentroom();
-          },);
+
+          Future.delayed(const Duration(seconds: 1), () {
+            Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).ClearCurrentroom();
+          });
         }
-      //  Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveChatofuser(userid:users.id );
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveuserfromRoom(id:users.id.toString());
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 3,user:users,content: '${users.name} Leaved Room' ));
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).RemoveuserfromRoom(id: users.id.toString());
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(
+          message: Chatroom(
+            kind: 3,
+            user: users,
+            content: '${users.name} Leaved Room',
+          ),
+        );
 
         break;
+
+      // --------------------------------------------------------
+      // STATE 7: ROOM DISBANDED
+      // --------------------------------------------------------
       case 7:
+        final rooms = RoomModel.fromJson(
+          Map<String, dynamic>.from(data['data']['room'] as Map),
+        );
 
-        var  Rooms = RoomModel.fromJson(data['data']['room']);
+        if (rooms.adminId.toString() != user.userinfo?.id.toString()) {
+          Provider.of<SocketViewmodel>(
+            roomcontext,
+            listen: false,
+          ).DisConnect(
+            id: Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Currentroom?.id.toString(),
+          );
 
-        if(Rooms.adminId.toString()!=user.userinfo?.id.toString()){
-          Provider.of<SocketViewmodel>(roomcontext,listen: false).DisConnect(id: Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString());
-          Provider.of<SvgViewmodel>(roomcontext,listen: false).dispose();
-          Provider.of<RoomPlayViewModel>(roomcontext, listen: false).changeHasRoomstate(false);
-          JoinChairs=false;
+          Provider.of<SvgViewmodel>(
+            roomcontext,
+            listen: false,
+          ).dispose();
+
+          Provider.of<RoomPlayViewModel>(
+            roomcontext,
+            listen: false,
+          ).changeHasRoomstate(false);
+
+          JoinChairs = false;
           Agora.EndAgora();
-          if( Provider.of<RoomPlayViewModel>(roomcontext, listen: false).IsRoom==true){
+
+          if (Provider.of<RoomPlayViewModel>(
+                roomcontext,
+                listen: false,
+              ).IsRoom ==
+              true) {
             Navigator.pop(roomcontext);
           }
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveRoomFromlist(RoomId: Rooms.id);
-         Dialogs().showtoast('Room Disbanded');
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).RemoveRoomFromlist(RoomId: rooms.id);
+
+          Dialogs().showtoast('Room Disbanded');
         }
-        if(Rooms.adminId.toString()==user.userinfo?.id.toString()&&data['data']['admin']!=null){
+
+        if (rooms.adminId.toString() == user.userinfo?.id.toString() &&
+            data['data']['admin'] != null) {
           Dialogs().showtoast('Room Disbanded By Admin !');
-          Provider.of<SocketViewmodel>(roomcontext,listen: false).DisConnect(id: Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString());
-          Provider.of<SvgViewmodel>(roomcontext,listen: false).dispose();
-          Provider.of<RoomPlayViewModel>(roomcontext, listen: false).changeIsRoomstate( false);
-          JoinChairs=false;
+
+          Provider.of<SocketViewmodel>(
+            roomcontext,
+            listen: false,
+          ).DisConnect(
+            id: Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Currentroom?.id.toString(),
+          );
+
+          Provider.of<SvgViewmodel>(
+            roomcontext,
+            listen: false,
+          ).dispose();
+
+          Provider.of<RoomPlayViewModel>(
+            roomcontext,
+            listen: false,
+          ).changeIsRoomstate(false);
+
+          JoinChairs = false;
           Agora.EndAgora();
-          if( Provider.of<RoomPlayViewModel>(roomcontext, listen: false).IsRoom==true){
+
+          if (Provider.of<RoomPlayViewModel>(
+                roomcontext,
+                listen: false,
+              ).IsRoom ==
+              true) {
             Navigator.pop(roomcontext);
           }
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveRoomFromlist(RoomId: Rooms.id);
-        Provider.of<LoginViewmodel>(roomcontext, listen: false).userinfo?.currentroom=null;
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).RemoveRoomFromlist(RoomId: rooms.id);
+
+          Provider.of<LoginViewmodel>(
+            roomcontext,
+            listen: false,
+          ).userinfo?.currentroom = null;
         }
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 8: ADMIN MUTES / UNMUTES MIC
+      // --------------------------------------------------------
       case 8:
-
-        if(data['data']['userid']==UserId&&data['data']['state']=='0'){
+        if (data['data']['userid'].toString() == UserId.toString() &&
+            data['data']['state'].toString() == '0') {
           Agora.UnMute();
-
-        }else if(data['data']['userid']==UserId&&data['data']['state']=='1'){
+        } else if (data['data']['userid'].toString() ==
+                UserId.toString() &&
+            data['data']['state'].toString() == '1') {
           Agora.Mute();
         }
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).Changemicestateadmin(userId:data['data']['userid']  ,state: int.parse(data['data']['state']));
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Changemicestateadmin(
+          userId: data['data']['userid'],
+          state: int.parse(data['data']['state'].toString()),
+        );
 
         break;
+
+      // --------------------------------------------------------
+      // STATE 9: LOCK / UNLOCK CHAIR
+      // --------------------------------------------------------
       case 9:
+        final roomViewModel = Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        );
 
-        if(Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.adminId.toString()==UserId.toString()){
+        final dynamic chairData = data['data'];
+        final dynamic rawState = chairData?['state'];
+        final dynamic rawChairId = chairData?['chair']?['chair_id'];
 
-        }else{
-          Provider.of<RoomViewmodel>(roomcontext,listen: false). LockChair(state:int.parse(data['data']['state']),chairId: int.parse(data['data']['chair']['chair_id'])-1);
+        final int? lockState = _toInt(rawState);
+        final int? chairNumber = _toInt(rawChairId);
 
+        if (roomViewModel.Currentroom?.adminId?.toString() ==
+            UserId.toString()) {
+          break;
         }
 
-        break;
-      case 10:
+        if (lockState == null || chairNumber == null) {
+          break;
+        }
 
-        if(data['data'].toString()==user.userinfo?.id.toString()){
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).DisposeController();
-          Provider.of<SocketViewmodel>(roomcontext,listen: false).DisConnect(id:  Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString());
-          Provider.of<SvgViewmodel>(roomcontext,listen: false).dispose();
-          Provider.of<RoomPlayViewModel>(roomcontext, listen: false).changeHasRoomstate(false);
-          Provider.of<RoomPlayViewModel>(roomcontext, listen: false).changeIsRoomstate( false);
-          JoinChairs=false;
+        // chair_id is the chair number, not the database record ID.
+        // Avoid changing chair matching semantics without server support.
+        roomViewModel.LockChair(
+          state: lockState,
+          chairId: chairNumber,
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 10: ADMIN CLOSES / REMOVES USER
+      // --------------------------------------------------------
+      case 10:
+        if (data['data'].toString() == user.userinfo?.id.toString()) {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).DisposeController();
+
+          Provider.of<SocketViewmodel>(
+            roomcontext,
+            listen: false,
+          ).DisConnect(
+            id: Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Currentroom?.id.toString(),
+          );
+
+          Provider.of<SvgViewmodel>(
+            roomcontext,
+            listen: false,
+          ).dispose();
+
+          Provider.of<RoomPlayViewModel>(
+            roomcontext,
+            listen: false,
+          ).changeHasRoomstate(false);
+
+          Provider.of<RoomPlayViewModel>(
+            roomcontext,
+            listen: false,
+          ).changeIsRoomstate(false);
+
+          JoinChairs = false;
           Agora.EndAgora();
-          if( Provider.of<RoomPlayViewModel>(roomcontext, listen: false).IsRoom==true){
+
+          if (Provider.of<RoomPlayViewModel>(
+                roomcontext,
+                listen: false,
+              ).IsRoom ==
+              true) {
             Navigator.pop(roomcontext);
           }
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).removecurrentroom();
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).removecurrentroom();
         }
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveuserfromRoom(id:data['data'].toString());
-         break;
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).RemoveuserfromRoom(id: data['data'].toString());
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 11: REPLACE CURRENT ROOM
+      // --------------------------------------------------------
       case 11:
-        var  Rooms = RoomModel.fromJson(data['data']);
+        try {
+          final rooms = RoomModel.fromJson(
+            Map<String, dynamic>.from(data['data'] as Map),
+          );
 
-      Provider.of<RoomViewmodel>(roomcontext,listen: false).updateCurrentRoom(NewRoom: Rooms);
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).updateCurrentRoom(NewRoom: rooms);
+        } catch (_) {
+          // Ignore invalid room update payloads.
+        }
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 12: ROOM PASSWORD UPDATE
+      // --------------------------------------------------------
       case 12:
-         Provider.of<RoomViewmodel>(roomcontext,listen: false).updateCurrentRoomPassword(Id: data['data']['room_id'],Password:data['data']['password']  );
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).updateCurrentRoomPassword(
+          Id: data['data']['room_id'],
+          Password: data['data']['password'],
+        );
+
         break;
+
+      // --------------------------------------------------------
+      // STATE 13: DELETE ROOM CHAT
+      // --------------------------------------------------------
       case 13:
-        Provider.of<RoomViewmodel>(roomcontext,listen: false).deleteroomchat();
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).deleteroomchat();
+
         break;
-        case 14:
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).Addsupervisors(id: data['data']);
-          break;
-        case 15:
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).Removesupervisors(id: data['data']);
-          break;
-        case 16:
 
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).RemoveuserfromRoom(id:data['data'].toString());
-          break;
-        case 17:
-          Provider.of<LoginViewmodel>(roomcontext,listen: false).adduserimoge(id: int.parse(data['data']['user']),imoges:data['data']['emoji'] );
-         break;
-        case 18:
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).UpdateThronechair(value: int.parse(data['data'] ));
-          break;
-        case 19:
-          usermodel user=usermodel.fromJson(data['data']['user']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).ChangeRoomChair(user: user, newChair:data['data']['chair_id']);
-          break;
-        case 20:
-          usermodel user=usermodel.fromJson(data['data']['user']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).returntoAdminRoomChair(user: user, newChair:data['data']['chair_id']);
-          break;
-        case 21:
-          usermodel user=usermodel.fromJson(data['data']['user']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 5,user:user,content: AppConstants.Image_URL+data['data']['dice'] ));
-          break;
-        case 22:
-          usermodel user=usermodel.fromJson(data['data']['user']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 6,user:user,content:  data['data']['name'] ));
-          break;
-        case 23:
-          usermodel users=usermodel.fromJson(data['data']['user']);
-          usermodel Reciveduser=usermodel.fromJson(data['data']['reciveruser']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 7,user:users,content:  data['data']['content'],RecevedUser: Reciveduser ));
-          break;
-        case 24:
- 
-          usermodel users=usermodel.fromJson(data['data']['user']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 8,user:users,content:  AppConstants.Image_URL+ data['data']['content'], ));
-          break;
-        case 25:
+      case 14:
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Addsupervisors(id: data['data']);
+        break;
 
-          var  Give = givegifts.fromJson(data['data']['gift']);
-          var user=usermodel.fromJson(data['data']['user']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false). addCombo(count:Give.quantity ,id:user.id,image:user.image??'',image2: Give.image );
+      case 15:
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).Removesupervisors(id: data['data']);
+        break;
 
-          Give.ListUser.forEach((elements) {
-            List ?SSS= Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.joinRooms?.where((element) => element.userId.toString()==elements.toString()).toList();
-            if(SSS?.length!=0 ){
-              usermodel ? userinfo=SSS?.first.user;
-              Provider.of<RoomViewmodel>(roomcontext,listen: false).Addmessagetocurrentroom(message: Chatroom(kind:2 ,user: user,id: 0,content:'xxxxxxxxxx',userId:user.id.toString(),updatedAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.updatedAt,roomId:  Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString(),createdAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.createdAt,Gift:Give,RecevedUser: userinfo ));
-            }else{
-              Provider.of<RoomViewmodel>(roomcontext,listen: false).Addmessagetocurrentroom(message: Chatroom(kind:2 ,user: user,id: 0,content:'xxxxxxxxxx',userId:user.id.toString(),updatedAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.updatedAt,roomId: Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.id.toString(),createdAt:        Provider.of<RoomViewmodel>(roomcontext,listen: false).Currentroom?.createdAt,Gift:Give,RecevedUser:Provider.of<LoginViewmodel>(roomcontext,listen: false).userinfo  ));
-            }
-          });
-          Provider.of<RoomViewmodel>(roomcontext,listen: false). updatekaresma( context:roomcontext,Amount: Give.ListUser.length*Give.price!* int.parse(Give.quantity??"0") );
-          if(data['data']['kind']==1||data['data']['kind']=='1'){
-            Provider.of<RoomViewmodel>(roomcontext,listen: false).AddKaresmaChair(userids: Give.ListUser,Amount: ((int.parse(Give.quantity??'0')*(Give.price??0))/10).round() ) ;
-          }else{
-            Provider.of<RoomViewmodel>(roomcontext,listen: false).AddKaresmaChair(userids: Give.ListUser,Amount:int.parse(Give.quantity??'0')*(Give.price??0) );
+      case 16:
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).RemoveuserfromRoom(id: data['data'].toString());
+        break;
+
+      case 17:
+        Provider.of<LoginViewmodel>(
+          roomcontext,
+          listen: false,
+        ).adduserimoge(
+          id: int.parse(data['data']['user'].toString()),
+          imoges: data['data']['emoji'],
+        );
+        break;
+
+      case 18:
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).UpdateThronechair(
+          value: int.parse(data['data'].toString()),
+        );
+        break;
+
+      // --------------------------------------------------------
+      // STATE 19: CHANGE ROOM CHAIR
+      // --------------------------------------------------------
+      case 19:
+        try {
+          final changedUser = usermodel.fromJson(
+            Map<String, dynamic>.from(data['data']['user'] as Map),
+          );
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).changeRoomChair(
+            user: changedUser,
+            newChair: data['data']['chair_id'],
+          );
+        } catch (_) {
+          // Ignore invalid chair-change payloads.
+        }
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 20: RETURN TO ADMIN CHAIR
+      // --------------------------------------------------------
+      case 20:
+        try {
+          final changedUser = usermodel.fromJson(
+            Map<String, dynamic>.from(data['data']['user'] as Map),
+          );
+
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).returntoAdminRoomChair(
+            user: changedUser,
+            newChair: data['data']['chair_id'],
+          );
+        } catch (_) {
+          // Ignore invalid admin-chair payloads.
+        }
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 21: DICE
+      // --------------------------------------------------------
+      case 21:
+        final diceUser = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data']['user'] as Map),
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(
+          message: Chatroom(
+            kind: 5,
+            user: diceUser,
+            content: AppConstants.Image_URL + data['data']['dice'],
+          ),
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 22: NAMED EVENT
+      // --------------------------------------------------------
+      case 22:
+        final namedUser = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data']['user'] as Map),
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(
+          message: Chatroom(
+            kind: 6,
+            user: namedUser,
+            content: data['data']['name'],
+          ),
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 23: USER MESSAGE
+      // --------------------------------------------------------
+      case 23:
+        final sender = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data']['user'] as Map),
+        );
+
+        final receivedUser = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data']['reciveruser'] as Map),
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(
+          message: Chatroom(
+            kind: 7,
+            user: sender,
+            content: data['data']['content'],
+            RecevedUser: receivedUser,
+          ),
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 24: IMAGE MESSAGE
+      // --------------------------------------------------------
+      case 24:
+        final imageUser = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data']['user'] as Map),
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(
+          message: Chatroom(
+            kind: 8,
+            user: imageUser,
+            content: AppConstants.Image_URL + data['data']['content'],
+          ),
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 25: COMBO GIFT
+      // --------------------------------------------------------
+      case 25:
+        final give = givegifts.fromJson(data['data']['gift']);
+        final giftUser = usermodel.fromJson(data['data']['user']);
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).addCombo(
+          count: give.quantity,
+          id: giftUser.id,
+          image: giftUser.image ?? '',
+          image2: give.image,
+        );
+
+        give.ListUser.forEach((elements) {
+          final List? recipients = Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).Currentroom?.joinRooms
+              ?.where(
+                (element) =>
+                    element.userId.toString() == elements.toString(),
+              )
+              .toList();
+
+          if (recipients != null && recipients.isNotEmpty) {
+            final userinfo = recipients.first.user;
+
+            Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Addmessagetocurrentroom(
+              message: Chatroom(
+                kind: 2,
+                user: giftUser,
+                id: 0,
+                content: 'xxxxxxxxxx',
+                userId: giftUser.id.toString(),
+                updatedAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.updatedAt,
+                roomId: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.id.toString(),
+                createdAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.createdAt,
+                Gift: give,
+                RecevedUser: userinfo,
+              ),
+            );
+          } else {
+            Provider.of<RoomViewmodel>(
+              roomcontext,
+              listen: false,
+            ).Addmessagetocurrentroom(
+              message: Chatroom(
+                kind: 2,
+                user: giftUser,
+                id: 0,
+                content: 'xxxxxxxxxx',
+                userId: giftUser.id.toString(),
+                updatedAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.updatedAt,
+                roomId: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.id.toString(),
+                createdAt: Provider.of<RoomViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).Currentroom?.createdAt,
+                Gift: give,
+                RecevedUser: Provider.of<LoginViewmodel>(
+                  roomcontext,
+                  listen: false,
+                ).userinfo,
+              ),
+            );
           }
-          break;
-        case 26:
-          usermodel user=usermodel.fromJson(data['data']['user']);
+        });
 
-          guessgamemodel Guessgame=guessgamemodel.fromJson(data['data']['Guessgame']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddChatRoom(message: Chatroom(kind: 9,Guess:Guessgame ,id: data['data']['Guessgameid'],user:user,content:data['data']['Guess'],Coins:data['data']['Coins']));
-          break;
-        case 27:
-          guessgamemodel Guessgame=guessgamemodel.fromJson(data['data']['Guessgame']);
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).AddGuessGame(winnerid:data['data']['winner'],guess: Guessgame );
-          Provider.of<RoomViewmodel>(roomcontext,listen: false).ChangeGuessGame(Guess:Guessgame,winnerid: data['data']['winner']   );
-          break;
-        case 28:
-          SmartDialog.dismiss();
-          Provider.of<LoginViewmodel>(roomcontext,listen: false).LuckYPackage(id: int.parse(data['data']['id'].toString()),Lucky: data['data']['user'] );
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).updatekaresma(
+          context: roomcontext,
+          Amount: give.ListUser.length *
+              give.price! *
+              int.parse(give.quantity ?? '0'),
+        );
 
-           break;
-        default:
+        if (data['data']['kind'] == 1 ||
+            data['data']['kind'] == '1') {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddKaresmaChair(
+            userids: give.ListUser,
+            Amount: (
+              (int.parse(give.quantity ?? '0') * (give.price ?? 0)) /
+              10
+            ).round(),
+          );
+        } else {
+          Provider.of<RoomViewmodel>(
+            roomcontext,
+            listen: false,
+          ).AddKaresmaChair(
+            userids: give.ListUser,
+            Amount: int.parse(give.quantity ?? '0') * (give.price ?? 0),
+          );
+        }
 
+        break;
+
+      // --------------------------------------------------------
+      // STATE 26: GUESS GAME
+      // --------------------------------------------------------
+      case 26:
+        final gameUser = usermodel.fromJson(
+          Map<String, dynamic>.from(data['data']['user'] as Map),
+        );
+
+        final guessGame = guessgamemodel.fromJson(
+          data['data']['Guessgame'],
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddChatRoom(
+          message: Chatroom(
+            kind: 9,
+            Guess: guessGame,
+            id: data['data']['Guessgameid'],
+            user: gameUser,
+            content: data['data']['Guess'],
+            Coins: data['data']['Coins'],
+          ),
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 27: GUESS GAME RESULT
+      // --------------------------------------------------------
+      case 27:
+        final guessGame = guessgamemodel.fromJson(
+          data['data']['Guessgame'],
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).AddGuessGame(
+          winnerid: data['data']['winner'],
+          guess: guessGame,
+        );
+
+        Provider.of<RoomViewmodel>(
+          roomcontext,
+          listen: false,
+        ).ChangeGuessGame(
+          Guess: guessGame,
+          winnerid: data['data']['winner'],
+        );
+
+        break;
+
+      // --------------------------------------------------------
+      // STATE 28: LUCKY PACKAGE
+      // --------------------------------------------------------
+      case 28:
+        SmartDialog.dismiss();
+
+        Provider.of<LoginViewmodel>(
+          roomcontext,
+          listen: false,
+        ).LuckYPackage(
+          id: int.parse(data['data']['id'].toString()),
+          Lucky: data['data']['user'],
+        );
+
+        break;
+
+      default:
+        // Unknown event states are ignored to avoid noisy logs.
+        break;
     }
   }
-
-
-
 }

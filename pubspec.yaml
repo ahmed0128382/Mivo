@@ -155,14 +155,14 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
-  flutter_native_splash: ^2.4.4
+  # flutter_native_splash: ^2.4.4
 
-flutter_native_splash:
-  image: assets/image/worldLogo.png
-  color: "#c7ebff"
-  android12: true
-  android_12:
-    image: assets/image/worldLogo.png
+# flutter_native_splash:
+#   image: assets/image/worldLogo.png
+#   color: "#c7ebff"
+#   android12: true
+#   android_12:
+#     image: assets/image/worldLogo.png
 
 flutter:
   uses-material-design: true
@@ -219,12 +219,12 @@ flutter:
         - asset: assets/font/DIN-CondensedBold.ttf
           weight: 400
 
-    - family: Arslan
-      fonts:
-        - asset: assets/font/Arslan.ttf
-          weight: 400
+    # - family: Arslan
+    #   fonts:
+    #     - asset: assets/font/Arslan.ttf
+    #       weight: 400
 
-    - family: Emoji
-      fonts:
-        - asset: assets/font/NotoColorEmoji-Regular.ttf
-          weight: 400
+    # - family: Emoji
+    #   fonts:
+    #     - asset: assets/font/NotoColorEmoji-Regular.ttf
+    #       weight: 400

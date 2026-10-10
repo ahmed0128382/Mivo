@@ -264,7 +264,7 @@ class LoginViewmodel extends ChangeNotifier {
 
   List<Bannerss> Banners = [];
   List<emojimodel> emojis = [];
-  List<emojecategory> emojisCategory = [];
+  List<EmojiCategory> emojisCategory = [];
 
   List Giftcatigoris = [];
   List LuckyGiftcatigoris = [];
@@ -1985,16 +1985,18 @@ class LoginViewmodel extends ChangeNotifier {
     }
   }
 
-  getAllconstant(context) async {
+getAllconstant(context) async {
   await userapi().getAllconstant(context).then((value) async {
     if (value == null) {
       print(
         'GET CONST DATA: returned null, '
         'skipping constants parsing',
       );
-
       return;
     }
+
+    print('========== GET CONST DATA DEBUG ==========');
+    print('CONST KEYS: ${value.keys.toList()}');
 
     Banners.clear();
     emojis.clear();
@@ -2002,65 +2004,130 @@ class LoginViewmodel extends ChangeNotifier {
     Shipping.clear();
 
     // ------------------------------------------------------------
-    // Emojis
+    // Emojis: top-level "emoji" list
     // ------------------------------------------------------------
-    final List emojilist =
-        value['emoji'] is List
-            ? value['emoji']
-            : [];
+    final dynamic rawEmojis = value['emoji'];
 
-    for (final element in emojilist) {
-      if (element is Map<String, dynamic>) {
-        try {
-          emojis.add(
-            emojimodel.fromJson(element),
-          );
-        } catch (e, stackTrace) {
+    if (rawEmojis is List) {
+      for (final dynamic element in rawEmojis) {
+        if (element is Map) {
+          try {
+            final Map<String, dynamic> emojiJson =
+                Map<String, dynamic>.from(element);
+
+            emojis.add(
+              emojimodel.fromJson(emojiJson),
+            );
+          } catch (e, stackTrace) {
+            print('EMOJI PARSE ERROR: $e');
+            print('EMOJI DATA: $element');
+            print('EMOJI STACK: $stackTrace');
+          }
+        } else {
           print(
-            'EMOJI PARSE ERROR: $e',
-          );
-          print(
-            'EMOJI DATA: $element',
-          );
-          print(
-            'EMOJI STACK: $stackTrace',
+            'EMOJI SKIPPED: unexpected item type '
+            '${element.runtimeType}: $element',
           );
         }
       }
+    } else {
+      print(
+        'EMOJI WARNING: expected a List, received '
+        '${rawEmojis.runtimeType}',
+      );
     }
 
-    // ------------------------------------------------------------
-    // Emoji Categories
-    // ------------------------------------------------------------
-    final List emojilistCategory =
-        value['emojiCategory'] is List
-            ? value['emojiCategory']
-            : [];
+    print('TOP-LEVEL EMOJI COUNT: ${emojis.length}');
 
-    for (final element in emojilistCategory) {
-      if (element is Map<String, dynamic>) {
-        try {
-          emojisCategory.add(
-            emojecategory.fromJson(element),
-          );
-        } catch (e, stackTrace) {
+    // ------------------------------------------------------------
+    // Emoji categories: "emojiCategory"
+    // Each category contains its own nested "emoji" list.
+    // ------------------------------------------------------------
+    final dynamic rawEmojiCategories = value['emojiCategory'];
+
+    print(
+      'EMOJI CATEGORY RAW TYPE: '
+      '${rawEmojiCategories.runtimeType}',
+    );
+
+    if (rawEmojiCategories is List) {
+      print(
+        'EMOJI CATEGORY API COUNT: '
+        '${rawEmojiCategories.length}',
+      );
+
+      for (final dynamic element in rawEmojiCategories) {
+        if (element is Map) {
+          try {
+            final Map<String, dynamic> categoryJson =
+                Map<String, dynamic>.from(element);
+
+            print(
+              'EMOJI CATEGORY RAW DATA: $categoryJson',
+            );
+
+            final dynamic rawCategoryEmojis =
+                categoryJson['emoji'];
+
+            print(
+              'CATEGORY "${categoryJson['name']}": '
+              'nested emoji type=${rawCategoryEmojis.runtimeType}, '
+              'count=${rawCategoryEmojis is List ? rawCategoryEmojis.length : 'not a list'}',
+            );
+
+            final EmojiCategory category =
+                EmojiCategory.fromJson(categoryJson);
+
+            print(
+              'CATEGORY PARSED: '
+              'id=${category.id}, '
+              'name="${category.name}", '
+              'emoji count=${category.emoji?.length ?? 0}',
+            );
+
+            emojisCategory.add(category);
+          } catch (e, stackTrace) {
+            print('EMOJI CATEGORY PARSE ERROR: $e');
+            print('EMOJI CATEGORY DATA: $element');
+            print('EMOJI CATEGORY STACK: $stackTrace');
+          }
+        } else {
           print(
-            'EMOJI CATEGORY PARSE ERROR: $e',
-          );
-          print(
-            'EMOJI CATEGORY DATA: $element',
-          );
-          print(
-            'EMOJI CATEGORY STACK: $stackTrace',
+            'EMOJI CATEGORY SKIPPED: unexpected item type '
+            '${element.runtimeType}: $element',
           );
         }
+      }
+    } else {
+      print(
+        'EMOJI CATEGORY WARNING: expected a List, received '
+        '${rawEmojiCategories.runtimeType}',
+      );
+    }
+
+    print(
+      'EMOJI CATEGORY PARSED COUNT: '
+      '${emojisCategory.length}',
+    );
+
+    for (final category in emojisCategory) {
+      print(
+        'FINAL EMOJI CATEGORY: "${category.name}", '
+        'emojis=${category.emoji?.length ?? 0}',
+      );
+
+      for (final emoji in category.emoji ?? []) {
+        print(
+          '  FINAL EMOJI: id=${emoji.id}, '
+          'name=${emoji.emojiName}, '
+          'image=${emoji.image}, '
+          'svga=${emoji.emojiSvga}',
+        );
       }
     }
 
     // ------------------------------------------------------------
     // Main constants
-    // IMPORTANT:
-    // These must execute even if one emoji category is malformed.
     // ------------------------------------------------------------
     Giftcatigoris =
         value['catigoris'] is List
@@ -2076,25 +2143,15 @@ class LoginViewmodel extends ChangeNotifier {
         value['Roomcategory'] is List
             ? value['Roomcategory']
             : [];
-print(
-  'CONST KEYS: ${value.keys.toList()}',
-);
 
-print(
-  'RAW ROOMCATEGORY: ${value['Roomcategory']}',
-);
+    print('RAW ROOMCATEGORY: ${value['Roomcategory']}');
+    print('RAW BACKGROUND: ${value['background']}');
 
-print(
-  'RAW BACKGROUND: ${value['background']}',
-);
     background =
         value['background'] is List
             ? value['background']
             : [];
 
-    // ------------------------------------------------------------
-    // Debug: Room Create data
-    // ------------------------------------------------------------
     print(
       'ROOM CATEGORIES COUNT: ${Roomcatigoris.length}',
     );
@@ -2114,29 +2171,18 @@ print(
     // ------------------------------------------------------------
     // Version
     // ------------------------------------------------------------
-    if (value['version'] != null &&
-        value['version'] is Map) {
-      final Map versionMap =
-          value['version'] as Map;
+    if (value['version'] is Map) {
+      final Map versionMap = value['version'] as Map;
 
-      AppLink =
-          (versionMap['AppLink'] ?? '')
-              .toString();
+      AppLink = (versionMap['AppLink'] ?? '').toString();
+      Appversion = (versionMap['version'] ?? '').toString();
 
-      Appversion =
-          (versionMap['version'] ?? '')
-              .toString();
+      print('APP VERSION: $Appversion');
 
-      print(version);
-      print(Appversion);
+      final dynamic forceUpdate = versionMap['ForceUpdate'];
 
-      final dynamic forceUpdate =
-          versionMap['ForceUpdate'];
-
-      if (forceUpdate == 1 ||
-          forceUpdate == '1') {
-        if (Appversion.isNotEmpty &&
-            Appversion != version) {
+      if (forceUpdate == 1 || forceUpdate == '1') {
+        if (Appversion.isNotEmpty && Appversion != version) {
           Fluttertoast.showToast(
             msg:
                 'يجب عليك تحديث التطبيق إلى الإصدار الأخير حتي تستطيع استخدامه',
@@ -2160,30 +2206,27 @@ print(
     // ------------------------------------------------------------
     // Shipping
     // ------------------------------------------------------------
-    final List datalist =
-        value['Shipping'] is List
-            ? value['Shipping']
-            : [];
+    final dynamic rawShipping = value['Shipping'];
 
-    for (final element in datalist) {
-      if (element is Map<String, dynamic>) {
-        try {
-          Shipping.add(
-            shipping.fromJson(element),
-          );
-        } catch (e, stackTrace) {
-          print(
-            'SHIPPING PARSE ERROR: $e',
-          );
-          print(
-            'SHIPPING DATA: $element',
-          );
-          print(
-            'SHIPPING STACK: $stackTrace',
-          );
+    if (rawShipping is List) {
+      for (final dynamic element in rawShipping) {
+        if (element is Map) {
+          try {
+            Shipping.add(
+              shipping.fromJson(
+                Map<String, dynamic>.from(element),
+              ),
+            );
+          } catch (e, stackTrace) {
+            print('SHIPPING PARSE ERROR: $e');
+            print('SHIPPING DATA: $element');
+            print('SHIPPING STACK: $stackTrace');
+          }
         }
       }
     }
+
+    print('SHIPPING COUNT: ${Shipping.length}');
 
     // ------------------------------------------------------------
     // Cache constants
@@ -2196,11 +2239,14 @@ print(
       jsonEncode(value),
     );
 
+    print('GET CONST DATA: parsing and cache complete');
+
     notifyListeners();
   });
 
   notifyListeners();
 }
+
   Future getReportImage(context) async {
     await userapi().getImageGalary().then((value) {
       Reportimage = null;

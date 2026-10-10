@@ -19,7 +19,7 @@ import 'package:ahlachat/view/Screans/RoomScrean/widgets/GlopalGoft/GlopalGift.d
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/GuessWidgets/GessRoomWidget.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/Admin/AdminChair.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/ChatWidge/ChatReversedList.dart';
-import 'package:ahlachat/view/Screans/RoomScrean/widgets/ChatWidge/ChatWidgets.dart';
+import 'package:ahlachat/view/Screans/RoomScrean/widgets/ChatWidge/chat_widgets.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/EntryShow/EntryShow.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/GiftShow/GiftShow.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/LeaveChairUser/AdminLeaveChair.dart';

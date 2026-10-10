@@ -20,7 +20,7 @@ class RoomModel {
   int? adminId;
   int? SecondKing;
 
-  var importance;
+  dynamic importance;
 
   int? locked;
   int? state;
@@ -80,55 +80,33 @@ class RoomModel {
     this.FollowRoom,
   });
 
-  // ============================================================
-  // Safe JSON Helpers
-  // ============================================================
+  // ------------------------------------------------------------
+  // Safe JSON helpers
+  // ------------------------------------------------------------
 
-  int? _toInt(dynamic value) {
-    if (value == null) {
-      return null;
-    }
+  static int? _toInt(dynamic value) {
+    if (value == null) return null;
 
-    if (value is int) {
-      return value;
-    }
+    if (value is int) return value;
 
-    if (value is num) {
-      return value.toInt();
-    }
+    if (value is num) return value.toInt();
 
-    final String stringValue = value.toString().trim();
+    final String text = value.toString().trim();
 
-    if (stringValue.isEmpty) {
-      return null;
-    }
+    if (text.isEmpty) return null;
 
-    return int.tryParse(stringValue);
+    return int.tryParse(text);
   }
 
-  String? _toStringOrNull(dynamic value) {
-    if (value == null) {
-      return null;
-    }
+  static String? _toStringOrNull(dynamic value) {
+    if (value == null) return null;
 
-    return value.toString();
+    final String text = value.toString().trim();
+
+    return text.isEmpty ? null : text;
   }
 
-  String _imageUrl(dynamic value) {
-    if (value == null) {
-      return '';
-    }
-
-    final String path = value.toString().trim();
-
-    if (path.isEmpty) {
-      return '';
-    }
-
-    return AppConstants.Image_URL + path;
-  }
-
-  Map<String, dynamic>? _toMap(dynamic value) {
+  static Map<String, dynamic>? _toMap(dynamic value) {
     if (value is Map<String, dynamic>) {
       return value;
     }
@@ -140,234 +118,192 @@ class RoomModel {
     return null;
   }
 
-  // ============================================================
-  // From JSON
-  // ============================================================
+  static String _imageUrl(dynamic value) {
+    if (value == null) return '';
 
-  RoomModel.fromJson(Map<String, dynamic> json) {
-    // ============================================================
-    // Basic room information
-    // ============================================================
+    final String path = value.toString().trim();
 
-    id = _toInt(json['id']);
+    if (path.isEmpty) return '';
 
-    name = _toStringOrNull(json['name']);
+    // Keep absolute URLs unchanged.
+    final Uri? uri = Uri.tryParse(path);
 
-    image = _imageUrl(json['image']);
-
-    animateimage = _imageUrl(json['animateimage']);
-
-    frame = _toStringOrNull(json['frame']);
-
-    password = _toStringOrNull(json['password']);
-
-    // ============================================================
-    // Numeric fields
-    // ============================================================
-
-    userNumber = _toInt(json['user_number']);
-
-    adminId = _toInt(json['admin_id']);
-
-    SecondKing = _toInt(json['SecondKing']);
-
-    locked = _toInt(json['Locked']);
-
-    state = _toInt(json['state']);
-
-    FollowRoom = _toInt(json['FollowRoom']);
-
-    Karisma = _toInt(json['Karisma']);
-
-    // ============================================================
-    // String fields
-    // ============================================================
-
-    Category = _toStringOrNull(json['Category']);
-
-    city = _toStringOrNull(json['city']);
-
-    createdAt = _toStringOrNull(json['created_at']);
-
-    updatedAt = _toStringOrNull(json['updated_at']);
-
-    nothostedimage = _toStringOrNull(json['animateimage']);
-
-    Token = _toStringOrNull(json['Token']);
-
-    RoomID = _toStringOrNull(json['RoomID']);
-
-    agoratoken = _toStringOrNull(json['agoratoken']);
-
-    RoomAds = _toStringOrNull(json['RoomAds']);
-
-    importance = json['importance'];
-
-    // ============================================================
-    // Join Rooms
-    // ============================================================
-
-    if (json['join_room'] is List) {
-      joinRooms = <joinRoom>[];
-
-      for (final dynamic value in json['join_room']) {
-        final map = _toMap(value);
-
-        if (map != null) {
-          joinRooms!.add(
-            joinRoom.fromJson(map),
-          );
-        }
-      }
+    if (uri != null &&
+        (uri.scheme == 'http' || uri.scheme == 'https') &&
+        uri.host.isNotEmpty) {
+      return path;
     }
 
-    // ============================================================
-    // Supervisors
-    // ============================================================
+    final String baseUrl = AppConstants.Image_URL.trim();
 
-    if (json['supervisors'] is List) {
-      supervisor = <Supervisors>[];
-      supervisorsId = <String>[];
+    if (baseUrl.isEmpty) return path;
 
-      for (final dynamic value in json['supervisors']) {
-        final map = _toMap(value);
+    final String normalizedBase =
+        baseUrl.endsWith('/')
+            ? baseUrl.substring(0, baseUrl.length - 1)
+            : baseUrl;
 
-        if (map == null) {
-          continue;
-        }
+    final String normalizedPath =
+        path.startsWith('/') ? path.substring(1) : path;
 
-        supervisor!.add(
-          Supervisors.fromJson(map),
-        );
-
-        final dynamic userId = map['user_id'];
-
-        if (userId != null) {
-          supervisorsId!.add(
-            userId.toString(),
-          );
-        }
-      }
-    }
-
-    // ============================================================
-    // Admin
-    // ============================================================
-
-    final adminJson = _toMap(json['admin']);
-
-    admin = adminJson != null
-        ? usermodel.fromJson(adminJson)
-        : null;
-
-    // ============================================================
-    // Chairs
-    // ============================================================
-
-    if (json['chairs'] is List) {
-      chairs = <Chairs>[];
-
-      for (final dynamic value in json['chairs']) {
-        final map = _toMap(value);
-
-        if (map != null) {
-          chairs!.add(
-            Chairs.fromJson(map),
-          );
-        }
-      }
-    }
-
-    // ============================================================
-    // Chatroom
-    // ============================================================
-
-    if (json['chatroom'] is List) {
-      chatroom = <Chatroom>[];
-
-      for (final dynamic value in json['chatroom']) {
-        final map = _toMap(value);
-
-        if (map != null) {
-          chatroom!.add(
-            Chatroom.fromJson(map),
-          );
-        }
-      }
-    }
+    return '$normalizedBase/$normalizedPath';
   }
 
-  // ============================================================
+  // ------------------------------------------------------------
+  // From JSON
+  // ------------------------------------------------------------
+
+  factory RoomModel.fromJson(Map<String, dynamic> json) {
+    final room = RoomModel();
+
+    // Basic room information.
+    room.id = _toInt(json['id']);
+    room.name = _toStringOrNull(json['name']);
+
+    room.image = _imageUrl(json['image']);
+    room.animateimage = _imageUrl(json['animateimage']);
+
+    room.frame = _toStringOrNull(json['frame']);
+    room.password = _toStringOrNull(json['password']);
+
+    // Numeric fields.
+    room.userNumber = _toInt(json['user_number']);
+    room.adminId = _toInt(json['admin_id']);
+    room.SecondKing = _toInt(json['SecondKing']);
+
+    room.locked = _toInt(json['Locked'] ?? json['locked']);
+    room.state = _toInt(json['state']);
+    room.FollowRoom = _toInt(json['FollowRoom']);
+    room.Karisma = _toInt(json['Karisma']);
+
+    // String fields.
+    room.Category = _toStringOrNull(json['Category']);
+    room.city = _toStringOrNull(json['city']);
+    room.createdAt = _toStringOrNull(json['created_at']);
+    room.updatedAt = _toStringOrNull(json['updated_at']);
+
+    room.nothostedimage = _toStringOrNull(json['animateimage']);
+
+    room.Token = _toStringOrNull(json['Token']);
+    room.RoomID = _toStringOrNull(json['RoomID']);
+    room.agoratoken = _toStringOrNull(json['agoratoken']);
+    room.RoomAds = _toStringOrNull(json['RoomAds']);
+
+    room.importance = json['importance'];
+
+    // Join rooms.
+    final dynamic joinRoomJson = json['join_room'];
+
+    if (joinRoomJson is List) {
+      room.joinRooms = <joinRoom>[];
+
+      for (final dynamic value in joinRoomJson) {
+        final map = _toMap(value);
+
+        if (map == null) continue;
+
+        room.joinRooms!.add(joinRoom.fromJson(map));
+      }
+    }
+
+    // Supervisors.
+    final dynamic supervisorsJson = json['supervisors'];
+
+    if (supervisorsJson is List) {
+      room.supervisor = <Supervisors>[];
+      room.supervisorsId = <String>[];
+
+      for (final dynamic value in supervisorsJson) {
+        final map = _toMap(value);
+
+        if (map == null) continue;
+
+        room.supervisor!.add(Supervisors.fromJson(map));
+
+        final dynamic supervisorUserId = map['user_id'];
+
+        if (supervisorUserId != null) {
+          room.supervisorsId!.add(supervisorUserId.toString());
+        }
+      }
+    }
+
+    // Admin.
+    final Map<String, dynamic>? adminJson = _toMap(json['admin']);
+
+    room.admin =
+        adminJson != null ? usermodel.fromJson(adminJson) : null;
+
+    // Chairs.
+    final dynamic chairsJson = json['chairs'];
+
+    if (chairsJson is List) {
+      room.chairs = <Chairs>[];
+
+      for (final dynamic value in chairsJson) {
+        final map = _toMap(value);
+
+        if (map == null) continue;
+
+        room.chairs!.add(Chairs.fromJson(map));
+      }
+    }
+
+    // Chatroom messages.
+    final dynamic chatroomJson = json['chatroom'];
+
+    if (chatroomJson is List) {
+      room.chatroom = <Chatroom>[];
+
+      for (final dynamic value in chatroomJson) {
+        final map = _toMap(value);
+
+        if (map == null) continue;
+
+        room.chatroom!.add(Chatroom.fromJson(map));
+      }
+    }
+
+    return room;
+  }
+
+  // ------------------------------------------------------------
   // To JSON
-  // ============================================================
+  // ------------------------------------------------------------
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = <String, dynamic>{};
-
-    data['id'] = id;
-    data['name'] = name;
-
-    data['image'] = image;
-    data['animateimage'] = animateimage;
-
-    data['frame'] = frame;
-
-    data['Token'] = Token;
-
-    data['password'] = password;
-
-    data['RoomID'] = RoomID;
-
-    data['user_number'] = userNumber;
-    data['admin_id'] = adminId;
-
-    data['Locked'] = locked;
-    data['state'] = state;
-
-    data['FollowRoom'] = FollowRoom;
-
-    data['created_at'] = createdAt;
-    data['updated_at'] = updatedAt;
-
-    data['Category'] = Category;
-    data['city'] = city;
-
-    data['importance'] = importance;
-
-    data['agoratoken'] = agoratoken;
-    data['RoomAds'] = RoomAds;
-
-    data['Karisma'] = Karisma;
-    data['SecondKing'] = SecondKing;
-
-    if (joinRooms != null) {
-      data['join_room'] = joinRooms!
-          .map((v) => v.toJson())
-          .toList();
-    }
-
-    if (supervisor != null) {
-      data['supervisors'] = supervisor!
-          .map((v) => v.toJson())
-          .toList();
-    }
-
-    if (admin != null) {
-      data['admin'] = admin!.toJson();
-    }
-
-    if (chairs != null) {
-      data['chairs'] = chairs!
-          .map((v) => v.toJson())
-          .toList();
-    }
-
-    if (chatroom != null) {
-      data['chatroom'] = chatroom!
-          .map((v) => v.toJson())
-          .toList();
-    }
-
-    return data;
+    return <String, dynamic>{
+      'id': id,
+      'name': name,
+      'image': image,
+      'animateimage': animateimage,
+      'frame': frame,
+      'Token': Token,
+      'password': password,
+      'RoomID': RoomID,
+      'user_number': userNumber,
+      'admin_id': adminId,
+      'Locked': locked,
+      'state': state,
+      'FollowRoom': FollowRoom,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'Category': Category,
+      'city': city,
+      'importance': importance,
+      'agoratoken': agoratoken,
+      'RoomAds': RoomAds,
+      'Karisma': Karisma,
+      'SecondKing': SecondKing,
+      if (joinRooms != null)
+        'join_room': joinRooms!.map((value) => value.toJson()).toList(),
+      if (supervisor != null)
+        'supervisors': supervisor!.map((value) => value.toJson()).toList(),
+      if (admin != null) 'admin': admin!.toJson(),
+      if (chairs != null)
+        'chairs': chairs!.map((value) => value.toJson()).toList(),
+      if (chatroom != null)
+        'chatroom': chatroom!.map((value) => value.toJson()).toList(),
+    };
   }
 }

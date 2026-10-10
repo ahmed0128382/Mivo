@@ -68,7 +68,7 @@ class Headwidget extends StatelessWidget {
                        Room.AddtoEdit();
                        GlopalbottomSheet(isscrollable: true,context: context,Screan: EditRoom());
                      }else if(value==1){
-                       Room.GetRoomSupervisor();
+                       Room.getRoomSupervisor();
                        GlopalbottomSheet2(context: context,Screan: SupervisorsTabBar());
 
                      } else if(value==3){

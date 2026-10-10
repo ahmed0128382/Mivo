@@ -14,7 +14,6 @@ import 'package:dio/dio.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
@@ -2456,7 +2455,7 @@ class userapi extends UserRepository {
 
     Token = prefs.getString('token');
 
-    FlutterNativeSplash.remove();
+    // FlutterNativeSplash.remove();
 
     if (Token == null ||
         Token!.trim().isEmpty) {

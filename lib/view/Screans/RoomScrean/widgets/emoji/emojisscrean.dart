@@ -1,86 +1,213 @@
-
-
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart';
-import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/SizeConfig.dart';
-import 'package:ahlachat/util/app_constants.dart';
-import 'package:ahlachat/util/dimensions.dart';
-import 'package:ahlachat/util/images.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:ahlachat/util/styles.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
-import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:provider/provider.dart';
 
-import '../../../../../models/Chatroom.dart';
-import '../../../../../viewmodels/Socket_ViewModel/Socketviewmodel.dart';
-import '../../../RolletUserScrean/RolletUserScrean.dart';
-class EmojiTabBar extends StatelessWidget  {
-  const EmojiTabBar({Key? key}) : super(key: key);
+class EmojiTabBar extends StatelessWidget {
+  const EmojiTabBar({super.key});
 
   @override
   Widget build(BuildContext context) {
-    GiftsViewModel gits = Provider.of<GiftsViewModel>(context, listen: true);
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: true);
-    RoomViewmodel Room=  Provider.of<RoomViewmodel>(context,listen: true);
+    final LoginViewmodel user =
+        Provider.of<LoginViewmodel>(context);
 
-    return  Container(height: SizeConfig.screenHeight!/2.7,decoration: const BoxDecoration(borderRadius: BorderRadius.only(topRight: Radius.circular(30),topLeft:  Radius.circular(30),),color:Colors.black),
-      child: DefaultTabController(length: user.emojisCategory.length,
+    final RoomViewmodel room =
+        Provider.of<RoomViewmodel>(context, listen: false);
+
+    final categories = user.emojisCategory;
+
+    // Avoid DefaultTabController(length: 0).
+    if (categories.isEmpty) {
+      return Container(
+        height: SizeConfig.screenHeight! / 2.7,
+        decoration: const BoxDecoration(
+          color: Colors.black,
+          borderRadius: BorderRadius.only(
+            topRight: Radius.circular(30),
+            topLeft: Radius.circular(30),
+          ),
+        ),
+        child: const Center(
+          child: Text(
+            'No emojis available',
+            style: TextStyle(color: Colors.white70),
+          ),
+        ),
+      );
+    }
+
+    return Container(
+      height: SizeConfig.screenHeight! / 2.7,
+      decoration: const BoxDecoration(
+        color: Colors.black,
+        borderRadius: BorderRadius.only(
+          topRight: Radius.circular(30),
+          topLeft: Radius.circular(30),
+        ),
+      ),
+      child: DefaultTabController(
+        length: categories.length,
         child: Column(
           children: [
-            SizedBox(height: 10,),
+            const SizedBox(height: 10),
+
+            // Category names are text, not image URLs.
             TabBar(
-                indicatorColor:Colors.white,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white24,
-                automaticIndicatorColorAdjustment: true,
-                tabs: List.generate(user.emojisCategory.length, (index) =>   Tab(
-                  child:CachedNetworkImage(imageUrl: user.emojisCategory[index].name??'',height: 25),
-                ),)
+              isScrollable: true,
+              indicatorColor: Colors.white,
+              labelColor: Colors.white,
+              unselectedLabelColor: Colors.white54,
+              automaticIndicatorColorAdjustment: true,
+              tabs: categories.map((category) {
+                final String categoryName =
+                    category.name?.trim() ?? '';
+
+                return Tab(
+                  text: categoryName.isNotEmpty
+                      ? categoryName
+                      : 'Emojis',
+                );
+              }).toList(),
             ),
+
             Expanded(
               child: TabBarView(
-                  children:
-              List.generate(user.emojisCategory.length, (index) =>
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
+                children: categories.map((category) {
+                  final categoryEmojis = category.emoji ?? [];
+
+                  if (categoryEmojis.isEmpty) {
+                    return const Center(
+                      child: Text(
+                        'No emojis in this category',
+                        style: TextStyle(
+                          color: Colors.white70,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Padding(
+                    padding: const EdgeInsets.all(8),
                     child: GridView.builder(
-                        gridDelegate:  const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount:4,
-                            childAspectRatio:0.8,
-                            mainAxisSpacing: 5,
-                            crossAxisSpacing: 5),
-                        itemCount:user.emojisCategory[index].emoji?.length ,
-                        itemBuilder: (BuildContext ctx, indexx) {
-                          return InkWell(onTap: (){
+                      itemCount: categoryEmojis.length,
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 4,
+                        childAspectRatio: 0.8,
+                        mainAxisSpacing: 5,
+                        crossAxisSpacing: 5,
+                      ),
+                      itemBuilder: (context, index) {
+                        final emoji = categoryEmojis[index];
+
+                        return InkWell(
+                          borderRadius: BorderRadius.circular(15),
+                          onTap: () {
+                            final String? emojiPath =
+                                emoji.emojiSvga;
+
+                            if (emojiPath == null ||
+                                emojiPath.trim().isEmpty) {
+                              debugPrint(
+                                'EMOJI TAP ERROR: '
+                                'missing SVGA/GIF path; '
+                                'id=${emoji.id}, '
+                                'name=${emoji.emojiName}',
+                              );
+                              return;
+                            }
+
+                            debugPrint(
+                              'EMOJI SELECTED: '
+                              'id=${emoji.id}, '
+                              'name=${emoji.emojiName}, '
+                              'path=$emojiPath',
+                            );
+
                             Navigator.pop(context);
-                            print(user.emojisCategory[index].emoji![indexx].emojiSvga);
-                            Room.SentEmoji(context: context,emoji: user.emojisCategory[index].emoji![indexx].emojiSvga);
+
+                            room.SentEmoji(
+                              context: context,
+                              emoji: emojiPath,
+                            );
                           },
-                            child: Container(
-                              alignment: Alignment.center,
-                              decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(15)),
-                              child: Column(crossAxisAlignment: CrossAxisAlignment.center,mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  CachedNetworkImage(imageUrl:  user.emojisCategory[index].emoji![indexx].image??'' ,height: 50,),
-                                  Text(user.emojisCategory[index].emoji![indexx].emojiName??'',style: style4.copyWith(fontSize: 10,fontWeight: FontWeight.bold,color: Colors.white),textAlign: TextAlign.center),
-                                ],
-                              ),
-                            )
-                          );
-                        }),
-                  ),
-              )
+                          child: Container(
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              borderRadius:
+                                  BorderRadius.circular(15),
+                            ),
+                            child: Column(
+                              mainAxisAlignment:
+                                  MainAxisAlignment.center,
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.center,
+                              children: [
+                                CachedNetworkImage(
+                                  imageUrl: emoji.image ?? '',
+                                  height: 50,
+                                  fit: BoxFit.contain,
+                                  placeholder: (context, url) =>
+                                      const SizedBox(
+                                    height: 50,
+                                    width: 50,
+                                    child: Center(
+                                      child: SizedBox(
+                                        height: 18,
+                                        width: 18,
+                                        child:
+                                            CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          color: Colors.white54,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  errorWidget:
+                                      (context, url, error) {
+                                    debugPrint(
+                                      'EMOJI IMAGE ERROR: '
+                                      'url=$url, error=$error',
+                                    );
+
+                                    return const SizedBox(
+                                      height: 50,
+                                      child: Icon(
+                                        Icons.broken_image_outlined,
+                                        color: Colors.white54,
+                                        size: 28,
+                                      ),
+                                    );
+                                  },
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  emoji.emojiName ?? '',
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: style4.copyWith(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                }).toList(),
               ),
             ),
-
-
           ],
         ),
-      )
+      ),
     );
   }
 }

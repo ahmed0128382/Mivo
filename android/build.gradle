@@ -24,6 +24,21 @@ subprojects { subproject ->
     subproject.tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
         kotlinOptions.jvmTarget = '1.8'
     }
+    subproject.afterEvaluate {
+        if (subproject.hasProperty('android')) {
+            def compileSdk = subproject.android.compileSdkVersion
+            // Convert to string to safely inspect or parse it
+            def sdkString = compileSdk?.toString() ?: ""
+            if (sdkString.startsWith("android-")) {
+                sdkString = sdkString.replace("android-", "")
+            }
+            def sdkInt = sdkString.isInteger() ? sdkString.toInteger() : 0
+            
+            if (sdkInt > 0 && sdkInt < 31) {
+                subproject.android.compileSdkVersion = 34
+            }
+        }
+    }
     // A few older plugins set Java targets newer than their Kotlin defaults.
     def kotlinTarget = [
         device_info_plus: '17',

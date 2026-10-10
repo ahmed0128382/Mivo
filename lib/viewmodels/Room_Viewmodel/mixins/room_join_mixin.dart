@@ -1,4 +1,6 @@
+
 import 'dart:async';
+
 import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/main.dart';
 import 'package:ahlachat/util/helperclass.dart';
@@ -15,46 +17,99 @@ import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/RoomPlay_ViewModel/RoomPlayViewModel.dart';
 import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
 import 'package:provider/provider.dart';
+
 import 'room_state_mixin.dart';
 import 'room_loading_mixin.dart';
 import 'room_ui_mixin.dart';
 
 mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
-JoinRoom4({
-  context,
-  Roomid,
-}) async {
-  Provider.of<SocketViewmodel>(
-    context,
-    listen: false,
-  ).DisConnect(
-    id: Currentroom?.id,
-  );
+  // ------------------------------------------------------------
+  // CHAIR HELPERS
+  // ------------------------------------------------------------
 
-  Currentroom?.id = 0;
-  Currentroom = null;
+  /// Finds the chair occupied by the current user.
+  ///
+  /// Uses the user ID instead of a hardcoded list index.
+  int _findCurrentUserChairIndex(dynamic room) {
+    if (room == null || room.chairs is! List) {
+      return -1;
+    }
 
-  final AgoraViewmodel agora =
-      Provider.of<AgoraViewmodel>(
-    context,
-    listen: false,
-  );
+    final List<dynamic> chairs = room.chairs as List<dynamic>;
+    final String currentUserId = UserId.toString();
 
-  final LoginViewmodel user =
-      Provider.of<LoginViewmodel>(
-    context,
-    listen: false,
-  );
+    for (int i = 0; i < chairs.length; i++) {
+      final dynamic chair = chairs[i];
 
-  await agora.EndAgora();
+      final String? userId = chair.userId?.toString();
+      final String? nestedUserId = chair.user?.id?.toString();
 
-  await Roomapi()
-      .joinRooms(
-    context: context,
-    Roomid: Roomid,
-  )
-      .then(
-    (value) async {
+      if (userId == currentUserId ||
+          nestedUserId == currentUserId) {
+        return i;
+      }
+    }
+
+    return -1;
+  }
+
+  /// Resets only the current user's chair.
+  ///
+  /// If the chair cannot be identified, no chair is modified.
+  void _resetAdminChair(dynamic room) {
+    if (room == null || room.chairs is! List) {
+      return;
+    }
+
+    final List<dynamic> chairs = room.chairs as List<dynamic>;
+    final int index = _findCurrentUserChairIndex(room);
+
+    if (index < 0 || index >= chairs.length) {
+      return;
+    }
+
+    final dynamic chair = chairs[index];
+
+    chair.mute = 0;
+    chair.adminleaved = 0;
+  }
+
+  // ------------------------------------------------------------
+  // JOIN ROOM 4
+  // ------------------------------------------------------------
+
+  Future<void> JoinRoom4({
+    required dynamic context,
+    required dynamic Roomid,
+  }) async {
+    Provider.of<SocketViewmodel>(
+      context,
+      listen: false,
+    ).DisConnect(
+      id: Currentroom?.id,
+    );
+
+    Currentroom?.id = 0;
+    Currentroom = null;
+
+    final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
+      context,
+      listen: false,
+    );
+
+    final LoginViewmodel user = Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
+
+    await agora.EndAgora();
+
+    await Roomapi()
+        .joinRooms(
+          context: context,
+          Roomid: Roomid,
+        )
+        .then((value) async {
       DismissGlopalLoading();
 
       if (value.state == 1) {
@@ -68,11 +123,10 @@ JoinRoom4({
 
         Dialogs().showtoast(
           getLang(
-            context:
-                NavigationService
-                    .navigatorKey
-                    .currentContext,
-            key: "Room_Disbanded",
+            context: NavigationService
+                .navigatorKey
+                .currentContext,
+            key: 'Room_Disbanded',
           ),
         );
 
@@ -80,9 +134,7 @@ JoinRoom4({
       }
 
       if (value.id == null) {
-        print(
-          'JOIN ROOM 4 ERROR: value.id is null',
-        );
+        debugPrint('JOIN ROOM 4: Room ID is null');
         return;
       }
 
@@ -90,59 +142,24 @@ JoinRoom4({
 
       final String agoraChannel =
           value.id?.toString().trim() ?? '';
-
       final String agoraToken =
           value.Token?.toString().trim() ?? '';
 
       final bool isAdmin =
-          value.admin?.id.toString() ==
-              UserId.toString();
-
-      print(
-        '========== JOIN ROOM 4 AGORA ==========',
-      );
-      print(
-        'DB ROOM ID: ${value.id}',
-      );
-      print(
-        'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
-      );
-      print(
-        'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
-      );
-      print(
-        'TOKEN LENGTH: ${agoraToken.length}',
-      );
-      print(
-        'USER ID: $UserId',
-      );
-      print(
-        'IS ADMIN: $isAdmin',
-      );
-      print(
-        '========================================',
-      );
+          value.admin?.id.toString() == UserId.toString();
 
       if (agoraChannel.isEmpty) {
-        print(
-          'JOIN ROOM 4 AGORA ERROR: RoomID is empty',
-        );
+        debugPrint('JOIN ROOM 4: Agora channel is empty');
         return;
       }
 
       if (agoraToken.isEmpty) {
-        print(
-          'JOIN ROOM 4 AGORA ERROR: Token is empty',
-        );
+        debugPrint('JOIN ROOM 4: Agora token is empty');
         return;
       }
 
       if (isAdmin) {
         JoinChairs = true;
-
-        print(
-          'JOIN ROOM 4: User is ADMIN',
-        );
 
         await Provider.of<AgoraViewmodel>(
           context,
@@ -153,20 +170,13 @@ JoinRoom4({
           channelName: agoraChannel,
         );
 
-        Provider.of<RoomViewmodel>(
+        final roomVM = Provider.of<RoomViewmodel>(
           roomcontext,
           listen: false,
-        ).Currentroom?.chairs?[8].mute = 0;
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].adminleaved = 0;
-      } else {
-        print(
-          'JOIN ROOM 4: User is NOT ADMIN',
         );
 
+        _resetAdminChair(roomVM.Currentroom);
+      } else {
         await Provider.of<AgoraViewmodel>(
           context,
           listen: false,
@@ -177,8 +187,17 @@ JoinRoom4({
         );
       }
 
-      // Set the room BEFORE scheduling the delayed entry animation.
+      // Preserve the existing global room assignment.
       Currentroom = value;
+
+      final roomVM = Provider.of<RoomViewmodel>(
+        roomcontext,
+        listen: false,
+      );
+
+      if (checkadmin(context: context)) {
+        _resetAdminChair(roomVM.Currentroom);
+      }
 
       Provider.of<GiftsViewModel>(
         context,
@@ -228,18 +247,6 @@ JoinRoom4({
         );
       }
 
-      if (checkadmin(context: context)) {
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].mute = 0;
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].adminleaved = 0;
-      }
-
       Provider.of<AgoraViewmodel>(
         context,
         listen: false,
@@ -263,22 +270,11 @@ JoinRoom4({
         ).unmuteusermic(userId);
       }
 
-      /*
-       * IMPORTANT:
-       * We do NOT call SvgViewmodel.dispose().
-       *
-       * SvgViewmodel is owned by Provider.
-       * Its dispose() must only happen when Provider removes
-       * the ViewModel from the widget tree.
-       *
-       * getcontroller() itself must safely handle its lifecycle.
-       */
+      // SvgViewmodel is owned by Provider; do not dispose it here.
       Future.delayed(
         const Duration(seconds: 2),
         () {
-          if (!context.mounted) {
-            return;
-          }
+          if (!context.mounted) return;
 
           try {
             Provider.of<GiftsViewModel>(
@@ -290,9 +286,6 @@ JoinRoom4({
                 user.userinfo?.entry?.trim() ?? '';
 
             if (entry.isEmpty) {
-              print(
-                'JOIN ROOM 4 SVGA: No entry animation',
-              );
               return;
             }
 
@@ -304,11 +297,8 @@ JoinRoom4({
               entername: user.userinfo?.name,
               svga: entry,
             );
-          } catch (e, stackTrace) {
-            print(
-              'JOIN ROOM 4 DELAYED SVGA ERROR: $e',
-            );
-            print(stackTrace);
+          } catch (error) {
+            debugPrint('JOIN ROOM 4: Entry animation failed: $error');
           }
         },
       );
@@ -317,57 +307,46 @@ JoinRoom4({
         context,
         AppConstants.Room_Screan,
       );
-    },
-  );
+    });
 
-  notifyListeners();
-}
+    notifyListeners();
+  }
 
-JoinRoom2({
-  context,
-  Roomid,
-}) async {
-  Provider.of<SocketViewmodel>(
-    context,
-    listen: false,
-  ).DisConnect(
-    id: Currentroom?.id,
-  );
+  // ------------------------------------------------------------
+  // JOIN ROOM 2
+  // ------------------------------------------------------------
 
-  final LoginViewmodel user =
-      Provider.of<LoginViewmodel>(
-    context,
-    listen: false,
-  );
+  Future<void> JoinRoom2({
+    required dynamic context,
+    required dynamic Roomid,
+  }) async {
+    Provider.of<SocketViewmodel>(
+      context,
+      listen: false,
+    ).DisConnect(
+      id: Currentroom?.id,
+    );
 
-  print(
-    'JoinRoom2JoinRoom2JoinRoom2JoinRoom2JoinRoom2JoinRoom2',
-  );
+    final LoginViewmodel user = Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
 
-  final AgoraViewmodel agora =
-      Provider.of<AgoraViewmodel>(
-    context,
-    listen: false,
-  );
+    final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
+      context,
+      listen: false,
+    );
 
-  await agora.EndAgora();
+    await agora.EndAgora();
 
-  showSpinner3();
+    showSpinner3();
 
-  await Roomapi()
-      .joinRooms(
-    context: context,
-    Roomid: Roomid,
-  )
-      .then(
-    (value) async {
-      print(value.state);
-      print(value.name);
-
-      print(
-        'Room Data is ====================================>',
-      );
-
+    await Roomapi()
+        .joinRooms(
+          context: context,
+          Roomid: Roomid,
+        )
+        .then((value) async {
       if (value.state == 1) {
         Rooms.removeWhere(
           (element) => element.id == Roomid,
@@ -381,11 +360,10 @@ JoinRoom2({
 
         Dialogs().showtoast(
           getLang(
-            context:
-                NavigationService
-                    .navigatorKey
-                    .currentContext,
-            key: "Room_Disbanded",
+            context: NavigationService
+                .navigatorKey
+                .currentContext,
+            key: 'Room_Disbanded',
           ),
         );
 
@@ -393,9 +371,7 @@ JoinRoom2({
       }
 
       if (value.id == null) {
-        print(
-          'JOIN ROOM 2 ERROR: value.id is null',
-        );
+        debugPrint('JOIN ROOM 2: Room ID is null');
         hideSpinner3();
         return;
       }
@@ -411,51 +387,20 @@ JoinRoom2({
 
       final String agoraChannel =
           value.id?.toString().trim() ?? '';
-
       final String agoraToken =
           value.Token?.toString().trim() ?? '';
 
       final bool isAdmin =
-          value.admin?.id.toString() ==
-              UserId.toString();
-
-      print(
-        '========== JOIN ROOM 2 AGORA ==========',
-      );
-      print(
-        'DB ROOM ID: ${value.id}',
-      );
-      print(
-        'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
-      );
-      print(
-        'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
-      );
-      print(
-        'TOKEN LENGTH: ${agoraToken.length}',
-      );
-      print(
-        'USER ID: $UserId',
-      );
-      print(
-        'IS ADMIN: $isAdmin',
-      );
-      print(
-        '========================================',
-      );
+          value.admin?.id.toString() == UserId.toString();
 
       if (agoraChannel.isEmpty) {
-        print(
-          'JOIN ROOM 2 AGORA ERROR: RoomID is empty',
-        );
+        debugPrint('JOIN ROOM 2: Agora channel is empty');
         hideSpinner3();
         return;
       }
 
       if (agoraToken.isEmpty) {
-        print(
-          'JOIN ROOM 2 AGORA ERROR: Token is empty',
-        );
+        debugPrint('JOIN ROOM 2: Agora token is empty');
         hideSpinner3();
         return;
       }
@@ -471,16 +416,6 @@ JoinRoom2({
           Token: agoraToken,
           channelName: agoraChannel,
         );
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].mute = 0;
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].adminleaved = 0;
       } else {
         await Provider.of<AgoraViewmodel>(
           context,
@@ -493,6 +428,15 @@ JoinRoom2({
       }
 
       Currentroom = value;
+
+      final roomVM = Provider.of<RoomViewmodel>(
+        roomcontext,
+        listen: false,
+      );
+
+      if (checkadmin(context: context)) {
+        _resetAdminChair(roomVM.Currentroom);
+      }
 
       Provider.of<GiftsViewModel>(
         context,
@@ -549,32 +493,13 @@ JoinRoom2({
         listen: false,
       ).changeIsRoomstate(true);
 
-      if (checkadmin(context: context)) {
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].mute = 0;
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].adminleaved = 0;
-      }
-
       HideEnterWidget();
 
-      /*
-       * IMPORTANT:
-       * No SvgViewmodel.dispose().
-       *
-       * The ViewModel is still owned by Provider.
-       */
+      // SvgViewmodel is owned by Provider; do not dispose it here.
       Future.delayed(
         const Duration(seconds: 2),
         () {
-          if (!context.mounted) {
-            return;
-          }
+          if (!context.mounted) return;
 
           try {
             Provider.of<GiftsViewModel>(
@@ -586,9 +511,6 @@ JoinRoom2({
                 user.userinfo?.entry?.trim() ?? '';
 
             if (entry.isEmpty) {
-              print(
-                'JOIN ROOM 2 SVGA: No entry animation',
-              );
               return;
             }
 
@@ -600,72 +522,57 @@ JoinRoom2({
               entername: user.userinfo?.name,
               svga: entry,
             );
-          } catch (e, stackTrace) {
-            print(
-              'JOIN ROOM 2 DELAYED SVGA ERROR: $e',
-            );
-            print(stackTrace);
+          } catch (error) {
+            debugPrint('JOIN ROOM 2: Entry animation failed: $error');
           }
         },
       );
 
       hideSpinner3();
-    },
-  );
+    });
 
-  notifyListeners();
-}
+    notifyListeners();
+  }
 
-JoinRoom5({
-  context,
-  Roomid,
-}) async {
-  Provider.of<SocketViewmodel>(
-    context,
-    listen: false,
-  ).DisConnect(
-    id: Currentroom?.id,
-  );
+  // ------------------------------------------------------------
+  // JOIN ROOM 5
+  // ------------------------------------------------------------
 
-  Currentroom?.id = 0;
-  Currentroom = null;
+  Future<void> JoinRoom5({
+    required dynamic context,
+    required dynamic Roomid,
+  }) async {
+    Provider.of<SocketViewmodel>(
+      context,
+      listen: false,
+    ).DisConnect(
+      id: Currentroom?.id,
+    );
 
-  print(
-    'Test ============================> 1',
-  );
+    Currentroom?.id = 0;
+    Currentroom = null;
 
-  final AgoraViewmodel agora =
-      Provider.of<AgoraViewmodel>(
-    context,
-    listen: false,
-  );
+    final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
+      context,
+      listen: false,
+    );
 
-  await agora.EndAgora();
+    await agora.EndAgora();
 
-  final LoginViewmodel user =
-      Provider.of<LoginViewmodel>(
-    context,
-    listen: false,
-  );
+    final LoginViewmodel user = Provider.of<LoginViewmodel>(
+      context,
+      listen: false,
+    );
 
-  showSpinner3();
+    showSpinner3();
 
-  print(
-    'Test ============================> 3',
-  );
-
-  await Roomapi()
-      .joinRooms(
-    context: context,
-    Roomid: Roomid,
-  )
-      .then(
-    (value) async {
+    await Roomapi()
+        .joinRooms(
+          context: context,
+          Roomid: Roomid,
+        )
+        .then((value) async {
       if (value.state == 1) {
-        print(
-          'Test ============================> 4',
-        );
-
         Rooms.removeWhere(
           (element) => element.id == Roomid,
         );
@@ -678,11 +585,10 @@ JoinRoom5({
 
         Dialogs().showtoast(
           getLang(
-            context:
-                NavigationService
-                    .navigatorKey
-                    .currentContext,
-            key: "Room_Disbanded",
+            context: NavigationService
+                .navigatorKey
+                .currentContext,
+            key: 'Room_Disbanded',
           ),
         );
 
@@ -690,66 +596,29 @@ JoinRoom5({
       }
 
       if (value.id == null) {
-        print(
-          'JOIN ROOM 5 ERROR: value.id is null',
-        );
+        debugPrint('JOIN ROOM 5: Room ID is null');
         hideSpinner3();
         return;
       }
 
       JoinChairs = false;
 
-      print(
-        'Test ============================> 6',
-      );
-
       final String agoraChannel =
           value.id?.toString().trim() ?? '';
-
       final String agoraToken =
           value.Token?.toString().trim() ?? '';
 
       final bool isAdmin =
-          value.admin?.id.toString() ==
-              UserId.toString();
-
-      print(
-        '========== JOIN ROOM 5 AGORA ==========',
-      );
-      print(
-        'DB ROOM ID: ${value.id}',
-      );
-      print(
-        'PUBLIC ROOM ID / AGORA CHANNEL: "$agoraChannel"',
-      );
-      print(
-        'TOKEN PRESENT: ${agoraToken.isNotEmpty}',
-      );
-      print(
-        'TOKEN LENGTH: ${agoraToken.length}',
-      );
-      print(
-        'USER ID: $UserId',
-      );
-      print(
-        'IS ADMIN: $isAdmin',
-      );
-      print(
-        '========================================',
-      );
+          value.admin?.id.toString() == UserId.toString();
 
       if (agoraChannel.isEmpty) {
-        print(
-          'JOIN ROOM 5 AGORA ERROR: RoomID is empty',
-        );
+        debugPrint('JOIN ROOM 5: Agora channel is empty');
         hideSpinner3();
         return;
       }
 
       if (agoraToken.isEmpty) {
-        print(
-          'JOIN ROOM 5 AGORA ERROR: Token is empty',
-        );
+        debugPrint('JOIN ROOM 5: Agora token is empty');
         hideSpinner3();
         return;
       }
@@ -765,16 +634,6 @@ JoinRoom5({
           Token: agoraToken,
           channelName: agoraChannel,
         );
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].mute = 0;
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].adminleaved = 0;
       } else {
         await Provider.of<AgoraViewmodel>(
           context,
@@ -786,23 +645,16 @@ JoinRoom5({
         );
       }
 
-      print(
-        'Test ============================> 8',
-      );
-
       Currentroom = value;
 
-      print(
-        'CURRENT ROOM DB ID: ${Currentroom?.id}',
+      final roomVM = Provider.of<RoomViewmodel>(
+        roomcontext,
+        listen: false,
       );
 
-      print(
-        'CURRENT ROOM PUBLIC ROOM ID: ${Currentroom?.RoomID}',
-      );
-
-      print(
-        'Test ============================> 9',
-      );
+      if (checkadmin(context: context)) {
+        _resetAdminChair(roomVM.Currentroom);
+      }
 
       Provider.of<GiftsViewModel>(
         context,
@@ -818,15 +670,6 @@ JoinRoom5({
         context,
         listen: false,
       ).initscrollcontroller();
-
-      print(
-        'Number of users is '
-        '${Currentroom?.userNumber}',
-      );
-
-      print(
-        'Test ============================> 10',
-      );
 
       Provider.of<SocketViewmodel>(
         context,
@@ -847,10 +690,6 @@ JoinRoom5({
       ).changeIsRoomstate(true);
 
       if (Currentroom?.RoomAds != null) {
-        print(
-          'Test ============================> 11',
-        );
-
         Currentroom?.chatroom?.add(
           Chatroom(
             kind: 1,
@@ -864,22 +703,6 @@ JoinRoom5({
           ),
         );
       }
-
-      if (checkadmin(context: context)) {
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].mute = 0;
-
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Currentroom?.chairs?[8].adminleaved = 0;
-      }
-
-      print(
-        'Test ============================> 12',
-      );
 
       Provider.of<AgoraViewmodel>(
         context,
@@ -904,24 +727,13 @@ JoinRoom5({
         ).unmuteusermic(userId);
       }
 
-      /*
-       * IMPORTANT:
-       * Do NOT call SvgViewmodel.dispose().
-       * Provider owns the SvgViewmodel lifecycle.
-       */
-
+      // SvgViewmodel is owned by Provider; do not dispose it here.
       Future.delayed(
         const Duration(seconds: 2),
         () {
-          if (!context.mounted) {
-            return;
-          }
+          if (!context.mounted) return;
 
           try {
-            print(
-              'Test ============================> 13',
-            );
-
             Provider.of<GiftsViewModel>(
               context,
               listen: false,
@@ -931,9 +743,6 @@ JoinRoom5({
                 user.userinfo?.entry?.trim() ?? '';
 
             if (entry.isEmpty) {
-              print(
-                'JOIN ROOM 5 SVGA: No entry animation',
-              );
               return;
             }
 
@@ -945,11 +754,8 @@ JoinRoom5({
               entername: user.userinfo?.name,
               svga: entry,
             );
-          } catch (e, stackTrace) {
-            print(
-              'JOIN ROOM 5 DELAYED SVGA ERROR: $e',
-            );
-            print(stackTrace);
+          } catch (error) {
+            debugPrint('JOIN ROOM 5: Entry animation failed: $error');
           }
         },
       );
@@ -960,27 +766,24 @@ JoinRoom5({
       );
 
       hideSpinner3();
-    },
-  );
+    });
 
-  notifyListeners();
-}
+    notifyListeners();
+  }
 
-  checkadmin({
-    context,
+  // ------------------------------------------------------------
+  // CHECK ADMIN
+  // ------------------------------------------------------------
+
+  bool checkadmin({
+    required BuildContext context,
   }) {
-    LoginViewmodel user =
-        Provider.of<LoginViewmodel>(
+    final LoginViewmodel user = Provider.of<LoginViewmodel>(
       context,
       listen: false,
     );
 
-    if (Currentroom?.adminId.toString() ==
-        user.userinfo?.id.toString()) {
-      return true;
-    } else {
-      return false;
-    }
+    return Currentroom?.adminId.toString() ==
+        user.userinfo?.id.toString();
   }
-
 }

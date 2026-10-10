@@ -60,11 +60,31 @@ android {
         targetSdkVersion 32
         versionCode 111
         versionName '1.0.111'
-        ndk {
-            abiFilters 'arm64-v8a'
-        }
+       
 
     }
+
+    packagingOptions {
+        jniLibs {
+            excludes += [
+                "**/libagora_lip_sync_extension.so",
+                "**/libagora_clear_vision_extension.so",
+                "**/libagora_spatial_audio_extension.so",
+                "**/libagora_ai_noise_suppression_extension.so",
+                "**/libagora_face_capture_extension.so",
+                "**/libagora_segmentation_extension.so",
+                "**/libagora_ai_echo_cancellation_extension.so",
+                "**/libagora_audio_beauty_extension.so",
+                "**/libagora_content_inspect_extension.so",
+                "**/libagora_video_quality_analyzer_extension.so",
+                "**/libagora_video_av1_encoder_extension.so",
+                "**/libagora_face_detection_extension.so",
+                "**/libagora_screen_capture_extension.so",
+                "**/libagora_video_encoder_extension.so"
+            ]
+        }
+    }
+
     signingConfigs {
         release {
             keyAlias keystoreProperties['keyAlias']
@@ -79,11 +99,11 @@ android {
             shrinkResources false
         }
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig signingConfigs.release
-
-        }
+        signingConfig signingConfigs.release
+        minifyEnabled true
+        shrinkResources true
+        proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+    }
     }
 }
 
