@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 
 import 'package:ahlachat/main.dart';
 import 'package:ahlachat/util/app_constants.dart';
-import 'package:ahlachat/repositores/Room_repositores/Room_api.dart';
+import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/models/ChairModel.dart';
 import 'package:ahlachat/models/Usermodel.dart';
 import 'package:ahlachat/util/Dialogs.dart';
@@ -198,6 +198,128 @@ if (!hasChairNumbers && number <= chairs.length) {
 _chairLog('Chair number not found', {'chairNumber': number});
 return null;
 
+}
+
+
+
+Chairs? _findAdminChair() {
+  final chairs = Currentroom?.chairs;
+  if (chairs == null || chairs.isEmpty) return null;
+
+  final adminId = (Currentroom?.adminId ?? Currentroom?.admin?.id)
+      ?.toString();
+
+  if (adminId != null) {
+    for (final chair in chairs) {
+      final occupantId =
+          chair.userId?.toString() ?? chair.user?.id?.toString();
+
+      if (occupantId == adminId) {
+        return chair;
+      }
+    }
+  }
+
+  // Existing UI convention: the admin seat is at index 8.
+  if (chairs.length > 8) {
+    return chairs[8];
+  }
+
+  return chairs.last;
+}
+
+int? _findAdminChairIndex() {
+  final chairs = Currentroom?.chairs;
+  if (chairs == null || chairs.isEmpty) return null;
+
+  final adminId = (Currentroom?.adminId ?? Currentroom?.admin?.id)
+      ?.toString();
+
+  if (adminId != null) {
+    for (int i = 0; i < chairs.length; i++) {
+      final occupantId =
+          chairs[i].userId?.toString() ??
+          chairs[i].user?.id?.toString();
+
+      if (occupantId == adminId) {
+        return i;
+      }
+    }
+  }
+
+  if (chairs.length > 8) return 8;
+
+  return chairs.length - 1;
+}
+
+/// Synchronizes the creator's local chair state only when the room
+/// data already confirms that the creator occupies a chair.
+/// Server assignment must be performed by an API-backed operation.
+void ensureCreatorOnAdminChair(usermodel? user) {
+  final room = Currentroom;
+  final userId = user?.id?.toString();
+
+  if (room == null || userId == null) return;
+
+  final roomAdminId = room.adminId?.toString() ??
+      room.admin?.id?.toString();
+
+  if (roomAdminId != null && roomAdminId != userId) {
+    return;
+  }
+
+  final chairs = room.chairs ?? <Chairs>[];
+
+  final occupiedIndices = <int>[];
+
+  for (int i = 0; i < chairs.length; i++) {
+    final chair = chairs[i];
+    final occupantId =
+        chair.userId?.toString() ?? chair.user?.id?.toString();
+
+    if (occupantId == userId) {
+      occupiedIndices.add(i);
+    }
+  }
+
+  if (occupiedIndices.isEmpty) {
+    _chairLog(
+      'Creator not seated in server room data; no local assignment made',
+      {
+        'roomId': room.id,
+        'userId': userId,
+        'chairCount': chairs.length,
+      },
+    );
+
+    JoinChairs = false;
+    Chairidex = -1;
+    Chairid = '0';
+    notifyListeners();
+    return;
+  }
+
+  // Use the chair the server actually assigned, not a hardcoded index.
+  final index = occupiedIndices.first;
+  final chair = chairs[index];
+
+  // Remove duplicate local occupancy for this user, if present.
+  for (final otherIndex in occupiedIndices.skip(1)) {
+    _clearChair(chairs[otherIndex]);
+  }
+
+  Chairidex = index;
+  Chairid = chair.id?.toString() ?? '0';
+  JoinChairs = true;
+
+  _logChair(
+    'Creator chair synchronized from server',
+    chair: chair,
+    index: index,
+    extra: {'userId': userId, 'roomId': room.id},
+  );
+
+  notifyListeners();
 }
 
 void _clearChair(Chairs? chair) {
@@ -435,11 +557,6 @@ _logChair(
 
 showLoding();
 
-chair.userId = currentUserId;
-chair.user = user.userinfo;
-JoinChairs = true;
-notifyListeners();
-
 try {
   final success = await Roomapi().joinChair(
     context: context,
@@ -449,19 +566,22 @@ try {
   );
 
   if (success == true) {
-    agora.updateKickedFromChair(value: false);
+  _assignChair(chair, user.userinfo);
 
-    Chairid = chairid;
-    Chairidex = chairIndex!;
+  agora.updateKickedFromChair(value: false);
 
-    if (chair.mute == 0) {
-      agora.UnMute();
-    } else {
-      agora.Mute();
-    }
+  Chairid = chair.id?.toString() ?? '0';
+  Chairidex = chairIndex!;
+  JoinChairs = true;
 
-    _logChair('Join succeeded', chair: chair, index: chairIndex);
+  if (chair.mute == 0) {
+    agora.UnMute();
   } else {
+    agora.Mute();
+  }
+
+  _logChair('Join succeeded', chair: chair, index: chairIndex);
+} else {
     chair.userId = previousUserId;
     chair.user = previousUser;
     JoinChairs = previousJoinChairs;
@@ -631,7 +751,7 @@ final int? currentIndex = _parseInt(Chairidex);
 
 final targetChair = _chairAt(targetIndex);
 final currentChair = _chairAt(currentIndex);
-final adminChair = _chairAt(8);
+final adminChair = _findAdminChair();
 
 if (targetChair == null ||
     currentChair == null ||
@@ -673,11 +793,18 @@ showSpinner47();
 
 adminChair.adminleaved = returnToAdminChair ? 0 : 1;
 
-if (currentIndex != 0) {
+// Always free the seat the admin is leaving, unless it is the same
+// seat they are moving onto (e.g. return-to-admin when already there).
+if (!identical(currentChair, targetChair)) {
   _clearChair(currentChair);
 }
 
 _assignChair(targetChair, user.userinfo);
+Chairidex = targetIndex ?? Chairidex;
+Chairid = targetChair.chairId?.toString() ??
+    targetChair.id?.toString() ??
+    Chairid;
+JoinChairs = true;
 notifyListeners();
 
 try {
@@ -981,6 +1108,39 @@ if (data.updatedAt != null) {
   targetChair.updatedAt = data.updatedAt;
 }
 
+// Keep local "I am on a chair" state in sync when the socket seats us.
+try {
+  final login = Provider.of<LoginViewmodel>(
+    roomcontext,
+    listen: false,
+  );
+  final myId = login.userinfo?.id?.toString();
+  final seatedId = targetChair.userId ?? targetChair.user?.id?.toString();
+
+  if (myId != null && seatedId == myId) {
+    JoinChairs = true;
+    final chairs = Currentroom?.chairs ?? <Chairs>[];
+    final idx = chairs.indexWhere((c) => identical(c, targetChair));
+    if (idx >= 0) {
+      Chairidex = idx;
+      Chairid = targetChair.chairId?.toString() ??
+          targetChair.id?.toString() ??
+          Chairid;
+    }
+  } else if (myId != null &&
+      seatedId != null &&
+      seatedId != myId &&
+      (Chairidex >= 0 &&
+          Currentroom?.chairs != null &&
+          Chairidex < (Currentroom!.chairs!.length) &&
+          identical(Currentroom!.chairs![Chairidex], targetChair))) {
+    // Someone else took the chair we thought we were on.
+    JoinChairs = false;
+  }
+} catch (_) {
+  // roomcontext may be unavailable outside the room; ignore.
+}
+
 _logChair(
   'Socket chair update applied',
   chair: targetChair,
@@ -1025,7 +1185,7 @@ final room = Currentroom;
 if (room == null) return;
 
 if (user?.id.toString() == room.adminId?.toString()) {
-  final adminChair = _chairAt(8);
+  final adminChair = _findAdminChair();
   if (adminChair != null) {
     adminChair.adminleaved = 1;
   }
@@ -1042,7 +1202,8 @@ for (final chair in room.chairs ?? <Chairs>[]) {
   }
 }
 
-final targetChair = _chairByNumber(newChair);
+final targetChair = _chairByNumber(newChair) ??
+    (_parseInt(newChair) != null ? _chairAt(_parseInt(newChair)) : null);
 
 if (targetChair == null) {
   _chairLog('Local chair move stopped: target chair is ambiguous or missing', {
@@ -1076,7 +1237,7 @@ final room = Currentroom;
 if (room == null) return;
 
 if (user?.id.toString() == room.adminId?.toString()) {
-  final adminChair = _chairAt(8);
+  final adminChair = _findAdminChair();
   if (adminChair != null) {
     adminChair.adminleaved = 0;
   }
@@ -1093,7 +1254,10 @@ for (final chair in room.chairs ?? <Chairs>[]) {
   }
 }
 
-final targetChair = _chairByNumber(newChair);
+// Prefer explicit newChair, otherwise seat admin on the admin chair.
+final targetChair = _chairByNumber(newChair) ??
+    (_parseInt(newChair) != null ? _chairAt(_parseInt(newChair)) : null) ??
+    _findAdminChair();
 
 if (targetChair == null) {
   _chairLog('Return to admin chair stopped: target chair is ambiguous or missing', {

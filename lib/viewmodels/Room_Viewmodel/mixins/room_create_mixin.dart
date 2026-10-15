@@ -3,7 +3,7 @@ import 'dart:io';
 
 import 'package:ahlachat/main.dart';
 import 'package:ahlachat/util/helperclass.dart';
-import 'package:ahlachat/repositores/Room_repositores/Room_api.dart';
+import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/models/RoomModel.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';
@@ -138,6 +138,41 @@ mixin RoomCreateMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
         (Currentroom?.userNumber ?? 0) + 1;
 
     JoinChairs = true;
+
+    // Seat the room creator on the admin chair immediately so the
+    // UI shows them as host without waiting for a late socket event.
+    // Admin chair is conventionally index 8 (see AdminChair widget).
+    try {
+      final chairs = Currentroom?.chairs;
+      final creator = user.userinfo;
+      if (chairs != null && chairs.isNotEmpty && creator?.id != null) {
+        final int adminIndex = chairs.length > 8 ? 8 : chairs.length - 1;
+        final adminChair = chairs[adminIndex];
+
+        for (final chair in chairs) {
+          if (identical(chair, adminChair)) continue;
+          final occupant =
+              chair.userId ?? chair.user?.id?.toString();
+          if (occupant == creator!.id.toString()) {
+            chair.userId = null;
+            chair.user = null;
+            chair.Karisma = 0;
+          }
+        }
+
+        adminChair.userId = creator!.id.toString();
+        adminChair.user = creator;
+        adminChair.adminleaved = 0;
+        adminChair.mute = adminChair.mute ?? 0;
+
+        Chairidex = adminIndex;
+        Chairid = adminChair.chairId?.toString() ??
+            adminChair.id?.toString() ??
+            '0';
+      }
+    } catch (e) {
+      print('CREATE ROOM: admin chair assign failed: $e');
+    }
 
     Provider.of<SocketViewmodel>(
       context,

@@ -5,7 +5,7 @@ import 'package:ahlachat/models/guessGameModel.dart';
 
 import 'package:ahlachat/util/helperclass.dart';
 import 'package:flutter/material.dart';
-import 'package:ahlachat/repositores/Room_repositores/Room_api.dart';
+import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/models/Chatroom.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';

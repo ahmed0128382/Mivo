@@ -8,7 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class IDloginScrean extends StatefulWidget {
-  const IDloginScrean({Key? key}) : super(key: key);
+  const IDloginScrean({super.key});
 
   @override
   State<IDloginScrean> createState() => _IDloginScreanState();
@@ -17,7 +17,7 @@ class IDloginScrean extends StatefulWidget {
 class _IDloginScreanState extends State<IDloginScrean> {
   bool visable = false;
 
-  ChangeVisability() {
+  changeVisability() {
     visable = !visable;
 
     setState(() {});
@@ -119,7 +119,7 @@ class _IDloginScreanState extends State<IDloginScrean> {
                           ),
                           InkWell(
                             onTap: () {
-                              ChangeVisability();
+                              changeVisability();
                             },
                             child: Icon(
                               visable

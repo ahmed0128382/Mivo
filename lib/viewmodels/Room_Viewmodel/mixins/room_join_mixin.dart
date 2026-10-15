@@ -53,264 +53,280 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
     return -1;
   }
 
-  /// Resets only the current user's chair.
-  ///
-  /// If the chair cannot be identified, no chair is modified.
-  void _resetAdminChair(dynamic room) {
-    if (room == null || room.chairs is! List) {
-      return;
-    }
-
-    final List<dynamic> chairs = room.chairs as List<dynamic>;
-    final int index = _findCurrentUserChairIndex(room);
-
-    if (index < 0 || index >= chairs.length) {
-      return;
-    }
-
-    final dynamic chair = chairs[index];
-
-    chair.mute = 0;
-    chair.adminleaved = 0;
+  
+void _resetAdminChair(dynamic room) {
+  if (room == null || room.chairs is! List) {
+    JoinChairs = false;
+    Chairidex = -1;
+    return;
   }
 
+  final List<dynamic> chairs = room.chairs as List<dynamic>;
+  final String currentUserId = UserId.toString();
+
+  for (int i = 0; i < chairs.length; i++) {
+    final dynamic chair = chairs[i];
+
+    final String? userId = chair.userId?.toString();
+    final String? nestedUserId = chair.user?.id?.toString();
+
+    if (userId == currentUserId || nestedUserId == currentUserId) {
+      Chairidex = i;
+
+      // Prefer the same database ID used by the existing
+      // chair-change flow; do not assume chairId is identical.
+      Chairid = chair.id?.toString() ?? '0';
+
+      JoinChairs = true;
+      return;
+    }
+  }
+
+  // The server has not confirmed that this user occupies a chair.
+  JoinChairs = false;
+  Chairidex = -1;
+  Chairid = '0';
+}
   // ------------------------------------------------------------
   // JOIN ROOM 4
   // ------------------------------------------------------------
 
-  Future<void> JoinRoom4({
-    required dynamic context,
-    required dynamic Roomid,
-  }) async {
+Future<void> JoinRoom4({
+  required dynamic context,
+  required dynamic Roomid,
+}) async {
+  Provider.of<SocketViewmodel>(
+    context,
+    listen: false,
+  ).DisConnect(
+    id: Currentroom?.id,
+  );
+
+  Currentroom?.id = 0;
+  Currentroom = null;
+
+  final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
+    context,
+    listen: false,
+  );
+
+  final LoginViewmodel user = Provider.of<LoginViewmodel>(
+    context,
+    listen: false,
+  );
+
+  await agora.EndAgora();
+
+  await Roomapi()
+      .joinRooms(
+        context: context,
+        Roomid: Roomid,
+      )
+      .then((value) async {
+    DismissGlopalLoading();
+
+    if (value.state == 1) {
+      Rooms.removeWhere(
+        (element) => element.id == Roomid,
+      );
+
+      NewRooms.removeWhere(
+        (element) => element.id == Roomid,
+      );
+
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService
+              .navigatorKey
+              .currentContext,
+          key: 'Room_Disbanded',
+        ),
+      );
+
+      return;
+    }
+
+    if (value.id == null) {
+      debugPrint('JOIN ROOM 4: Room ID is null');
+      return;
+    }
+
+    // Assign the newly returned room before syncing chair state.
+    Currentroom = value;
+
+    JoinChairs = false;
+
+    final String agoraChannel =
+        value.id?.toString().trim() ?? '';
+    final String agoraToken =
+        value.Token?.toString().trim() ?? '';
+
+    final String currentUserId = (
+      user.userinfo?.id?.toString() ??
+      UserId.toString()
+    ).trim();
+
+    final String? adminId =
+        value.admin?.id?.toString() ??
+        value.adminId?.toString();
+
+    final bool isAdmin =
+        adminId != null &&
+        adminId == currentUserId;
+
+    if (agoraChannel.isEmpty) {
+      debugPrint('JOIN ROOM 4: Agora channel is empty');
+      return;
+    }
+
+    if (agoraToken.isEmpty) {
+      debugPrint('JOIN ROOM 4: Agora token is empty');
+      return;
+    }
+
+    // Use the newly joined room, not a potentially stale Provider room.
+    final RoomViewmodel roomVM = Provider.of<RoomViewmodel>(
+      roomcontext,
+      listen: false,
+    );
+
+    if (isAdmin) {
+      await agora.initialize(
+        role: ClientRole.Broadcaster,
+        Token: agoraToken,
+        channelName: agoraChannel,
+      );
+
+      // Synchronize only against chair data returned for this room.
+      // This must not fabricate a server-side chair assignment.
+      _resetAdminChair(value);
+
+      debugPrint(
+        'JOIN ROOM 4: Admin joined room=${value.id}, '
+        'adminId=$adminId, '
+        'chairIndex=$Chairidex, '
+        'chairId=$Chairid, '
+        'joinedChair=$JoinChairs',
+      );
+    } else {
+      await agora.initialize(
+        role: ClientRole.Audience,
+        Token: agoraToken,
+        channelName: agoraChannel,
+      );
+
+      JoinChairs = false;
+    }
+
+    Provider.of<GiftsViewModel>(
+      context,
+      listen: false,
+    ).hidpanner();
+
+    Provider.of<SvgViewmodel>(
+      context,
+      listen: false,
+    ).animationController?.clear();
+
+    roomVM.initscrollcontroller();
+
     Provider.of<SocketViewmodel>(
       context,
       listen: false,
-    ).DisConnect(
-      id: Currentroom?.id,
+    ).ConnectRoomScocket(
+      context,
+      Roomid,
     );
 
-    Currentroom?.id = 0;
-    Currentroom = null;
-
-    final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
+    Provider.of<RoomPlayViewModel>(
       context,
       listen: false,
-    );
+    ).changeHasRoomstate(true);
 
-    final LoginViewmodel user = Provider.of<LoginViewmodel>(
+    Provider.of<RoomPlayViewModel>(
       context,
       listen: false,
+    ).changeIsRoomstate(true);
+
+    if (Currentroom?.RoomAds != null) {
+      Currentroom?.chatroom?.add(
+        Chatroom(
+          kind: 1,
+          user: Currentroom?.admin,
+          id: 0,
+          content: Currentroom?.RoomAds,
+          userId: Currentroom?.admin?.id.toString(),
+          updatedAt: Currentroom?.updatedAt,
+          roomId: Currentroom?.id.toString(),
+          createdAt: Currentroom?.createdAt,
+        ),
+      );
+    }
+
+    agora.KickedFromChair = false;
+
+    Provider.of<GiftsViewModel>(
+      context,
+      listen: false,
+    ).DeleteGlopal();
+
+    HideEnterWidget();
+
+    final int? userId = int.tryParse(
+      user.userinfo?.id.toString() ?? '',
     );
 
-    await agora.EndAgora();
-
-    await Roomapi()
-        .joinRooms(
-          context: context,
-          Roomid: Roomid,
-        )
-        .then((value) async {
-      DismissGlopalLoading();
-
-      if (value.state == 1) {
-        Rooms.removeWhere(
-          (element) => element.id == Roomid,
-        );
-
-        NewRooms.removeWhere(
-          (element) => element.id == Roomid,
-        );
-
-        Dialogs().showtoast(
-          getLang(
-            context: NavigationService
-                .navigatorKey
-                .currentContext,
-            key: 'Room_Disbanded',
-          ),
-        );
-
-        return;
-      }
-
-      if (value.id == null) {
-        debugPrint('JOIN ROOM 4: Room ID is null');
-        return;
-      }
-
-      JoinChairs = false;
-
-      final String agoraChannel =
-          value.id?.toString().trim() ?? '';
-      final String agoraToken =
-          value.Token?.toString().trim() ?? '';
-
-      final bool isAdmin =
-          value.admin?.id.toString() == UserId.toString();
-
-      if (agoraChannel.isEmpty) {
-        debugPrint('JOIN ROOM 4: Agora channel is empty');
-        return;
-      }
-
-      if (agoraToken.isEmpty) {
-        debugPrint('JOIN ROOM 4: Agora token is empty');
-        return;
-      }
-
-      if (isAdmin) {
-        JoinChairs = true;
-
-        await Provider.of<AgoraViewmodel>(
-          context,
-          listen: false,
-        ).initialize(
-          role: ClientRole.Broadcaster,
-          Token: agoraToken,
-          channelName: agoraChannel,
-        );
-
-        final roomVM = Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        );
-
-        _resetAdminChair(roomVM.Currentroom);
-      } else {
-        await Provider.of<AgoraViewmodel>(
-          context,
-          listen: false,
-        ).initialize(
-          role: ClientRole.Audience,
-          Token: agoraToken,
-          channelName: agoraChannel,
-        );
-      }
-
-      // Preserve the existing global room assignment.
-      Currentroom = value;
-
-      final roomVM = Provider.of<RoomViewmodel>(
+    if (userId != null) {
+      Provider.of<AgoraViewmodel>(
         roomcontext,
         listen: false,
-      );
+      ).unmuteusermic(userId);
+    }
 
-      if (checkadmin(context: context)) {
-        _resetAdminChair(roomVM.Currentroom);
-      }
+    // SvgViewmodel is owned by Provider; do not dispose it here.
+    Future.delayed(
+      const Duration(seconds: 2),
+      () {
+        if (!context.mounted) return;
 
-      Provider.of<GiftsViewModel>(
-        context,
-        listen: false,
-      ).hidpanner();
+        try {
+          Provider.of<GiftsViewModel>(
+            context,
+            listen: false,
+          ).sidepanner();
 
-      Provider.of<SvgViewmodel>(
-        context,
-        listen: false,
-      ).animationController?.clear();
+          final String entry =
+              user.userinfo?.entry?.trim() ?? '';
 
-      Provider.of<RoomViewmodel>(
-        context,
-        listen: false,
-      ).initscrollcontroller();
-
-      Provider.of<SocketViewmodel>(
-        context,
-        listen: false,
-      ).ConnectRoomScocket(
-        context,
-        Roomid,
-      );
-
-      Provider.of<RoomPlayViewModel>(
-        context,
-        listen: false,
-      ).changeHasRoomstate(true);
-
-      Provider.of<RoomPlayViewModel>(
-        context,
-        listen: false,
-      ).changeIsRoomstate(true);
-
-      if (Currentroom?.RoomAds != null) {
-        Currentroom?.chatroom?.add(
-          Chatroom(
-            kind: 1,
-            user: Currentroom?.admin,
-            id: 0,
-            content: Currentroom?.RoomAds,
-            userId: Currentroom?.admin?.id.toString(),
-            updatedAt: Currentroom?.updatedAt,
-            roomId: Currentroom?.id.toString(),
-            createdAt: Currentroom?.createdAt,
-          ),
-        );
-      }
-
-      Provider.of<AgoraViewmodel>(
-        context,
-        listen: false,
-      ).KickedFromChair = false;
-
-      Provider.of<GiftsViewModel>(
-        context,
-        listen: false,
-      ).DeleteGlopal();
-
-      HideEnterWidget();
-
-      final int? userId = int.tryParse(
-        user.userinfo?.id.toString() ?? '',
-      );
-
-      if (userId != null) {
-        Provider.of<AgoraViewmodel>(
-          roomcontext,
-          listen: false,
-        ).unmuteusermic(userId);
-      }
-
-      // SvgViewmodel is owned by Provider; do not dispose it here.
-      Future.delayed(
-        const Duration(seconds: 2),
-        () {
-          if (!context.mounted) return;
-
-          try {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).sidepanner();
-
-            final String entry =
-                user.userinfo?.entry?.trim() ?? '';
-
-            if (entry.isEmpty) {
-              return;
-            }
-
-            Provider.of<SvgViewmodel>(
-              context,
-              listen: false,
-            ).getcontroller(
-              enterImage: user.userinfo?.image,
-              entername: user.userinfo?.name,
-              svga: entry,
-            );
-          } catch (error) {
-            debugPrint('JOIN ROOM 4: Entry animation failed: $error');
+          if (entry.isEmpty) {
+            return;
           }
-        },
-      );
 
-      Navigator.pushNamed(
-        context,
-        AppConstants.Room_Screan,
-      );
-    });
+          Provider.of<SvgViewmodel>(
+            context,
+            listen: false,
+          ).getcontroller(
+            enterImage: user.userinfo?.image,
+            entername: user.userinfo?.name,
+            svga: entry,
+          );
+        } catch (error) {
+          debugPrint(
+            'JOIN ROOM 4: Entry animation failed: $error',
+          );
+        }
+      },
+    );
 
-    notifyListeners();
-  }
+    Navigator.pushNamed(
+      context,
+      AppConstants.Room_Screan,
+    );
+  });
+
+  notifyListeners();
+}
+
 
   // ------------------------------------------------------------
   // JOIN ROOM 2
@@ -434,9 +450,9 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
         listen: false,
       );
 
-      if (checkadmin(context: context)) {
-        _resetAdminChair(roomVM.Currentroom);
-      }
+     if (checkadmin(context: context)) {
+  _resetAdminChair(value);
+}
 
       Provider.of<GiftsViewModel>(
         context,
@@ -652,9 +668,9 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
         listen: false,
       );
 
-      if (checkadmin(context: context)) {
-        _resetAdminChair(roomVM.Currentroom);
-      }
+     if (checkadmin(context: context)) {
+  _resetAdminChair(value);
+}
 
       Provider.of<GiftsViewModel>(
         context,

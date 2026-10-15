@@ -7,7 +7,7 @@ import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:ahlachat/repositores/Room_repositores/Room_api.dart';
+import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/models/RoomModel.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';

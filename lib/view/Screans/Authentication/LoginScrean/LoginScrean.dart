@@ -2,7 +2,7 @@
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/SizeConfig.dart';
 import 'package:ahlachat/util/helperclass.dart';
-import 'package:ahlachat/view/Screans/Authentication/IDloginScrean/IDloginScrean.dart';
+import 'package:ahlachat/view/Screans/Authentication/IDloginScrean/id_login_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
