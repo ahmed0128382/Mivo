@@ -26,7 +26,7 @@ class RoomViewmodel extends ChangeNotifier
         RoomJoinMixin,
         RoomEnterMixin,
         RoomCreateMixin,
-        RoomChairMixin,
+        // RoomChairMixin,
         RoomLeaveMixin,
         RoomChatMixin,
         RoomGiftMixin,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/Language/Localization.dart';
-import '../models/StartBannerModel.dart';
 
 String? Token;
 String? UserId;
@@ -52,8 +51,8 @@ List <String> insult=[
 class AppConstants {
   static const String APP_NAME = 'Mivo';
   static const String FirstMessage = 'Hi';
-  static const String BASE_URL = 'https://api.vortexatechnologies.com/';
-  static const String Image_URL ="https://api.vortexatechnologies.com/images/";
+  static const String BASE_URL = 'https://mivo.vortexatechnologies.com/';
+  static const String Image_URL ="https://mivo.vortexatechnologies.com/images/";
   static const String Splash_Screan = '/';
   static const String FamilyProfile_Screan='/FamilyProfile_Screan';
   static const String AllFamily_Screan='/AllFamily_Screan';

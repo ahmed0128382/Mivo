@@ -3,9 +3,6 @@ import 'dart:async';
 
 import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/main.dart';
-import 'package:ahlachat/util/helperclass.dart';
-import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
-import 'package:flutter/material.dart';
 import 'package:ahlachat/models/Chatroom.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';
@@ -15,7 +12,10 @@ import 'package:ahlachat/viewmodels/Animated_Viewmodel/ElementViewModel.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/RoomPlay_ViewModel/RoomPlayViewModel.dart';
+import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'room_state_mixin.dart';
@@ -23,284 +23,255 @@ import 'room_loading_mixin.dart';
 import 'room_ui_mixin.dart';
 
 mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
-  // ------------------------------------------------------------
-  // CHAIR HELPERS
-  // ------------------------------------------------------------
-
-  /// Finds the chair occupied by the current user.
-  ///
-  /// Uses the user ID instead of a hardcoded list index.
-  int _findCurrentUserChairIndex(dynamic room) {
-    if (room == null || room.chairs is! List) {
-      return -1;
-    }
-
-    final List<dynamic> chairs = room.chairs as List<dynamic>;
-    final String currentUserId = UserId.toString();
-
-    for (int i = 0; i < chairs.length; i++) {
-      final dynamic chair = chairs[i];
-
-      final String? userId = chair.userId?.toString();
-      final String? nestedUserId = chair.user?.id?.toString();
-
-      if (userId == currentUserId ||
-          nestedUserId == currentUserId) {
-        return i;
-      }
-    }
-
-    return -1;
+  String _currentUserId(LoginViewmodel user) {
+    return (user.userinfo?.id?.toString() ?? UserId.toString()).trim();
   }
 
-  
-void _resetAdminChair(dynamic room) {
-  if (room == null || room.chairs is! List) {
-    JoinChairs = false;
-    Chairidex = -1;
-    return;
-  }
-
-  final List<dynamic> chairs = room.chairs as List<dynamic>;
-  final String currentUserId = UserId.toString();
-
-  for (int i = 0; i < chairs.length; i++) {
-    final dynamic chair = chairs[i];
-
-    final String? userId = chair.userId?.toString();
-    final String? nestedUserId = chair.user?.id?.toString();
-
-    if (userId == currentUserId || nestedUserId == currentUserId) {
-      Chairidex = i;
-
-      // Prefer the same database ID used by the existing
-      // chair-change flow; do not assume chairId is identical.
-      Chairid = chair.id?.toString() ?? '0';
-
-      JoinChairs = true;
-      return;
-    }
-  }
-
-  // The server has not confirmed that this user occupies a chair.
-  JoinChairs = false;
-  Chairidex = -1;
-  Chairid = '0';
-}
-  // ------------------------------------------------------------
-  // JOIN ROOM 4
-  // ------------------------------------------------------------
-
-Future<void> JoinRoom4({
-  required dynamic context,
-  required dynamic Roomid,
-}) async {
-  Provider.of<SocketViewmodel>(
-    context,
-    listen: false,
-  ).DisConnect(
-    id: Currentroom?.id,
-  );
-
-  Currentroom?.id = 0;
-  Currentroom = null;
-
-  final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
-    context,
-    listen: false,
-  );
-
-  final LoginViewmodel user = Provider.of<LoginViewmodel>(
-    context,
-    listen: false,
-  );
-
-  await agora.EndAgora();
-
-  await Roomapi()
-      .joinRooms(
-        context: context,
-        Roomid: Roomid,
-      )
-      .then((value) async {
-    DismissGlopalLoading();
-
-    if (value.state == 1) {
-      Rooms.removeWhere(
-        (element) => element.id == Roomid,
-      );
-
-      NewRooms.removeWhere(
-        (element) => element.id == Roomid,
-      );
-
-      Dialogs().showtoast(
-        getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: 'Room_Disbanded',
-        ),
-      );
-
-      return;
-    }
-
-    if (value.id == null) {
-      debugPrint('JOIN ROOM 4: Room ID is null');
-      return;
-    }
-
-    // Assign the newly returned room before syncing chair state.
-    Currentroom = value;
-
-    JoinChairs = false;
-
-    final String agoraChannel =
-        value.id?.toString().trim() ?? '';
-    final String agoraToken =
-        value.Token?.toString().trim() ?? '';
-
-    final String currentUserId = (
-      user.userinfo?.id?.toString() ??
-      UserId.toString()
+  String _roomAdminId(dynamic room) {
+    return (
+      room.adminId?.toString() ??
+      room.admin?.id?.toString() ??
+      ''
     ).trim();
+  }
 
-    final String? adminId =
-        value.admin?.id?.toString() ??
-        value.adminId?.toString();
+  bool _isRoomAdmin(dynamic room, LoginViewmodel user) {
+    final String adminId = _roomAdminId(room);
+    final String currentUserId = _currentUserId(user);
 
-    final bool isAdmin =
-        adminId != null &&
+    return adminId.isNotEmpty &&
+        currentUserId.isNotEmpty &&
         adminId == currentUserId;
+  }
 
-    if (agoraChannel.isEmpty) {
-      debugPrint('JOIN ROOM 4: Agora channel is empty');
+  Future<void> _joinRoom({
+    required BuildContext context,
+    required dynamic roomId,
+    required bool openRoomScreen,
+    required bool clearCurrentRoomFirst,
+  }) async {
+    if (LeaveLoading) {
+      Dialogs().showtoast('رجاء انتظر ترك الغرفه');
       return;
     }
 
-    if (agoraToken.isEmpty) {
-      debugPrint('JOIN ROOM 4: Agora token is empty');
+    if (roomId == null || roomId.toString().trim().isEmpty) {
+      debugPrint('[ROOM_JOIN] Rejected join: empty room ID');
       return;
     }
 
-    // Use the newly joined room, not a potentially stale Provider room.
-    final RoomViewmodel roomVM = Provider.of<RoomViewmodel>(
-      roomcontext,
+    final socket = Provider.of<SocketViewmodel>(
+      context,
+      listen: false,
+    );
+    final agora = Provider.of<AgoraViewmodel>(
+      context,
+      listen: false,
+    );
+    final user = Provider.of<LoginViewmodel>(
+      context,
       listen: false,
     );
 
-    if (isAdmin) {
-      await agora.initialize(
-        role: ClientRole.Broadcaster,
-        Token: agoraToken,
-        channelName: agoraChannel,
+    showSpinner3();
+
+    try {
+      // Disconnect the previous room before joining another one.
+      socket.DisConnect(id: Currentroom?.id);
+
+      if (clearCurrentRoomFirst) {
+        Currentroom = null;
+        joinuserRooms = [];
+      }
+
+      await agora.EndAgora();
+
+      final joinedRoom = await Roomapi().joinRooms(
+        context: context,
+        Roomid: roomId,
       );
 
-      // Synchronize only against chair data returned for this room.
-      // This must not fabricate a server-side chair assignment.
-      _resetAdminChair(value);
+      if (!context.mounted) return;
 
-      debugPrint(
-        'JOIN ROOM 4: Admin joined room=${value.id}, '
-        'adminId=$adminId, '
-        'chairIndex=$Chairidex, '
-        'chairId=$Chairid, '
-        'joinedChair=$JoinChairs',
-      );
-    } else {
-      await agora.initialize(
-        role: ClientRole.Audience,
-        Token: agoraToken,
-        channelName: agoraChannel,
-      );
+      if (joinedRoom.state == 1) {
+        Rooms.removeWhere(
+          (room) => room.id.toString() == roomId.toString(),
+        );
+        NewRooms.removeWhere(
+          (room) => room.id.toString() == roomId.toString(),
+        );
 
-      JoinChairs = false;
-    }
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Room_Disbanded',
+          ),
+        );
+        return;
+      }
 
-    Provider.of<GiftsViewModel>(
-      context,
-      listen: false,
-    ).hidpanner();
+      if (joinedRoom.id == null) {
+        debugPrint(
+          '[ROOM_JOIN] Join failed: response has no room ID '
+          '(requested=$roomId)',
+        );
+        return;
+      }
 
-    Provider.of<SvgViewmodel>(
-      context,
-      listen: false,
-    ).animationController?.clear();
+      Currentroom = joinedRoom;
 
-    roomVM.initscrollcontroller();
+      // Do not show participants from the previous room while refreshing.
+      joinuserRooms = [];
+      Currentroom?.joinRooms = [];
+      notifyListeners();
 
-    Provider.of<SocketViewmodel>(
-      context,
-      listen: false,
-    ).ConnectRoomScocket(
-      context,
-      Roomid,
-    );
+      final String channelName =
+          joinedRoom.id?.toString().trim() ?? '';
+      final String token = joinedRoom.Token?.toString().trim() ?? '';
+      final bool isAdmin = _isRoomAdmin(joinedRoom, user);
 
-    Provider.of<RoomPlayViewModel>(
-      context,
-      listen: false,
-    ).changeHasRoomstate(true);
+      if (channelName.isEmpty || token.isEmpty) {
+        debugPrint(
+          '[ROOM_JOIN] Missing Agora configuration '
+          '(room=${joinedRoom.id}, '
+          'channelEmpty=${channelName.isEmpty}, '
+          'tokenEmpty=${token.isEmpty})',
+        );
+      } else {
+        // Audio connection failure must not block loading membership/UI.
+        try {
+          await agora.initialize(
+            role: isAdmin
+                ? ClientRole.Broadcaster
+                : ClientRole.Audience,
+            Token: token,
+            channelName: channelName,
+          );
+        } catch (error, stackTrace) {
+          debugPrint('[ROOM_JOIN][AGORA] Initialize failed: $error');
+          if (kDebugMode) {
+            debugPrintStack(stackTrace: stackTrace);
+          }
+        }
+      }
 
-    Provider.of<RoomPlayViewModel>(
-      context,
-      listen: false,
-    ).changeIsRoomstate(true);
+      if (!context.mounted) return;
 
-    if (Currentroom?.RoomAds != null) {
-      Currentroom?.chatroom?.add(
-        Chatroom(
-          kind: 1,
-          user: Currentroom?.admin,
-          id: 0,
-          content: Currentroom?.RoomAds,
-          userId: Currentroom?.admin?.id.toString(),
-          updatedAt: Currentroom?.updatedAt,
-          roomId: Currentroom?.id.toString(),
-          createdAt: Currentroom?.createdAt,
-        ),
-      );
-    }
+      // Membership is the source of truth for the participants panel.
+      try {
+        final participants = await Roomapi().Roomsjoinuser(
+          context: context,
+          room_id: joinedRoom.id,
+        );
 
-    agora.KickedFromChair = false;
+        if (Currentroom?.id.toString() == joinedRoom.id.toString()) {
+          final refreshedParticipants = List.of(participants);
 
-    Provider.of<GiftsViewModel>(
-      context,
-      listen: false,
-    ).DeleteGlopal();
+          // RoomParticipantsPanel reads room.joinuserRooms.
+          joinuserRooms = refreshedParticipants;
 
-    HideEnterWidget();
+          // Keep the existing room model in sync for other widgets.
+          Currentroom?.joinRooms = refreshedParticipants;
 
-    final int? userId = int.tryParse(
-      user.userinfo?.id.toString() ?? '',
-    );
+          debugPrint(
+            '[ROOM_JOIN][MEMBERS] '
+            'room=${joinedRoom.id}, '
+            'count=${refreshedParticipants.length}, '
+            'currentUser=$_currentUserId(user), '
+            'admin=${_roomAdminId(joinedRoom)}',
+          );
 
-    if (userId != null) {
-      Provider.of<AgoraViewmodel>(
+          notifyListeners();
+        }
+      } catch (error, stackTrace) {
+        debugPrint('[ROOM_JOIN] Participant refresh failed: $error');
+        if (kDebugMode) {
+          debugPrintStack(stackTrace: stackTrace);
+        }
+      }
+
+      if (!context.mounted) return;
+
+      final roomVM = Provider.of<RoomViewmodel>(
         roomcontext,
         listen: false,
-      ).unmuteusermic(userId);
-    }
+      );
 
-    // SvgViewmodel is owned by Provider; do not dispose it here.
-    Future.delayed(
-      const Duration(seconds: 2),
-      () {
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).hidpanner();
+
+      Provider.of<SvgViewmodel>(
+        context,
+        listen: false,
+      ).animationController?.clear();
+
+      roomVM.initscrollcontroller();
+
+      socket.ConnectRoomScocket(context, joinedRoom.id);
+
+      final roomPlay = Provider.of<RoomPlayViewModel>(
+        context,
+        listen: false,
+      );
+      roomPlay.changeHasRoomstate(true);
+      roomPlay.changeIsRoomstate(true);
+
+      if (joinedRoom.RoomAds != null &&
+          joinedRoom.RoomAds!.trim().isNotEmpty) {
+        joinedRoom.chatroom ??= [];
+
+        final bool adAlreadyAdded = joinedRoom.chatroom!.any(
+          (message) =>
+              message.kind == 1 &&
+              message.content == joinedRoom.RoomAds,
+        );
+
+        if (!adAlreadyAdded) {
+          joinedRoom.chatroom!.add(
+            Chatroom(
+              kind: 1,
+              user: joinedRoom.admin,
+              id: 0,
+              content: joinedRoom.RoomAds,
+              userId: joinedRoom.admin?.id.toString(),
+              updatedAt: joinedRoom.updatedAt,
+              roomId: joinedRoom.id.toString(),
+              createdAt: joinedRoom.createdAt,
+            ),
+          );
+        }
+      }
+
+      // Legacy compatibility flag only.
+      agora.KickedFromChair = false;
+
+      Provider.of<GiftsViewModel>(
+        context,
+        listen: false,
+      ).DeleteGlopal();
+
+      HideEnterWidget();
+
+      final int? userId = int.tryParse(_currentUserId(user));
+      if (userId != null) {
+        agora.unmuteusermic(userId);
+      }
+
+      Future.delayed(const Duration(seconds: 2), () {
         if (!context.mounted) return;
 
         try {
-          Provider.of<GiftsViewModel>(
+          final gifts = Provider.of<GiftsViewModel>(
             context,
             listen: false,
-          ).sidepanner();
+          );
 
-          final String entry =
-              user.userinfo?.entry?.trim() ?? '';
+          gifts.sidepanner();
 
-          if (entry.isEmpty) {
-            return;
-          }
+          final String entry = user.userinfo?.entry?.trim() ?? '';
+          if (entry.isEmpty) return;
 
           Provider.of<SvgViewmodel>(
             context,
@@ -311,495 +282,78 @@ Future<void> JoinRoom4({
             svga: entry,
           );
         } catch (error) {
-          debugPrint(
-            'JOIN ROOM 4: Entry animation failed: $error',
-          );
+          debugPrint('[ROOM_JOIN] Entry animation failed: $error');
         }
-      },
+      });
+
+      if (openRoomScreen) {
+        Navigator.pushNamed(
+          context,
+          AppConstants.Room_Screan,
+        );
+      }
+    } catch (error, stackTrace) {
+      debugPrint('[ROOM_JOIN] Join failed: $error');
+
+      if (kDebugMode) {
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    } finally {
+      hideSpinner3();
+      notifyListeners();
+    }
+  }
+
+  Future<void> JoinRoom4({
+    required dynamic context,
+    required dynamic Roomid,
+  }) async {
+    if (context is! BuildContext) return;
+
+    await _joinRoom(
+      context: context,
+      roomId: Roomid,
+      openRoomScreen: true,
+      clearCurrentRoomFirst: true,
     );
-
-    Navigator.pushNamed(
-      context,
-      AppConstants.Room_Screan,
-    );
-  });
-
-  notifyListeners();
-}
-
-
-  // ------------------------------------------------------------
-  // JOIN ROOM 2
-  // ------------------------------------------------------------
+  }
 
   Future<void> JoinRoom2({
     required dynamic context,
     required dynamic Roomid,
   }) async {
-    Provider.of<SocketViewmodel>(
-      context,
-      listen: false,
-    ).DisConnect(
-      id: Currentroom?.id,
+    if (context is! BuildContext) return;
+
+    await _joinRoom(
+      context: context,
+      roomId: Roomid,
+      openRoomScreen: false,
+      clearCurrentRoomFirst: false,
     );
-
-    final LoginViewmodel user = Provider.of<LoginViewmodel>(
-      context,
-      listen: false,
-    );
-
-    final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
-      context,
-      listen: false,
-    );
-
-    await agora.EndAgora();
-
-    showSpinner3();
-
-    await Roomapi()
-        .joinRooms(
-          context: context,
-          Roomid: Roomid,
-        )
-        .then((value) async {
-      if (value.state == 1) {
-        Rooms.removeWhere(
-          (element) => element.id == Roomid,
-        );
-
-        NewRooms.removeWhere(
-          (element) => element.id == Roomid,
-        );
-
-        hideSpinner3();
-
-        Dialogs().showtoast(
-          getLang(
-            context: NavigationService
-                .navigatorKey
-                .currentContext,
-            key: 'Room_Disbanded',
-          ),
-        );
-
-        return;
-      }
-
-      if (value.id == null) {
-        debugPrint('JOIN ROOM 2: Room ID is null');
-        hideSpinner3();
-        return;
-      }
-
-      Provider.of<SocketViewmodel>(
-        context,
-        listen: false,
-      ).DisConnect(
-        id: Currentroom?.id,
-      );
-
-      JoinChairs = false;
-
-      final String agoraChannel =
-          value.id?.toString().trim() ?? '';
-      final String agoraToken =
-          value.Token?.toString().trim() ?? '';
-
-      final bool isAdmin =
-          value.admin?.id.toString() == UserId.toString();
-
-      if (agoraChannel.isEmpty) {
-        debugPrint('JOIN ROOM 2: Agora channel is empty');
-        hideSpinner3();
-        return;
-      }
-
-      if (agoraToken.isEmpty) {
-        debugPrint('JOIN ROOM 2: Agora token is empty');
-        hideSpinner3();
-        return;
-      }
-
-      if (isAdmin) {
-        JoinChairs = true;
-
-        await Provider.of<AgoraViewmodel>(
-          context,
-          listen: false,
-        ).initialize(
-          role: ClientRole.Broadcaster,
-          Token: agoraToken,
-          channelName: agoraChannel,
-        );
-      } else {
-        await Provider.of<AgoraViewmodel>(
-          context,
-          listen: false,
-        ).initialize(
-          role: ClientRole.Audience,
-          Token: agoraToken,
-          channelName: agoraChannel,
-        );
-      }
-
-      Currentroom = value;
-
-      final roomVM = Provider.of<RoomViewmodel>(
-        roomcontext,
-        listen: false,
-      );
-
-     if (checkadmin(context: context)) {
-  _resetAdminChair(value);
-}
-
-      Provider.of<GiftsViewModel>(
-        context,
-        listen: false,
-      ).hidpanner();
-
-      Provider.of<SvgViewmodel>(
-        context,
-        listen: false,
-      ).animationController?.clear();
-
-      Provider.of<RoomViewmodel>(
-        context,
-        listen: false,
-      ).initscrollcontroller();
-
-      Currentroom?.userNumber =
-          (Currentroom?.userNumber ?? 0) + 1;
-
-      Provider.of<SocketViewmodel>(
-        context,
-        listen: false,
-      ).ConnectRoomScocket(
-        context,
-        Currentroom?.id,
-      );
-
-      Provider.of<RoomPlayViewModel>(
-        context,
-        listen: false,
-      ).changeHasRoomstate(true);
-
-      if (Currentroom?.RoomAds != null) {
-        Currentroom?.chatroom?.add(
-          Chatroom(
-            user: Currentroom?.admin,
-            id: 0,
-            content: Currentroom?.RoomAds,
-            userId: Currentroom?.admin?.id.toString(),
-            updatedAt: Currentroom?.updatedAt,
-            roomId: Currentroom?.id?.toString(),
-            createdAt: Currentroom?.createdAt,
-          ),
-        );
-      }
-
-      Provider.of<AgoraViewmodel>(
-        context,
-        listen: false,
-      ).KickedFromChair = false;
-
-      Provider.of<RoomPlayViewModel>(
-        context,
-        listen: false,
-      ).changeIsRoomstate(true);
-
-      HideEnterWidget();
-
-      // SvgViewmodel is owned by Provider; do not dispose it here.
-      Future.delayed(
-        const Duration(seconds: 2),
-        () {
-          if (!context.mounted) return;
-
-          try {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).sidepanner();
-
-            final String entry =
-                user.userinfo?.entry?.trim() ?? '';
-
-            if (entry.isEmpty) {
-              return;
-            }
-
-            Provider.of<SvgViewmodel>(
-              context,
-              listen: false,
-            ).getcontroller(
-              enterImage: user.userinfo?.image,
-              entername: user.userinfo?.name,
-              svga: entry,
-            );
-          } catch (error) {
-            debugPrint('JOIN ROOM 2: Entry animation failed: $error');
-          }
-        },
-      );
-
-      hideSpinner3();
-    });
-
-    notifyListeners();
   }
-
-  // ------------------------------------------------------------
-  // JOIN ROOM 5
-  // ------------------------------------------------------------
 
   Future<void> JoinRoom5({
     required dynamic context,
     required dynamic Roomid,
   }) async {
-    Provider.of<SocketViewmodel>(
-      context,
-      listen: false,
-    ).DisConnect(
-      id: Currentroom?.id,
+    if (context is! BuildContext) return;
+
+    await _joinRoom(
+      context: context,
+      roomId: Roomid,
+      openRoomScreen: true,
+      clearCurrentRoomFirst: true,
     );
-
-    Currentroom?.id = 0;
-    Currentroom = null;
-
-    final AgoraViewmodel agora = Provider.of<AgoraViewmodel>(
-      context,
-      listen: false,
-    );
-
-    await agora.EndAgora();
-
-    final LoginViewmodel user = Provider.of<LoginViewmodel>(
-      context,
-      listen: false,
-    );
-
-    showSpinner3();
-
-    await Roomapi()
-        .joinRooms(
-          context: context,
-          Roomid: Roomid,
-        )
-        .then((value) async {
-      if (value.state == 1) {
-        Rooms.removeWhere(
-          (element) => element.id == Roomid,
-        );
-
-        NewRooms.removeWhere(
-          (element) => element.id == Roomid,
-        );
-
-        hideSpinner3();
-
-        Dialogs().showtoast(
-          getLang(
-            context: NavigationService
-                .navigatorKey
-                .currentContext,
-            key: 'Room_Disbanded',
-          ),
-        );
-
-        return;
-      }
-
-      if (value.id == null) {
-        debugPrint('JOIN ROOM 5: Room ID is null');
-        hideSpinner3();
-        return;
-      }
-
-      JoinChairs = false;
-
-      final String agoraChannel =
-          value.id?.toString().trim() ?? '';
-      final String agoraToken =
-          value.Token?.toString().trim() ?? '';
-
-      final bool isAdmin =
-          value.admin?.id.toString() == UserId.toString();
-
-      if (agoraChannel.isEmpty) {
-        debugPrint('JOIN ROOM 5: Agora channel is empty');
-        hideSpinner3();
-        return;
-      }
-
-      if (agoraToken.isEmpty) {
-        debugPrint('JOIN ROOM 5: Agora token is empty');
-        hideSpinner3();
-        return;
-      }
-
-      if (isAdmin) {
-        JoinChairs = true;
-
-        await Provider.of<AgoraViewmodel>(
-          context,
-          listen: false,
-        ).initialize(
-          role: ClientRole.Broadcaster,
-          Token: agoraToken,
-          channelName: agoraChannel,
-        );
-      } else {
-        await Provider.of<AgoraViewmodel>(
-          context,
-          listen: false,
-        ).initialize(
-          role: ClientRole.Audience,
-          Token: agoraToken,
-          channelName: agoraChannel,
-        );
-      }
-
-      Currentroom = value;
-
-      final roomVM = Provider.of<RoomViewmodel>(
-        roomcontext,
-        listen: false,
-      );
-
-     if (checkadmin(context: context)) {
-  _resetAdminChair(value);
-}
-
-      Provider.of<GiftsViewModel>(
-        context,
-        listen: false,
-      ).hidpanner();
-
-      Provider.of<SvgViewmodel>(
-        context,
-        listen: false,
-      ).animationController?.clear();
-
-      Provider.of<RoomViewmodel>(
-        context,
-        listen: false,
-      ).initscrollcontroller();
-
-      Provider.of<SocketViewmodel>(
-        context,
-        listen: false,
-      ).ConnectRoomScocket(
-        context,
-        Roomid,
-      );
-
-      Provider.of<RoomPlayViewModel>(
-        context,
-        listen: false,
-      ).changeHasRoomstate(true);
-
-      Provider.of<RoomPlayViewModel>(
-        context,
-        listen: false,
-      ).changeIsRoomstate(true);
-
-      if (Currentroom?.RoomAds != null) {
-        Currentroom?.chatroom?.add(
-          Chatroom(
-            kind: 1,
-            user: Currentroom?.admin,
-            id: 0,
-            content: Currentroom?.RoomAds,
-            userId: Currentroom?.admin?.id.toString(),
-            updatedAt: Currentroom?.updatedAt,
-            roomId: Currentroom?.id?.toString(),
-            createdAt: Currentroom?.createdAt,
-          ),
-        );
-      }
-
-      Provider.of<AgoraViewmodel>(
-        context,
-        listen: false,
-      ).KickedFromChair = false;
-
-      Provider.of<GiftsViewModel>(
-        context,
-        listen: false,
-      ).DeleteGlopal();
-
-      HideEnterWidget();
-
-      final int? userId = int.tryParse(
-        user.userinfo?.id.toString() ?? '',
-      );
-
-      if (userId != null) {
-        Provider.of<AgoraViewmodel>(
-          roomcontext,
-          listen: false,
-        ).unmuteusermic(userId);
-      }
-
-      // SvgViewmodel is owned by Provider; do not dispose it here.
-      Future.delayed(
-        const Duration(seconds: 2),
-        () {
-          if (!context.mounted) return;
-
-          try {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).sidepanner();
-
-            final String entry =
-                user.userinfo?.entry?.trim() ?? '';
-
-            if (entry.isEmpty) {
-              return;
-            }
-
-            Provider.of<SvgViewmodel>(
-              context,
-              listen: false,
-            ).getcontroller(
-              enterImage: user.userinfo?.image,
-              entername: user.userinfo?.name,
-              svga: entry,
-            );
-          } catch (error) {
-            debugPrint('JOIN ROOM 5: Entry animation failed: $error');
-          }
-        },
-      );
-
-      Navigator.pushNamed(
-        context,
-        AppConstants.Room_Screan,
-      );
-
-      hideSpinner3();
-    });
-
-    notifyListeners();
   }
-
-  // ------------------------------------------------------------
-  // CHECK ADMIN
-  // ------------------------------------------------------------
 
   bool checkadmin({
     required BuildContext context,
   }) {
-    final LoginViewmodel user = Provider.of<LoginViewmodel>(
+    final user = Provider.of<LoginViewmodel>(
       context,
       listen: false,
     );
 
-    return Currentroom?.adminId.toString() ==
-        user.userinfo?.id.toString();
+    return _isRoomAdmin(Currentroom, user);
   }
 }

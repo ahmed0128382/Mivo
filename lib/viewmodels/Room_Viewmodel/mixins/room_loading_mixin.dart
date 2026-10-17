@@ -161,25 +161,36 @@ mixin RoomLoadingMixin on RoomStateMixin {
     notifyListeners();
   }
 
-  void showSpinner3() {
-    showloading3 = true;
-    notifyListeners();
-  }
+ void showSpinner3() {
+  if (showloading3) return;
+  showloading3 = true;
+  notifyListeners();
+}
 
-  void hideSpinner7() {
-    showloading7 = false;
-    notifyListeners();
-  }
+void hideSpinner3() {
+  if (!showloading3) return;
+  showloading3 = false;
+  notifyListeners();
+}
+
+  void showSpinner7() {
+  if (showloading7) return;
+  showloading7 = true;
+  notifyListeners();
+}
+
+void hideSpinner7() {
+  if (!showloading7) return;
+  showloading7 = false;
+  notifyListeners();
+}
 
   void hideSpinner21() {
     showloading21 = false;
     notifyListeners();
   }
 
-  void showSpinner7() {
-    showloading7 = true;
-    notifyListeners();
-  }
+  
 
   void hiddenSpinner26() {
     showloading26 = false;
@@ -301,11 +312,6 @@ mixin RoomLoadingMixin on RoomStateMixin {
     notifyListeners();
   }
 
-  void hideSpinner3() {
-    print('hide loading3');
-    showloading3 = false;
-    notifyListeners();
-  }
 
   void hideSpinner19() {
     showloading19 = false;

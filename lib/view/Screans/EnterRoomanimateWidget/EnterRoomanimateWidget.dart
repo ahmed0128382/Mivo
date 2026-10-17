@@ -11,7 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 class EnterAnimateWidget extends StatefulWidget {
-  EnterAnimateWidget({Key? key, this.title}) : super(key: key);
+  const EnterAnimateWidget({super.key, this.title});
 
   final String? title;
 

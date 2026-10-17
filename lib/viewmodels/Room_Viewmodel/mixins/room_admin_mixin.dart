@@ -1,17 +1,12 @@
-
-import 'dart:async';
-
 import 'package:ahlachat/main.dart';
 import 'package:ahlachat/util/helperclass.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/models/RoomModel.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';
-import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/viewmodels/Agora_ViewModel/AgoraViewmodel.dart';
 import 'package:ahlachat/viewmodels/Animated_Viewmodel/ElementViewModel.dart';
 import 'package:ahlachat/viewmodels/Gifts_Viewmodel/Gifts_Viewmodel.dart';
@@ -23,526 +18,295 @@ import 'room_loading_mixin.dart';
 import 'room_join_mixin.dart';
 import 'room_ui_mixin.dart';
 
-/// Compact diagnostic logging for room administration and chair invitations.
+/// Room administration without chair assignment.
 ///
-/// Logs are debug-only, kept to one short line, and truncated to avoid
-/// flooding Android Logcat. Do not pass tokens or complete API responses.
-void _roomAdminChairLog(String stage, [Object? details]) {
-  if (!kDebugMode) return;
-
-  final message = details == null
-      ? stage
-      : '$stage | $details';
-
-  final compactMessage = message
-      .replaceAll(RegExp(r'\s+'), ' ')
-      .trim();
-
-  const maxLength = 240;
-  final output = compactMessage.length > maxLength
-      ? '${compactMessage.substring(0, maxLength - 3)}...'
-      : compactMessage;
-
-  debugPrint('[ROOM_ADMIN] $output');
-}
-
+/// Room membership is handled through the room join/leave APIs.
+/// Chair assignment and chair invitation are intentionally not used.
 mixin RoomAdminMixin
     on RoomStateMixin, RoomLoadingMixin, RoomJoinMixin, RoomUiMixin {
-  getRoomSupervisor() async {
+  Future<void> getRoomSupervisor() async {
     ShowGlopalLoading();
 
-    await Roomapi()
-        .GetRoomSupercisors(
-          Roomid: Currentroom?.id,
-        )
-        .then((value) {
-          Currentroom?.supervisor = value;
-          DismissGlopalLoading();
-        });
-
-    notifyListeners();
-  }
-
-  AddsupervisorsRoom({
-    context,
-    userid,
-  }) async {
-    await Roomapi()
-        .Addsupervisors(
-          context: context,
-          Roomid: Currentroom?.id,
-          userid: userid,
-        )
-        .then((value) {
-          if (value == true) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          hideSpinner31();
-        });
-
-    notifyListeners();
-  }
-
-  FollowRoom({
-    context,
-  }) async {
-    await Roomapi()
-        .FollowRoom(
-          context: context,
-          Roomid: Currentroom?.id,
-        )
-        .then((value) {
-          if (value == true) {
-            Currentroom?.FollowRoom = 1;
-          } else {
-            Currentroom?.FollowRoom = 0;
-          }
-
-          notifyListeners();
-        });
-
-    notifyListeners();
-  }
-
-  RemoveFollowRoom({
-    context,
-  }) async {
-    await Roomapi()
-        .RemoveFollowRoom(
-          context: context,
-          Roomid: Currentroom?.id,
-        )
-        .then((value) {
-          if (value == true) {
-            Currentroom?.FollowRoom = 0;
-          } else {
-            Currentroom?.FollowRoom = 1;
-          }
-
-          notifyListeners();
-        });
-
-    notifyListeners();
-  }
-
-  InviteToRoom({
-    user,
-    Roominfo,
-    context,
-  }) {
-    final RoomPlayViewModel playroom =
-        Provider.of<RoomPlayViewModel>(
-      context,
-      listen: false,
-    );
-
-    final RoomViewmodel room =
-        Provider.of<RoomViewmodel>(
-      context,
-      listen: false,
-    );
-
-    final SvgViewmodel svga =
-        Provider.of<SvgViewmodel>(
-      context,
-      listen: false,
-    );
-
-    if (Roominfo['id'].toString() ==
-            Currentroom?.id.toString() &&
-        playroom.HasRoom) {
-      Dialogs().showdialog5(
-        context: context,
-        content:
-            '${user['name']} ${getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: "INVITE_SET",
-        )}',
+    try {
+      final value = await Roomapi().GetRoomSupercisors(
+        Roomid: Currentroom?.id,
       );
-    } else {
-      Dialogs().showdialog(
+
+      Currentroom?.supervisor = value;
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
+  }
+
+  Future<void> AddsupervisorsRoom({
+    dynamic context,
+    dynamic userid,
+  }) async {
+    try {
+      final value = await Roomapi().Addsupervisors(
         context: context,
-        content:
-            '${user['name']} ${getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: "inviteyou",
-        )} ${Roominfo['name']} ${getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: "Room_now",
-        )}  ',
-        onTap: () {
-          Navigator.pop(context);
+        Roomid: Currentroom?.id,
+        userid: userid,
+      );
 
-          if (playroom.HasRoom) {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
-
-            svga.dispose();
-
-            room.JoinRoom2(
-              Roomid: Roominfo['id'],
-              context: context,
-            );
-          } else {
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).hidpanner2();
-
-            svga.dispose();
-
-            room.JoinRoom5(
-              Roomid: Roominfo['id'],
-              context: context,
-            );
-          }
-        },
-        tittle: '',
-        buttontext: getLang(
-          context: context,
-          key: "Yes",
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: value == true ? 'Done_Succ' : 'Sorry',
         ),
       );
+    } finally {
+      hideSpinner31();
+      notifyListeners();
     }
+  }
 
+  Future<void> FollowRoom({dynamic context}) async {
+    final value = await Roomapi().FollowRoom(
+      context: context,
+      Roomid: Currentroom?.id,
+    );
+
+    Currentroom?.FollowRoom = value == true ? 1 : 0;
     notifyListeners();
   }
 
-  inviteToChair({
-    user,
-    roominfo,
-    chairId,
-    context,
+  Future<void> RemoveFollowRoom({dynamic context}) async {
+    final value = await Roomapi().RemoveFollowRoom(
+      context: context,
+      Roomid: Currentroom?.id,
+    );
+
+    Currentroom?.FollowRoom = value == true ? 0 : 1;
+    notifyListeners();
+  }
+
+  /// Invites a user to join a room.
+  ///
+  /// This is a room-membership invitation, not a chair invitation.
+  void InviteToRoom({
+    dynamic user,
+    dynamic Roominfo,
+    dynamic context,
   }) {
-    final RoomPlayViewModel playroom =
-        Provider.of<RoomPlayViewModel>(
+    final playroom = Provider.of<RoomPlayViewModel>(
       context,
       listen: false,
     );
 
-    final RoomViewmodel room =
-        Provider.of<RoomViewmodel>(
+    final room = Provider.of<RoomViewmodel>(
       context,
       listen: false,
     );
 
-    final SvgViewmodel svga =
-        Provider.of<SvgViewmodel>(
+    final svga = Provider.of<SvgViewmodel>(
       context,
       listen: false,
     );
 
     final bool isSameRoom =
-        roominfo['id'].toString() ==
-            Currentroom?.id.toString();
-
-    _roomAdminChairLog(
-      'Invite received',
-      'targetRoom=${roominfo['id']} '
-          'currentRoom=${Currentroom?.id} '
-          'chair=$chairId sameRoom=$isSameRoom '
-          'hasRoom=${playroom.HasRoom} '
-          'isRoom=${playroom.IsRoom}',
-    );
+        Roominfo['id'].toString() == Currentroom?.id.toString();
 
     if (isSameRoom && playroom.HasRoom) {
-      Dialogs().showdialog(
+      Dialogs().showdialog5(
         context: context,
         content:
             '${user['name']} ${getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: "INVITE_SET",
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'INVITE_SET',
         )}',
-        onTap: () {
-          Navigator.pop(context);
+      );
+      return;
+    }
 
-          if (JoinChairs) {
-            _roomAdminChairLog(
-              'Invite rejected',
-              'reason=already_joining_chair',
-            );
+    Dialogs().showdialog(
+      context: context,
+      content:
+          '${user['name']} ${getLang(
+        context: NavigationService.navigatorKey.currentContext,
+        key: 'inviteyou',
+      )} ${Roominfo['name']} ${getLang(
+        context: NavigationService.navigatorKey.currentContext,
+        key: 'Room_now',
+      )}',
+      onTap: () {
+        Navigator.pop(context);
 
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "AlreadySet",
-              ),
-            );
-            return;
-          }
+        Provider.of<GiftsViewModel>(
+          context,
+          listen: false,
+        ).hidpanner2();
 
-          final String invitedChairId =
-              chairId?.toString() ?? '';
+        svga.dispose();
 
-          final chairs = Currentroom?.chairs;
-
-          if (invitedChairId.isEmpty || chairs == null) {
-            _roomAdminChairLog(
-              'Invite rejected',
-              'reason=missing_chair_id_or_chair_list '
-                  'chairIdEmpty=${invitedChairId.isEmpty} '
-                  'chairsNull=${chairs == null}',
-            );
-
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-            return;
-          }
-
-          // An invitation provides a chair number, not necessarily a
-          // unique database ID. Proceed only when the number is unique.
-          final matchingIndexes = <int>[];
-
-          for (var i = 0; i < chairs.length; i++) {
-            if (chairs[i].chairId?.toString() ==
-                invitedChairId) {
-              matchingIndexes.add(i);
-            }
-          }
-
-          if (matchingIndexes.isEmpty) {
-            _roomAdminChairLog(
-              'Invite rejected',
-              'reason=chair_not_found chair=$invitedChairId '
-                  'chairCount=${chairs.length}',
-            );
-
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-            return;
-          }
-
-          if (matchingIndexes.length > 1) {
-            _roomAdminChairLog(
-              'Invite rejected',
-              'reason=ambiguous_chair chair=$invitedChairId '
-                  'matches=${matchingIndexes.length}',
-            );
-
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-            return;
-          }
-
-          final int chairIndex = matchingIndexes.single;
-          final invitedChair = chairs[chairIndex];
-
-          _roomAdminChairLog(
-            'Chair resolved',
-            'index=$chairIndex chair=$invitedChairId '
-                'databaseId=${invitedChair.id}',
+        if (playroom.HasRoom) {
+          room.JoinRoom2(
+            Roomid: Roominfo['id'],
+            context: context,
           );
+        } else {
+          room.JoinRoom5(
+            Roomid: Roominfo['id'],
+            context: context,
+          );
+        }
+      },
+      tittle: '',
+      buttontext: getLang(
+        context: context,
+        key: 'Yes',
+      ),
+    );
 
-          if (invitedChair.userId != null ||
-              invitedChair.user != null) {
-            _roomAdminChairLog(
-              'Invite rejected',
-              'reason=chair_occupied chair=$invitedChairId',
-            );
+    notifyListeners();
+  }
 
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Another_Set",
-              ),
-            );
-            return;
-          }
+  Future<void> RemovesupervisorsRoom({
+    dynamic context,
+    dynamic userid,
+  }) async {
+    ShowGlopalLoading();
 
-          if (invitedChair.Lock == 1) {
-            _roomAdminChairLog(
-              'Invite rejected',
-              'reason=chair_locked chair=$invitedChairId',
-            );
+    try {
+      final value = await Roomapi().Removesupervisors(
+        context: context,
+        Roomid: Currentroom?.id,
+        userid: userid,
+      );
 
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Chair_lock",
-              ),
-            );
-            return;
-          }
+      if (value == true) {
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Done_Succ',
+          ),
+        );
 
-          void joinInvitedChair() {
-            // Revalidate the list position and chair state before joining.
-            final currentChairs = Currentroom?.chairs;
+        Currentroom?.supervisor?.removeWhere(
+          (element) => element.user?.id.toString() == userid.toString(),
+        );
+      } else {
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Sorry',
+          ),
+        );
+      }
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
+  }
 
-            if (currentChairs == null ||
-                chairIndex >= currentChairs.length) {
-              _roomAdminChairLog(
-                'Chair join aborted',
-                'reason=chair_list_changed index=$chairIndex',
-              );
-              return;
-            }
+  void Addsupervisors({dynamic id}) {
+    Currentroom?.supervisorsId ??= <String>[];
 
-            final currentChair = currentChairs[chairIndex];
+    final supervisors = Currentroom!.supervisorsId!;
 
-            if (currentChair.id != invitedChair.id ||
-                currentChair.chairId != invitedChair.chairId) {
-              _roomAdminChairLog(
-                'Chair join aborted',
-                'reason=chair_identity_changed index=$chairIndex',
-              );
-              return;
-            }
+    if (!supervisors.any((element) => element.toString() == id.toString())) {
+      supervisors.add(id.toString());
+    }
 
-            if (currentChair.userId != null ||
-                currentChair.user != null ||
-                currentChair.Lock == 1) {
-              _roomAdminChairLog(
-                'Chair join aborted',
-                'reason=chair_no_longer_available '
-                    'chair=${currentChair.chairId} '
-                    'locked=${currentChair.Lock == 1}',
-              );
-              return;
-            }
+    notifyListeners();
+  }
 
-            _roomAdminChairLog(
-              'Joining invited chair',
-              'index=$chairIndex chair=${currentChair.chairId}',
-            );
+  void Removesupervisors({dynamic id}) {
+    Currentroom?.supervisorsId?.removeWhere(
+      (element) => element.toString() == id.toString(),
+    );
 
-            room.JoinChair(
-              index: chairIndex,
-              context: context,
-              chairid: currentChair.chairId,
-            );
-          }
+    notifyListeners();
+  }
 
-          if (playroom.IsRoom) {
-            joinInvitedChair();
-          } else {
-            _roomAdminChairLog(
-              'Opening room for chair invitation',
-              'room=${Currentroom?.id} chair=$invitedChairId',
-            );
+  Future<void> SetRoomPassword({
+    dynamic context,
+    dynamic PasswordRoom,
+  }) async {
+    ShowGlopalLoading();
 
-            svga.animationController?.clear();
-            room.initscrollcontroller();
+    try {
+      final value = await Roomapi().SetRoomPssword(
+        context: context,
+        roomid: Currentroom?.id,
+        password: PasswordRoom.text,
+      );
 
-            Provider.of<GiftsViewModel>(
-              context,
-              listen: false,
-            ).DeleteGlopal();
+      if (value != null) {
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Done_Succ',
+          ),
+        );
+      } else {
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Sorry',
+          ),
+        );
+      }
 
-            Navigator.pushNamed(
-              context,
-              AppConstants.Room_Screan,
-            );
+      PasswordRoom.clear();
+      Navigator.pop(context);
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
+  }
 
-            Future.delayed(
-              const Duration(seconds: 1),
-              joinInvitedChair,
-            );
-          }
-        },
-        tittle: '',
-        buttontext: getLang(
-          context: context,
-          key: "Yes",
+  Future<void> RemoveRoomPassword({dynamic context}) async {
+    ShowGlopalLoading();
+
+    try {
+      final value = await Roomapi().RemoveRoomPssword(
+        context: context,
+        roomid: Currentroom?.id,
+      );
+
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: value != null ? 'Done_Succ' : 'Sorry',
         ),
       );
-    } else {
-      _roomAdminChairLog(
-        'Invite targets another room',
-        'targetRoom=${roominfo['id']} '
-            'currentRoom=${Currentroom?.id}',
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
+  }
+
+  Future<void> updatemute({
+    dynamic context,
+    dynamic state,
+    dynamic user_id,
+  }) async {
+    final value = await Roomapi().Updatemute(
+      context: context,
+      room_id: Currentroom?.id,
+      state: state,
+      user_id: user_id,
+    );
+
+    if (value == true) {
+      final int userId = int.parse(user_id.toString());
+      final agora = Provider.of<AgoraViewmodel>(
+        roomcontext,
+        listen: false,
       );
 
-      Dialogs().showdialog(
-        context: context,
-        content:
-            '${user['name']} ${getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: "inviteyou",
-        )} ${roominfo['name']} ${getLang(
-          context: NavigationService
-              .navigatorKey
-              .currentContext,
-          key: "Room_now",
-        )} ',
-        onTap: () {
-          Navigator.pop(context);
-
-          Provider.of<GiftsViewModel>(
-            context,
-            listen: false,
-          ).hidpanner2();
-
-          svga.dispose();
-
-          if (playroom.HasRoom) {
-            room.JoinRoom2(
-              Roomid: roominfo['id'],
-              context: context,
-            );
-          } else {
-            room.JoinRoom5(
-              Roomid: roominfo['id'],
-              context: context,
-            );
-          }
-        },
-        tittle: '',
-        buttontext: getLang(
-          context: context,
-          key: "Yes",
+      if (state == 1) {
+        agora.muteusermic(userId);
+      } else {
+        agora.unmuteusermic(userId);
+      }
+    } else {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Sorry',
         ),
       );
     }
@@ -550,453 +314,117 @@ mixin RoomAdminMixin
     notifyListeners();
   }
 
-  RemovesupervisorsRoom({
-    context,
-    userid,
-  }) async {
+  Future<void> GetUserJoin({dynamic context}) async {
     ShowGlopalLoading();
 
-    await Roomapi()
-        .Removesupervisors(
-          context: context,
-          Roomid: Currentroom?.id,
-          userid: userid,
-        )
-        .then((value) {
-          if (value == true) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
+    try {
+      final participants = await Roomapi().Roomsjoinuser(
+        context: context,
+        room_id: Currentroom?.id,
+      );
 
-            Currentroom?.supervisor?.removeWhere(
-              (element) => element.user?.id == userid,
-            );
-
-            notifyListeners();
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          DismissGlopalLoading();
-        });
-
-    notifyListeners();
+      // An empty list is valid: nobody else may have joined yet.
+      joinuserRooms = participants;
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
   }
 
-  Addsupervisors({id}) {
-    Currentroom?.supervisorsId?.add(id);
-    notifyListeners();
-  }
+  /// Updates room metadata only. Participant membership is loaded separately
+  /// from the GetJoinUsers/Roomsjoinuser endpoint, never from chairs.
+  void updateCurrentRoom({required RoomModel NewRoom}) {
+    if (Currentroom?.id == NewRoom.id) {
+      Currentroom?.name = NewRoom.name;
+      Currentroom?.animateimage = NewRoom.animateimage;
+      Currentroom?.locked = NewRoom.locked;
+      Currentroom?.password = NewRoom.password;
+      Currentroom?.image = NewRoom.image;
+      Currentroom?.Category = NewRoom.Category;
+      Currentroom?.nothostedimage = NewRoom.nothostedimage;
+      Currentroom?.RoomAds = NewRoom.RoomAds;
+      Currentroom?.adminId = NewRoom.adminId;
+      Currentroom?.userNumber = NewRoom.userNumber;
+    }
 
-  Removesupervisors({id}) {
-    Currentroom?.supervisorsId?.removeWhere(
-      (element) => element == id,
-    );
-
-    notifyListeners();
-  }
-
-  updateThroneChair({
-    State,
-    context,
-  }) async {
-    ShowGlopalLoading();
-
-    await Roomapi()
-        .UpdateThroneChair(
-          context: context,
-          room_id: Currentroom?.id,
-          State: State,
-        )
-        .then((value) {
-          if (value != null) {
-            Dialogs().showtoast('updated');
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          DismissGlopalLoading();
-          notifyListeners();
-        });
-  }
-
-  unkickuserRoom({
-    context,
-    kickid,
-  }) async {
-    ShowGlopalLoading();
-
-    await Roomapi()
-        .UnkickeuserRoom(
-          context: context,
-          kickid: kickid,
-        )
-        .then((value) {
-          if (value != false) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-
-            BlockeduserRooms.removeWhere(
-              (element) => element.id == kickid,
-            );
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          DismissGlopalLoading();
-          notifyListeners();
-        });
-  }
-
-  SentInviteChairRoom({
-    context,
-    user_id,
-  }) async {
-    ShowGlopalLoading();
-
-    await Roomapi()
-        .SendInviteChairRoom(
-          context: context,
-          roomid: Currentroom?.id,
-          userid: user_id,
-        )
-        .then((value) {
-          if (value != false) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          DismissGlopalLoading();
-          notifyListeners();
-        });
-  }
-
-  SetRoomPassword({
-    context,
-    PasswordRoom,
-  }) async {
-    ShowGlopalLoading();
-
-    await Roomapi()
-        .SetRoomPssword(
-          context: context,
-          roomid: Currentroom?.id,
-          password: PasswordRoom.text,
-        )
-        .then((value) {
-          if (value != null) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-
-            PasswordRoom.clear();
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-
-            PasswordRoom.clear();
-          }
-
-          Navigator.pop(context);
-          notifyListeners();
-        });
-  }
-
-  RemoveRoomPassword({
-    context,
-  }) async {
-    ShowGlopalLoading();
-
-    await Roomapi()
-        .RemoveRoomPssword(
-          context: context,
-          roomid: Currentroom?.id,
-        )
-        .then((value) {
-          if (value != null) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          DismissGlopalLoading();
-          notifyListeners();
-        });
-  }
-
-  updatemute({
-    context,
-    state,
-    user_id,
-  }) async {
-    await Roomapi()
-        .Updatemute(
-          context: context,
-          room_id: Currentroom?.id,
-          state: state,
-          user_id: user_id,
-        )
-        .then((value) {
-          if (value == true) {
-            if (state == 1) {
-              Provider.of<AgoraViewmodel>(
-                roomcontext,
-                listen: false,
-              ).muteusermic(
-                int.parse(user_id.toString()),
-              );
-            } else {
-              Provider.of<AgoraViewmodel>(
-                roomcontext,
-                listen: false,
-              ).unmuteusermic(
-                int.parse(user_id.toString()),
-              );
-            }
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-
-          notifyListeners();
-        });
-  }
-
-  GetUserJoin({
-    context,
-  }) async {
-    ShowGlopalLoading();
-
-    await Roomapi()
-        .Roomsjoinuser(
-          context: context,
-          room_id: Currentroom?.id,
-        )
-        .then((value) {
-          if (value.isNotEmpty) {
-            joinuserRooms = value;
-            notifyListeners();
-          }
-
-          DismissGlopalLoading();
-          notifyListeners();
-        });
-  }
-
-  updateCurrentRoom({
-    required RoomModel NewRoom,
-  }) {
-    _roomAdminChairLog(
-      'Updating current room',
-      'currentRoom=${Currentroom?.id} '
-          'incomingRoom=${NewRoom.id} '
-          'currentChairs=${Currentroom?.chairs?.length ?? 0} '
-          'incomingChairs=${NewRoom.chairs?.length ?? 0}',
-    );
-
-    // Update room metadata only. Chair assignment state is left untouched.
-    Currentroom?.name = NewRoom.name;
-    Currentroom?.animateimage = NewRoom.animateimage;
-    Currentroom?.locked = NewRoom.locked;
-    Currentroom?.password = NewRoom.password;
-    Currentroom?.image = NewRoom.image;
-    Currentroom?.Category = NewRoom.Category;
-    Currentroom?.nothostedimage = NewRoom.nothostedimage;
-    Currentroom?.RoomAds = NewRoom.RoomAds;
-
-    Rooms.forEach((element) {
+    for (final element in Rooms) {
       if (element.id == NewRoom.id) {
         element.name = NewRoom.name;
         element.image = NewRoom.image;
         element.password = NewRoom.password;
         element.RoomAds = NewRoom.RoomAds;
         element.Category = NewRoom.Category;
+        element.adminId = NewRoom.adminId;
+        element.userNumber = NewRoom.userNumber;
       }
-    });
+    }
 
     notifyListeners();
-
-    _roomAdminChairLog(
-      'Current room updated',
-      'room=${Currentroom?.id}',
-    );
   }
 
-  updateCurrentRoomPassword({
-    required var Password,
+  void updateCurrentRoomPassword({
+    required dynamic Password,
     required String Id,
   }) {
     Currentroom?.password = Password;
 
-    Rooms.forEach((element) {
-      if (element.id.toString() == Id.toString()) {
+    for (final element in Rooms) {
+      if (element.id.toString() == Id) {
         element.password = Password;
-        notifyListeners();
       }
-    });
+    }
 
     notifyListeners();
   }
 
-  KickJoinadminuser({
-    context,
-    user_id,
-  }) async {
-    await Roomapi()
-        .KickJoinadminuser(
-          context: context,
-          user_id: user_id,
-          room_id: Currentroom?.id,
-        )
-        .then((value) {
-          if (value == true) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-        });
+  Future<void> GetKickeduser({dynamic context}) async {
+    ShowGlopalLoading();
+
+    try {
+      BlockeduserRooms = await Roomapi().KickedUserRooms(
+        context: context,
+        roomid: Currentroom?.id,
+      );
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
   }
 
-  InviteUserToSET({
-    context,
-    user_id,
-  }) async {
-    await Roomapi()
-        .InviteUserToSET(
-          context: context,
-          user_id: user_id,
-          room_id: Currentroom?.id,
-        )
-        .then((value) {
-          if (value == true) {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Done_Succ",
-              ),
-            );
-          } else {
-            Dialogs().showtoast(
-              getLang(
-                context: NavigationService
-                    .navigatorKey
-                    .currentContext,
-                key: "Sorry",
-              ),
-            );
-          }
-        });
-  }
-
-  GetKickeduser({
-    context,
+  Future<void> unkickuserRoom({
+    dynamic context,
+    dynamic kickid,
   }) async {
     ShowGlopalLoading();
 
-    await Roomapi()
-        .KickedUserRooms(
-          context: context,
-          roomid: Currentroom?.id,
-        )
-        .then((value) {
-          BlockeduserRooms = value;
-          DismissGlopalLoading();
-        });
+    try {
+      final value = await Roomapi().UnkickeuserRoom(
+        context: context,
+        kickid: kickid,
+      );
 
-    notifyListeners();
+      if (value != false) {
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Done_Succ',
+          ),
+        );
+
+        BlockeduserRooms.removeWhere(
+          (element) => element.id.toString() == kickid.toString(),
+        );
+      } else {
+        Dialogs().showtoast(
+          getLang(
+            context: NavigationService.navigatorKey.currentContext,
+            key: 'Sorry',
+          ),
+        );
+      }
+    } finally {
+      DismissGlopalLoading();
+      notifyListeners();
+    }
   }
 }

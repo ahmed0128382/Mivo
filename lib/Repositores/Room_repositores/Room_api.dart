@@ -27,7 +27,7 @@ class Roomapi extends RoomRepository
         RoomApiJoinMixin,
         RoomApiCreateMixin,
         RoomApiLeaveMixin,
-        RoomApiChairMixin,
+        // RoomApiChairMixin,
         RoomApiChatMixin,
         RoomApiGiftsMixin,
         RoomApiGamesMixin {}

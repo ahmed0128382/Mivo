@@ -1,3 +1,4 @@
+
 import 'package:ahlachat/main.dart';
 import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
 import 'package:ahlachat/models/JoinRoomModel.dart';
@@ -7,71 +8,138 @@ import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/viewmodels/Agora_ViewModel/AgoraViewmodel.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Socket_ViewModel/Socketviewmodel.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import 'room_state_mixin.dart';
 import 'room_loading_mixin.dart';
 import 'room_ui_mixin.dart';
 
-mixin RoomLeaveMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
-  Leaveroom({
-    context,
-  }) async {
+mixin RoomLeaveMixin
+    on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
+  Future<void> Leaveroom({context}) async {
+    if (LeaveLoading) return;
+
+    final roomId = Currentroom?.id;
+    if (roomId == null) return;
+
+    // Resolve a live context before starting asynchronous work.
+    final BuildContext? navigatorContext =
+        NavigationService.navigatorKey.currentContext;
+
+    final BuildContext? activeContext =
+        context is BuildContext && context.mounted
+            ? context
+            : navigatorContext;
+
+    if (activeContext == null) {
+      debugPrint('[ROOM_LEAVE] No active context available.');
+      return;
+    }
+
+    // Capture providers before the first await. Do not look them up again
+    // through the room screen's context after it may have been disposed.
+    final socket = Provider.of<SocketViewmodel>(
+      activeContext,
+      listen: false,
+    );
+
+    final agora = Provider.of<AgoraViewmodel>(
+      activeContext,
+      listen: false,
+    );
+
     LeaveLoading = true;
-
-    Provider.of<SocketViewmodel>(
-      context,
-      listen: false,
-    ).DisConnect(
-      id: Currentroom?.id.toString(),
-    );
-
-    Provider.of<AgoraViewmodel>(
-      context,
-      listen: false,
-    ).disableAudioroomvoice();
-
-    Provider.of<AgoraViewmodel>(
-      context,
-      listen: false,
-    ).stopAudioMexing(context);
-
-    await Roomapi()
-        .LeaveRoom(
-      context: context,
-      Roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          List rrr = Rooms
-              .where(
-                (element) =>
-                    element.id ==
-                    Currentroom?.id,
-              )
-              .toList();
-
-          if (rrr.isNotEmpty) {
-            rrr.first.userNumber =
-                (rrr.first.userNumber ?? 0) -
-                    1;
-          }
-
-          Dialogs().showtoast(
-            getLang(
-              context: roomcontext,
-              key: "Leaved_Room",
-            ),
-          );
-
-          Currentroom = null;
-          removecurrentroom();
-          LeaveLoading = false;
-        }
-      },
-    );
-
     notifyListeners();
+
+    try {
+      final bool success = await Roomapi().LeaveRoom(
+        context: NavigationService.navigatorKey.currentContext,
+        Roomid: roomId,
+      );
+
+      if (!success) {
+        final BuildContext? uiContext =
+            NavigationService.navigatorKey.currentContext;
+
+        if (uiContext != null && uiContext.mounted) {
+          Dialogs().showtoast(
+            getLang(context: uiContext, key: 'Sorry'),
+          );
+        }
+
+        return;
+      }
+
+      debugPrint('[ROOM_LEAVE] Server confirmed leave for room $roomId.');
+
+      // The server has confirmed leaving. Local cleanup must not turn
+      // that success into a misleading "leave failed" result.
+      try {
+        socket.DisConnect(id: roomId);
+
+        await agora.EndAgora();
+
+        agora.disableAudioroomvoice();
+
+        final BuildContext? cleanupContext =
+            NavigationService.navigatorKey.currentContext;
+
+        if (cleanupContext != null && cleanupContext.mounted) {
+          agora.stopAudioMexing(cleanupContext);
+        }
+      } catch (error, stackTrace) {
+        debugPrint('[ROOM_LEAVE] Local cleanup error: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+
+      // Update room counts after the server confirms the leave.
+      for (final room in Rooms) {
+        if (room.id.toString() == roomId.toString()) {
+          final currentCount = room.userNumber ?? 0;
+          room.userNumber = currentCount > 0 ? currentCount - 1 : 0;
+          break;
+        }
+      }
+
+      for (final room in NewRooms) {
+        if (room.id.toString() == roomId.toString()) {
+          final currentCount = room.userNumber ?? 0;
+          room.userNumber = currentCount > 0 ? currentCount - 1 : 0;
+          break;
+        }
+      }
+
+      // Clear the active room only after the API confirms success.
+      Currentroom = null;
+      removecurrentroom();
+
+      final BuildContext? uiContext =
+          NavigationService.navigatorKey.currentContext;
+
+      if (uiContext != null && uiContext.mounted) {
+        Dialogs().showtoast(
+          getLang(context: uiContext, key: 'Leaved_Room'),
+        );
+      }
+
+      debugPrint('[ROOM_LEAVE] Local room state cleared.');
+    } catch (error, stackTrace) {
+      debugPrint('[ROOM_LEAVE] Leave operation error: $error');
+      debugPrintStack(stackTrace: stackTrace);
+
+      final BuildContext? uiContext =
+          NavigationService.navigatorKey.currentContext;
+
+      if (uiContext != null && uiContext.mounted) {
+        Dialogs().showtoast(
+          getLang(context: uiContext, key: 'Sorry'),
+        );
+      }
+    } finally {
+      LeaveLoading = false;
+      notifyListeners();
+    }
   }
 
   Evictionuser({
@@ -80,109 +148,81 @@ mixin RoomLeaveMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
   }) async {
     await Roomapi()
         .Evictionuser(
-      context: context,
-      Roomid: Currentroom?.id,
-      Userid: Userid,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-        } else {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Sorry",
-            ),
-          );
-        }
+          context: context,
+          Roomid: Currentroom?.id,
+          Userid: Userid,
+        )
+        .then((value) {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: value == true ? 'Done_Succ' : 'Sorry',
+        ),
+      );
 
-        notifyListeners();
-      },
-    );
-
-    notifyListeners();
+      notifyListeners();
+    });
   }
 
-  RemoveRoomFromlist({
-    RoomId,
-  }) {
+  RemoveRoomFromlist({RoomId}) {
     Rooms.removeWhere(
-      (element) => element.id == RoomId,
+      (element) => element.id.toString() == RoomId.toString(),
     );
 
     NewRooms.removeWhere(
-      (element) => element.id == RoomId,
+      (element) => element.id.toString() == RoomId.toString(),
     );
 
     notifyListeners();
   }
 
-  DisbandRoom({
-    context,
-  }) async {
-    LoginViewmodel user =
-        Provider.of<LoginViewmodel>(
+  DisbandRoom({context}) async {
+    final user = Provider.of<LoginViewmodel>(
       context,
       listen: false,
     );
 
-    AgoraViewmodel Agora =
-        Provider.of<AgoraViewmodel>(
+    final agora = Provider.of<AgoraViewmodel>(
       context,
       listen: false,
     );
 
-    await Roomapi()
-        .DisbandRoom(
+    final roomId = Currentroom?.id;
+
+    final value = await Roomapi().DisbandRoom(
       context: context,
-      Roomid: Currentroom?.id,
-    )
-        .then(
-      (value) {
-        if (value == true) {
-          Dialogs().showtoast(
-            getLang(
-              context:
-                  NavigationService
-                      .navigatorKey
-                      .currentContext,
-              key: "Done_Succ",
-            ),
-          );
-
-          Agora.EndAgora();
-
-          Rooms.removeWhere(
-            (element) =>
-                element.id ==
-                Currentroom?.id,
-          );
-
-          NewRooms.removeWhere(
-            (element) =>
-                element.id ==
-                Currentroom?.id,
-          );
-
-          user.userinfo?.currentroom =
-              null;
-        }
-
-        notifyListeners();
-      },
+      Roomid: roomId,
     );
+
+    if (value == true) {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Done_Succ',
+        ),
+      );
+
+      await agora.EndAgora();
+
+      Rooms.removeWhere(
+        (element) => element.id.toString() == roomId.toString(),
+      );
+
+      NewRooms.removeWhere(
+        (element) => element.id.toString() == roomId.toString(),
+      );
+
+      user.userinfo?.currentroom = null;
+      Currentroom = null;
+      removecurrentroom();
+    } else {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Sorry',
+        ),
+      );
+    }
 
     notifyListeners();
   }
@@ -193,98 +233,67 @@ mixin RoomLeaveMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
     ctx,
     index,
   }) {
-    LoginViewmodel user =
-        Provider.of<LoginViewmodel>(
+    final user = Provider.of<LoginViewmodel>(
       ctx,
       listen: false,
     );
 
-    if (join?.id !=
-        user.userinfo?.id) {
-      Currentroom?.userNumber =
-          (Currentroom?.userNumber ?? 0) +
-              1;
+    if (join?.id.toString() != user.userinfo?.id.toString()) {
+      Currentroom?.userNumber = (Currentroom?.userNumber ?? 0) + 1;
 
-      Currentroom?.joinRooms
-          ?.insert(
-            0,
-            JoinRoom!,
-          );
+      final members = Currentroom?.joinRooms;
 
-      print(index);
-    } else {
-      print(
-        'You Join This Room',
-      );
-    }
+      if (members != null && JoinRoom != null) {
+        final alreadyMember = members.any(
+          (member) =>
+              member.userId.toString() == JoinRoom.userId.toString(),
+        );
 
-    notifyListeners();
-  }
-
-  RemoveuserfromRoom({
-    String? id,
-  }) {
-    ComboListuser.removeWhere(
-      (element) =>
-          element.toString() ==
-          id.toString(),
-    );
-
-    Rooms.where(
-      (element) =>
-          element.id.toString() ==
-          id.toString(),
-    );
-
-    if (Rooms.isNotEmpty) {
-      Rooms.first.userNumber =
-          Rooms.first.userNumber! - 1;
-    }
-
-    Currentroom?.chairs?.forEach(
-      (element) {
-        if (element.userId == id) {
-          Currentroom
-              ?.chairs?[
-                  int.parse(
-                        element.chairId
-                                ?.toString() ??
-                            '',
-                      ) -
-                      1]
-              .userId = null;
-
-          Currentroom
-              ?.chairs?[
-                  int.parse(
-                        element.chairId
-                                ?.toString() ??
-                            '',
-                      ) -
-                      1]
-              .user = null;
+        if (!alreadyMember) {
+          members.insert(0, JoinRoom);
         }
-      },
-    );
+      }
 
-    Currentroom?.userNumber =
-        (Currentroom?.userNumber ?? 0) -
-            1;
-
-    Currentroom?.joinRooms
-        ?.removeWhere(
-      (element) =>
-          element.userId.toString() ==
-          id.toString(),
-    );
-
-    ChairsRoom.removeWhere(
-      (element) =>
-          element.userId.toString() ==
-          id.toString(),
-    );
+      debugPrint('[ROOM_MEMBERS] Participant added: ${join?.id}');
+    }
 
     notifyListeners();
   }
 
+  RemoveuserfromRoom({String? id}) {
+    if (id == null) return;
+
+    ComboListuser.removeWhere(
+      (element) => element.toString() == id.toString(),
+    );
+
+    final String roomId = Currentroom?.id.toString() ?? '';
+
+    for (final room in Rooms) {
+      if (room.id.toString() == roomId) {
+        final count = room.userNumber ?? 0;
+        room.userNumber = count > 0 ? count - 1 : 0;
+      }
+    }
+
+    for (final room in NewRooms) {
+      if (room.id.toString() == roomId) {
+        final count = room.userNumber ?? 0;
+        room.userNumber = count > 0 ? count - 1 : 0;
+      }
+    }
+
+    Currentroom?.joinRooms?.removeWhere(
+      (member) => member.userId.toString() == id.toString(),
+    );
+
+    final currentCount = Currentroom?.userNumber ?? 0;
+
+    if (currentCount > 0) {
+      Currentroom?.userNumber = currentCount - 1;
+    }
+
+    // Membership-based removal only. No chair state is accessed.
+    notifyListeners();
+  }
 }

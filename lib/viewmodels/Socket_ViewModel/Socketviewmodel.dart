@@ -1,10 +1,8 @@
-
 import 'dart:convert';
 
 import 'package:ahlachat/models/guessGameModel.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_smart_dialog/flutter_smart_dialog.dart';
-import 'package:ahlachat/models/ChairModel.dart';
 import 'package:ahlachat/models/Chatroom.dart';
 import 'package:ahlachat/models/JoinRoomModel.dart';
 import 'package:ahlachat/models/RoomModel.dart';
@@ -23,7 +21,7 @@ import 'package:ahlachat/models/GiveGifts.dart';
 
 import '../../util/helperclass.dart';
 
-// ezgif.com_gif_maker_4_.json
+// Keep this global for compatibility with other existing files.
 var roomcontext;
 
 class SocketViewmodel extends ChangeNotifier {
@@ -59,7 +57,36 @@ class SocketViewmodel extends ChangeNotifier {
   }
 
   // ============================================================
-  // CONNECT SOCKET
+  // ROOM-LEVEL KARISMA
+  //
+  // Karisma belongs to the room, not to a chair.
+  // Preserve the room total and its existing animation.
+  // ============================================================
+
+  void _updateRoomKarisma({
+    required RoomViewmodel roomViewModel,
+    required givegifts gift,
+  }) {
+    final quantity = int.tryParse(gift.quantity ?? '0') ?? 0;
+    final price = gift.price ?? 0;
+    final amount = gift.ListUser.length * price * quantity;
+
+    final currentKarisma = roomViewModel.Currentroom?.Karisma ?? 0;
+
+    roomViewModel.Currentroom?.Karisma = currentKarisma + amount;
+
+    Provider.of<SvgViewmodel>(
+      roomcontext,
+      listen: false,
+    ).getcontroller4(
+      Svga: 'assets/image/16207300489766.svga',
+    );
+
+    roomViewModel.notifyListeners();
+  }
+
+  // ============================================================
+  // CONNECT ROOM SOCKET
   // ============================================================
 
   Future ConnectRoomScocket(context, id) async {
@@ -70,13 +97,12 @@ class SocketViewmodel extends ChangeNotifier {
     }
 
     // Unsubscribe from the previous room channel before subscribing.
-    // This prevents duplicate callbacks when changing rooms.
     if (_subscribedChannelName != null &&
         _subscribedChannelName != channelName) {
       try {
         pusher?.unsubscribe(_subscribedChannelName!);
       } catch (_) {
-        // Keep socket cleanup errors from interrupting room navigation.
+        // Keep cleanup errors from interrupting room navigation.
       }
     }
 
@@ -105,14 +131,12 @@ class SocketViewmodel extends ChangeNotifier {
         try {
           final decoded = _decodeSocketPayload(event?.data);
 
-          final dynamic rawState = decoded['state'];
-
           degisenMenu(
             data: decoded,
-            state: rawState,
+            state: decoded['state'],
           );
         } catch (_) {
-          // Ignore malformed events instead of flooding the console.
+          // Ignore malformed socket events.
         }
       });
 
@@ -126,7 +150,7 @@ class SocketViewmodel extends ChangeNotifier {
   }
 
   // ============================================================
-  // DISCONNECT SOCKET
+  // DISCONNECT ROOM SOCKET
   // ============================================================
 
   Future DisConnect({required id}) async {
@@ -141,7 +165,7 @@ class SocketViewmodel extends ChangeNotifier {
         _isConnecting = false;
       }
     } catch (_) {
-      // Do not print repetitive disconnect diagnostics.
+      // Do not let cleanup errors interrupt leaving a room.
     }
 
     notifyListeners();
@@ -149,6 +173,9 @@ class SocketViewmodel extends ChangeNotifier {
 
   // ============================================================
   // SOCKET EVENT HANDLER
+  //
+  // Room membership is independent of chairs.
+  // Participants enter and leave the room itself.
   // ============================================================
 
   degisenMenu({data, state, index}) async {
@@ -171,6 +198,8 @@ class SocketViewmodel extends ChangeNotifier {
     switch (parsedState) {
       // --------------------------------------------------------
       // STATE 0: USER ENTERS ROOM
+      //
+      // Room membership is updated without chair assignment.
       // --------------------------------------------------------
       case 0:
         final userinfo = usermodel.fromJson(
@@ -241,31 +270,10 @@ class SocketViewmodel extends ChangeNotifier {
           );
         }
 
-        // Do not assign the admin to a fixed chair index here.
-        // Chair assignment must come from the server's chair event
-        // or the complete room update.
         break;
 
-      // --------------------------------------------------------
-      // STATE 1: USER JOINS A CHAIR
-      // --------------------------------------------------------
+      // STATE 1: LEGACY CHAIR JOIN EVENT — ignored.
       case 1:
-        try {
-          final chair = Chairs.fromJson(
-            Map<String, dynamic>.from(data['data'] as Map),
-          );
-
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).AddusertoChair(
-            ctx: roomcontext,
-            data: chair,
-          );
-        } catch (_) {
-          // Ignore invalid chair payloads.
-        }
-
         break;
 
       // --------------------------------------------------------
@@ -276,10 +284,14 @@ class SocketViewmodel extends ChangeNotifier {
           Map<String, dynamic>.from(data['data'] as Map),
         );
 
-        Provider.of<AgoraViewmodel>(
-          roomcontext,
-          listen: false,
-        ).unmuteusermic(int.parse(userinfo.id.toString()));
+        final leavingUserId = _toInt(userinfo.id);
+
+        if (leavingUserId != null) {
+          Provider.of<AgoraViewmodel>(
+            roomcontext,
+            listen: false,
+          ).unmuteusermic(leavingUserId);
+        }
 
         if (userinfo.Hidden == 0) {
           Provider.of<RoomViewmodel>(
@@ -301,15 +313,8 @@ class SocketViewmodel extends ChangeNotifier {
 
         break;
 
-      // --------------------------------------------------------
-      // STATE 3: REMOVE USER FROM CHAIR
-      // --------------------------------------------------------
+      // STATE 3: LEGACY CHAIR LEAVE EVENT — ignored.
       case 3:
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).RemoveuserfromChair(id: data['data'].toString());
-
         break;
 
       // --------------------------------------------------------
@@ -329,6 +334,8 @@ class SocketViewmodel extends ChangeNotifier {
 
       // --------------------------------------------------------
       // STATE 5: GIFT
+      //
+      // Update room-level Karisma only. No chair-based updates.
       // --------------------------------------------------------
       case 5:
         final give = givegifts.fromJson(data['data']['gift']);
@@ -407,37 +414,15 @@ class SocketViewmodel extends ChangeNotifier {
           }
         });
 
-        Provider.of<RoomViewmodel>(
+        final roomViewModel = Provider.of<RoomViewmodel>(
           roomcontext,
           listen: false,
-        ).updatekaresma(
-          context: roomcontext,
-          Amount: give.ListUser.length *
-              give.price! *
-              int.parse(give.quantity ?? '0'),
         );
 
-        if (data['data']['kind'] == 1 ||
-            data['data']['kind'] == '1') {
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).AddKaresmaChair(
-            userids: give.ListUser,
-            Amount: (
-              (int.parse(give.quantity ?? '0') * (give.price ?? 0)) /
-              10
-            ).round(),
-          );
-        } else {
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).AddKaresmaChair(
-            userids: give.ListUser,
-            Amount: int.parse(give.quantity ?? '0') * (give.price ?? 0),
-          );
-        }
+        _updateRoomKarisma(
+          roomViewModel: roomViewModel,
+          gift: give,
+        );
 
         Provider.of<SvgViewmodel>(
           roomcontext,
@@ -459,10 +444,14 @@ class SocketViewmodel extends ChangeNotifier {
           Map<String, dynamic>.from(data['data'] as Map),
         );
 
-        Provider.of<AgoraViewmodel>(
-          roomcontext,
-          listen: false,
-        ).muteusermic(int.parse(users.id.toString()));
+        final mutedUserId = _toInt(users.id);
+
+        if (mutedUserId != null) {
+          Provider.of<AgoraViewmodel>(
+            roomcontext,
+            listen: false,
+          ).muteusermic(mutedUserId);
+        }
 
         if (users.id.toString() == user.userinfo?.id.toString()) {
           Provider.of<SocketViewmodel>(
@@ -490,6 +479,7 @@ class SocketViewmodel extends ChangeNotifier {
             listen: false,
           ).changeIsRoomstate(false);
 
+          // Retained for compatibility with existing room cleanup.
           JoinChairs = false;
           Agora.EndAgora();
 
@@ -625,59 +615,30 @@ class SocketViewmodel extends ChangeNotifier {
 
       // --------------------------------------------------------
       // STATE 8: ADMIN MUTES / UNMUTES MIC
+      //
+      // No chair microphone state is stored.
+      // Apply the command to the current user through Agora.
       // --------------------------------------------------------
       case 8:
-        if (data['data']['userid'].toString() == UserId.toString() &&
-            data['data']['state'].toString() == '0') {
-          Agora.UnMute();
-        } else if (data['data']['userid'].toString() ==
-                UserId.toString() &&
-            data['data']['state'].toString() == '1') {
-          Agora.Mute();
+        final targetUserId = data['data']['userid'].toString();
+        final micState = _toInt(data['data']['state']);
+
+        if (micState == null) {
+          break;
         }
 
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).Changemicestateadmin(
-          userId: data['data']['userid'],
-          state: int.parse(data['data']['state'].toString()),
-        );
+        if (targetUserId == UserId.toString()) {
+          if (micState == 0) {
+            Agora.UnMute();
+          } else if (micState == 1) {
+            Agora.Mute();
+          }
+        }
 
         break;
 
-      // --------------------------------------------------------
-      // STATE 9: LOCK / UNLOCK CHAIR
-      // --------------------------------------------------------
+      // STATE 9: LEGACY CHAIR LOCK / UNLOCK EVENT — ignored.
       case 9:
-        final roomViewModel = Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        );
-
-        final dynamic chairData = data['data'];
-        final dynamic rawState = chairData?['state'];
-        final dynamic rawChairId = chairData?['chair']?['chair_id'];
-
-        final int? lockState = _toInt(rawState);
-        final int? chairNumber = _toInt(rawChairId);
-
-        if (roomViewModel.Currentroom?.adminId?.toString() ==
-            UserId.toString()) {
-          break;
-        }
-
-        if (lockState == null || chairNumber == null) {
-          break;
-        }
-
-        // chair_id is the chair number, not the database record ID.
-        // Avoid changing chair matching semantics without server support.
-        roomViewModel.LockChair(
-          state: lockState,
-          chairId: chairNumber,
-        );
-
         break;
 
       // --------------------------------------------------------
@@ -758,9 +719,7 @@ class SocketViewmodel extends ChangeNotifier {
 
         break;
 
-      // --------------------------------------------------------
-      // STATE 12: ROOM PASSWORD UPDATE
-      // --------------------------------------------------------
+      // STATE 12: ROOM PASSWORD UPDATE.
       case 12:
         Provider.of<RoomViewmodel>(
           roomcontext,
@@ -772,9 +731,7 @@ class SocketViewmodel extends ChangeNotifier {
 
         break;
 
-      // --------------------------------------------------------
-      // STATE 13: DELETE ROOM CHAT
-      // --------------------------------------------------------
+      // STATE 13: DELETE ROOM CHAT.
       case 13:
         Provider.of<RoomViewmodel>(
           roomcontext,
@@ -783,27 +740,34 @@ class SocketViewmodel extends ChangeNotifier {
 
         break;
 
+      // STATE 14: ADD SUPERVISOR.
       case 14:
         Provider.of<RoomViewmodel>(
           roomcontext,
           listen: false,
         ).Addsupervisors(id: data['data']);
+
         break;
 
+      // STATE 15: REMOVE SUPERVISOR.
       case 15:
         Provider.of<RoomViewmodel>(
           roomcontext,
           listen: false,
         ).Removesupervisors(id: data['data']);
+
         break;
 
+      // STATE 16: REMOVE USER FROM ROOM.
       case 16:
         Provider.of<RoomViewmodel>(
           roomcontext,
           listen: false,
         ).RemoveuserfromRoom(id: data['data'].toString());
+
         break;
 
+      // STATE 17: USER EMOJI.
       case 17:
         Provider.of<LoginViewmodel>(
           roomcontext,
@@ -812,59 +776,19 @@ class SocketViewmodel extends ChangeNotifier {
           id: int.parse(data['data']['user'].toString()),
           imoges: data['data']['emoji'],
         );
+
         break;
 
+      // STATE 18: LEGACY THRONE CHAIR UPDATE — ignored.
       case 18:
-        Provider.of<RoomViewmodel>(
-          roomcontext,
-          listen: false,
-        ).UpdateThronechair(
-          value: int.parse(data['data'].toString()),
-        );
         break;
 
-      // --------------------------------------------------------
-      // STATE 19: CHANGE ROOM CHAIR
-      // --------------------------------------------------------
+      // STATE 19: LEGACY CHANGE ROOM CHAIR — ignored.
       case 19:
-        try {
-          final changedUser = usermodel.fromJson(
-            Map<String, dynamic>.from(data['data']['user'] as Map),
-          );
-
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).changeRoomChair(
-            user: changedUser,
-            newChair: data['data']['chair_id'],
-          );
-        } catch (_) {
-          // Ignore invalid chair-change payloads.
-        }
-
         break;
 
-      // --------------------------------------------------------
-      // STATE 20: RETURN TO ADMIN CHAIR
-      // --------------------------------------------------------
+      // STATE 20: LEGACY RETURN TO ADMIN CHAIR — ignored.
       case 20:
-        try {
-          final changedUser = usermodel.fromJson(
-            Map<String, dynamic>.from(data['data']['user'] as Map),
-          );
-
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).returntoAdminRoomChair(
-            user: changedUser,
-            newChair: data['data']['chair_id'],
-          );
-        } catch (_) {
-          // Ignore invalid admin-chair payloads.
-        }
-
         break;
 
       // --------------------------------------------------------
@@ -958,6 +882,9 @@ class SocketViewmodel extends ChangeNotifier {
 
       // --------------------------------------------------------
       // STATE 25: COMBO GIFT
+      //
+      // Preserve combo display and room-level Karisma.
+      // Chair-based Karisma updates are removed.
       // --------------------------------------------------------
       case 25:
         final give = givegifts.fromJson(data['data']['gift']);
@@ -1046,37 +973,15 @@ class SocketViewmodel extends ChangeNotifier {
           }
         });
 
-        Provider.of<RoomViewmodel>(
+        final roomViewModel = Provider.of<RoomViewmodel>(
           roomcontext,
           listen: false,
-        ).updatekaresma(
-          context: roomcontext,
-          Amount: give.ListUser.length *
-              give.price! *
-              int.parse(give.quantity ?? '0'),
         );
 
-        if (data['data']['kind'] == 1 ||
-            data['data']['kind'] == '1') {
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).AddKaresmaChair(
-            userids: give.ListUser,
-            Amount: (
-              (int.parse(give.quantity ?? '0') * (give.price ?? 0)) /
-              10
-            ).round(),
-          );
-        } else {
-          Provider.of<RoomViewmodel>(
-            roomcontext,
-            listen: false,
-          ).AddKaresmaChair(
-            userids: give.ListUser,
-            Amount: int.parse(give.quantity ?? '0') * (give.price ?? 0),
-          );
-        }
+        _updateRoomKarisma(
+          roomViewModel: roomViewModel,
+          gift: give,
+        );
 
         break;
 
@@ -1151,7 +1056,7 @@ class SocketViewmodel extends ChangeNotifier {
         break;
 
       default:
-        // Unknown event states are ignored to avoid noisy logs.
+        // Unknown event states are ignored.
         break;
     }
   }

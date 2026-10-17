@@ -2722,7 +2722,7 @@ class userapi extends UserRepository {
     }
   }
 
-  Future<usermodel> RegesterNewUser({
+  Future<usermodel> registerNewUser({
     context,
     ginder,
     Flag,
@@ -2760,6 +2760,7 @@ class userapi extends UserRepository {
       } else {
         map = {
           "name": name.toString(),
+          "phone_number": phone_number.toString(),
           "year": year.toString(),
           "month": month.toString(),
           "day": day.toString(),

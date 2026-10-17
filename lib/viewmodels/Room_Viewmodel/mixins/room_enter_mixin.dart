@@ -68,7 +68,7 @@ mixin RoomEnterMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin, RoomJoinM
                   listen: false,
                 ).userinfo?.Hidden ==
                 0) {
-          DismissGlopalLoading();
+         
 
           final TextEditingController EnterPasswordRoom =
               TextEditingController();
@@ -156,7 +156,7 @@ mixin RoomEnterMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin, RoomJoinM
                                     context: context,
                                   );
                                 } else {
-                                  DismissGlopalLoading();
+                                  
 
                                   Dialogs().showtoast(
                                     getLang(
@@ -229,7 +229,7 @@ EnterRoom2({
     await TrackRoomPassword(id).then(
       (password) {
         if (password == true) {
-          DismissGlopalLoading();
+          
 
           final TextEditingController EnterPasswordRoom =
               TextEditingController();
@@ -317,7 +317,7 @@ EnterRoom2({
                                     Roomid: id,
                                   );
                                 } else {
-                                  DismissGlopalLoading();
+                                  
 
                                   Dialogs().showtoast(
                                     getLang(
@@ -393,7 +393,7 @@ EnterRoom3({
     await TrackRoomPassword(id).then(
       (password) {
         if (password == true) {
-          DismissGlopalLoading();
+          
 
           final TextEditingController EnterPasswordRoom =
               TextEditingController();
@@ -481,7 +481,7 @@ EnterRoom3({
                                     Roomid: id,
                                   );
                                 } else {
-                                  DismissGlopalLoading();
+                                  
 
                                   Dialogs().showtoast(
                                     getLang(
@@ -539,26 +539,42 @@ EnterRoom3({
   }
 }
 
-  Future<bool> TrackRoomPassword(id) async {
-    ShowGlopalLoading();
+  
+Future<bool> TrackRoomPassword(id) async {
+  ShowGlopalLoading();
 
-    return await Roomapi()
-        .CheckPassworRooms(
+  try {
+    return await Roomapi().CheckPassworRooms(
       id: id.toString(),
     );
+  } catch (error, stackTrace) {
+    debugPrint('[ROOM_PASSWORD] Check failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    rethrow;
+  } finally {
+    DismissGlopalLoading();
   }
+}
 
-  Future<bool> EnterTrackRoomPassword({
-    id,
-    pass,
-  }) async {
-    ShowGlopalLoading();
+Future<bool> EnterTrackRoomPassword({
+  id,
+  pass,
+}) async {
+  ShowGlopalLoading();
 
-    return await Roomapi()
-        .EnterCheckPassworRooms(
+  try {
+    return await Roomapi().EnterCheckPassworRooms(
       id: id.toString(),
       pass: pass,
     );
+  } catch (error, stackTrace) {
+    debugPrint('[ROOM_PASSWORD] Verification failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+    rethrow;
+  } finally {
+    DismissGlopalLoading();
   }
+}
+
 
 }

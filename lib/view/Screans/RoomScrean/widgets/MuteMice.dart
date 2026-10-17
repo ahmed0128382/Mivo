@@ -1,167 +1,358 @@
-
-
-import 'package:cached_network_image/cached_network_image.dart';
-import 'package:flutter/material.dart';
-import 'package:ahlachat/models/ChairModel.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/Localization.dart';
-import 'package:ahlachat/util/SizeConfig.dart';
-import 'package:ahlachat/util/app_constants.dart';
-import 'package:ahlachat/util/images.dart';
 import 'package:ahlachat/util/styles.dart';
-import 'package:ahlachat/view/Screans/RoomScrean/widgets/AllBlockedUser.dart';
-import 'package:ahlachat/view/Screans/RoomScrean/widgets/InviteToChairScrean/InviteToChairScrean.dart';
 import 'package:ahlachat/viewmodels/Agora_ViewModel/AgoraViewmodel.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-class Mutemic extends StatefulWidget  {
+class Mutemic extends StatelessWidget {
   const Mutemic({Key? key}) : super(key: key);
-  @override
-  _MutemicState createState() => _MutemicState();
-}
-class _MutemicState extends State<Mutemic>   {
-  List<Chairs>rooms=[];
-  @override
-  void initState() {
-    if(mounted){
-       RoomViewmodel Room=  Provider.of<RoomViewmodel>(context,listen: false);
-      LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: false);
-      rooms.clear();
-      Room.Currentroom?.chairs?.forEach((element) {
-        if(element.userId!=null&&element.userId.toString()!=user.userinfo?.id.toString()&&element.user!=null&&element.userId.toString()!=Room.Currentroom?.adminId.toString()){
-          rooms.add(element);
-        }
-      });
-      setState((){});
-     }
-    super.initState();
-  }
-
 
   @override
   Widget build(BuildContext context) {
-    AgoraViewmodel Agora=Provider.of<AgoraViewmodel>(context,listen: true);
-    RoomViewmodel  Room =  Provider.of<RoomViewmodel>(context,listen: true);
-    LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: true);
-    return Container(decoration: BoxDecoration(color: Colors.transparent,image: DecorationImage(image: CachedNetworkImageProvider(Room.Currentroom?.animateimage??''),fit: BoxFit.cover)),
-     child: Column(
-      children: [
-        const     SizedBox(height: 10,),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          child: Row(
-            children: [
-              InkWell(onTap: (){
-                Navigator.pop(context);
-              },child: Icon(Icons.cancel_outlined,color: whitecolor)),
-              const Spacer(),
+    final AgoraViewmodel agora =
+        Provider.of<AgoraViewmodel>(context, listen: true);
 
-              const    SizedBox(width: 10,),
+    final RoomViewmodel room =
+        Provider.of<RoomViewmodel>(context, listen: true);
 
-            ],
-          ),
-        ),
-        const  SizedBox(height: 10,),
-        Container(width: SizeConfig.screenWidth!,
-          child:GridView.count(childAspectRatio :1.0,shrinkWrap: true ,cacheExtent: 16.6,physics: NeverScrollableScrollPhysics(),
-            crossAxisCount:4,
-            crossAxisSpacing:0.8,
-            mainAxisSpacing:1,
-            children: List.generate(8, (index) {
-              return  Align(alignment: Alignment.center,child:InkWell(
-                onTap: (){
-                  if(Room.Currentroom?.chairs?[index].Lock==0){
+    final LoginViewmodel login =
+        Provider.of<LoginViewmodel>(context, listen: true);
 
-                    Room.LockChairUpdate(state: 1, info: Room.Currentroom?.chairs?[index]);
-                  }else{
-                    Room.LockChairUpdate(state: 0,  info: Room.Currentroom?.chairs?[index]);
-                  }
-                },
-                child: Column(
-                  children: [
-                 Image.asset(Room.Currentroom?.chairs?[index].Lock==0?Images.Chairs:Images.LockChairs,height: 50,width: 40 ),
-                    const       SizedBox(height: 10,),
-                 Row(mainAxisAlignment: MainAxisAlignment.center,
-                   children: [
-                     Room.Currentroom?.chairs?[index].user!=null?const SizedBox() :Row(
-                       children: [
-                         Icon(Room.Currentroom?.chairs?[index].Lock==0?Icons.lock_outline_sharp:Icons.lock_open_outlined,color: whitecolor,size: 20,),
-                         if(Room.Currentroom?.chairs?[index].Lock==0&&Room.Currentroom?.chairs?[index].userId==null)  SizedBox(width: 10,),
-                     if(Room.Currentroom?.chairs?[index].Lock==0&&Room.Currentroom?.chairs?[index].userId==null) InkWell(onTap: (){
-                       Navigator.pop(context);
-                      Room.InvitedChair.clear();
-                       Room.UserIds.clear();
-                       Room.Currentroom?.chairs?.forEach((element) {
-                         if(element.userId!=null&&element.userId.toString()!=user.userinfo?.id.toString()&&element.user!=null){
-                            Room.InvitedChair.add(element.user?.id.toString()??'');
+    final String currentUserId =
+        (login.userinfo?.id ?? '').toString();
 
-                         }
-                       });
+    final String hostId =
+        (room.Currentroom?.adminId ?? '').toString();
 
-                       InviteChairId=Room.Currentroom?.chairs?[index].chairId??'';
+    final bool isHost = room.checkadmin(context: context);
 
-                       showModalBottomSheet(barrierColor:Colors.transparent,context: context, shape: RoundedRectangleBorder(borderRadius: BorderRadius.only(topLeft: Radius.circular(30),topRight:Radius.circular(30), )), builder: (BuildContext context) {
+    final bool isModerator = room.Currentroom?.supervisorsId
+            ?.contains(currentUserId) ??
+        false;
 
-                         return   InviteToChair();
-                       });
+    final bool canModerate = isHost || isModerator;
 
-                       Room.GetUserJoin(context: context);
-                     },child: Icon(Icons.chair,color: whitecolor ,size: 20,)),
+    final members = room.joinuserRooms.where((membership) {
+      final member = membership.user;
 
-                       ],
-                     ),
-                     Room.Currentroom?.chairs?[index].userId!=null? Icon(Icons.person_outline,color: whitecolor ,size: 30,):SizedBox()
-                   ],)
+      if (member == null) return false;
 
-                  ],),));}
-            ),), ),
-        Expanded(
-          child:rooms.length==0?Center(child: Text(getLang(context: context, key: "No_Users_Chair"), style: style1,)):
-          ListView.builder(itemCount:rooms.length ,scrollDirection: Axis.vertical,itemBuilder: (context, index) =>
-          rooms[index].user?.name==null? const SizedBox():
-          Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10,vertical: 15),
-                child: Row(
-                  children: [
-                    if(!(Room.Currentroom?.supervisorsId?.contains(rooms[index].user?.id.toString())??false))     InkWell(onTap: (){
-                      if(Room.Mutedids.contains(rooms[index].user?.id)){
-                        Room.updatemute(context: context,state: 0,user_id: rooms[index].user?.id);
-                      }else{
-                        Room.updatemute(context: context,state: 1,user_id: rooms[index].user?.id);
-                      }
-                      Agora.mutebyuid(uid: rooms[index].user?.id,context: context);
-                    },child: Icon(Room.Mutedids.contains(rooms[index].user?.id)?Icons.mic_off_outlined:Icons.mic_none,color: whitecolor,size: 19,)),
-                    const  SizedBox(width: 20,),
-               if(!(Room.Currentroom?.supervisorsId?.contains(rooms[index].user?.id.toString())??false))     InkWell(onTap: (){
-                      Dialogs().showdialog(context: context, tittle: '',content: getLang(key: "Sure_Ban",context: context), buttontext: getLang(context: context, key: "Yes"), onTap: (){
-                        Navigator.pop(context);
-                        Navigator.pop(context);
-                        Room.Evictionuser(Userid:rooms[index].user?.id,context: context);
-                      });
-                    },child: Icon(Icons.exit_to_app,color: whitecolor,size: 19,)),
-                    const Spacer(),
-   Row(
-                      children: [
-                        Column(mainAxisAlignment:  MainAxisAlignment.end,
-                          crossAxisAlignment:  CrossAxisAlignment.end,
-                          children: [
-                            Text(rooms[index].user?.name??"",style: style6.copyWith(color: whitecolor2),),
+      final String memberId = (member.id ?? '').toString();
 
+      // Do not list the current user in the moderation targets.
+      if (memberId.isEmpty || memberId == currentUserId) {
+        return false;
+      }
 
-                          ],
-                        ),
-                        const SizedBox(width: 10,),
-                        CircleAvatar(backgroundColor: Colors.transparent,radius: 17,backgroundImage: CachedNetworkImageProvider(rooms[index].user?.image??'')),
+      return true;
+    }).toList();
 
-                      ],
-                    ),
-                  ],
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF10131B),
+        image: (room.Currentroom?.animateimage ?? '').isNotEmpty
+            ? DecorationImage(
+                image: CachedNetworkImageProvider(
+                  room.Currentroom!.animateimage!,
                 ),
-              ),),
+                fit: BoxFit.cover,
+                colorFilter: ColorFilter.mode(
+                  Colors.black.withOpacity(0.65),
+                  BlendMode.darken,
+                ),
+              )
+            : null,
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 10),
+
+            // Panel header.
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 18),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: () => Navigator.pop(context),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 5),
+                  const Expanded(
+                    child: Text(
+                      'Room moderation',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    '${members.length} members',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const Divider(
+              color: Colors.white12,
+              height: 18,
+            ),
+
+            if (!canModerate)
+              const Padding(
+                padding: EdgeInsets.all(12),
+                child: Text(
+                  'Only the host and moderators can manage members.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+
+            Expanded(
+              child: members.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.people_outline,
+                            color: Colors.white38,
+                            size: 44,
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            getLang(
+                              context: context,
+                              key: 'User_Join',
+                            ),
+                            style: style1.copyWith(
+                              color: Colors.white70,
+                            ),
+                          ),
+                          const SizedBox(height: 5),
+                          const Text(
+                            'No other members to manage',
+                            style: TextStyle(
+                              color: Colors.white54,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(
+                        14,
+                        8,
+                        14,
+                        24,
+                      ),
+                      itemCount: members.length,
+                      separatorBuilder: (_, __) =>
+                          const Divider(
+                            color: Colors.white10,
+                            height: 18,
+                          ),
+                      itemBuilder: (context, index) {
+                        final member = members[index].user!;
+
+                        final String memberId =
+                            (member.id ?? '').toString();
+
+                        final bool memberIsHost =
+                            memberId == hostId;
+
+                        final bool memberIsModerator = room
+                                .Currentroom
+                                ?.supervisorsId
+                                ?.contains(memberId) ??
+                            false;
+
+                        // Do not let moderators target the host or
+                        // other moderators through this panel.
+                        final bool canManageMember = canModerate &&
+                            !memberIsHost &&
+                            !memberIsModerator;
+
+                        final bool isMuted =
+                            room.Mutedids.contains(member.id);
+
+                        final String image =
+                            (member.image ?? '').toString();
+
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withOpacity(0.25),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.08),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 22,
+                                backgroundColor:
+                                    const Color(0xFF252B39),
+                                backgroundImage: image.isNotEmpty
+                                    ? CachedNetworkImageProvider(image)
+                                    : null,
+                                child: image.isEmpty
+                                    ? const Icon(
+                                        Icons.person,
+                                        color: Colors.white70,
+                                      )
+                                    : null,
+                              ),
+
+                              const SizedBox(width: 12),
+
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      (member.name ?? 'Member').toString(),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    if (memberIsHost)
+                                      const Text(
+                                        'Host',
+                                        style: TextStyle(
+                                          color: Colors.amber,
+                                          fontSize: 11,
+                                        ),
+                                      )
+                                    else if (memberIsModerator)
+                                      const Text(
+                                        'Moderator',
+                                        style: TextStyle(
+                                          color: Colors.cyanAccent,
+                                          fontSize: 11,
+                                        ),
+                                      )
+                                    else
+                                      Text(
+                                        isMuted
+                                            ? 'Microphone muted'
+                                            : 'Room member',
+                                        style: const TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 11,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              ),
+
+                              if (canManageMember) ...[
+                                IconButton(
+                                  tooltip: isMuted
+                                      ? 'Unmute member'
+                                      : 'Mute member',
+                                  onPressed: () {
+                                    room.updatemute(
+                                      context: context,
+                                      state: isMuted ? 0 : 1,
+                                      user_id: member.id,
+                                    );
+
+                                    agora.mutebyuid(
+                                      uid: member.id,
+                                      context: context,
+                                    );
+                                  },
+                                  icon: Icon(
+                                    isMuted
+                                        ? Icons.mic_off_outlined
+                                        : Icons.mic_none_outlined,
+                                    color: isMuted
+                                        ? Colors.redAccent
+                                        : Colors.white,
+                                    size: 22,
+                                  ),
+                                ),
+
+                                IconButton(
+                                  tooltip: 'Remove member',
+                                  onPressed: () {
+                                    Dialogs().showdialog(
+                                      context: context,
+                                      tittle: '',
+                                      content: getLang(
+                                        context: context,
+                                        key: 'Sure_Ban',
+                                      ),
+                                      buttontext: getLang(
+                                        context: context,
+                                        key: 'Yes',
+                                      ),
+                                      onTap: () {
+                                        Navigator.pop(context);
+                                        Navigator.pop(context);
+
+                                        room.Evictionuser(
+                                          Userid: member.id,
+                                          context: context,
+                                        );
+                                      },
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.person_remove_alt_1_outlined,
+                                    color: Colors.redAccent,
+                                    size: 22,
+                                  ),
+                                ),
+                              ] else
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                  ),
+                                  child: Icon(
+                                    Icons.shield_outlined,
+                                    color: Colors.white30,
+                                    size: 20,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
-      ],
-    ), );
+      ),
+    );
   }
 }

@@ -1,4 +1,3 @@
-
 import 'package:ahlachat/models/RoomModel.dart';
 import 'package:ahlachat/util/Dialogs.dart';
 import 'package:ahlachat/util/app_constants.dart';
@@ -10,10 +9,6 @@ import 'package:provider/provider.dart';
 import 'room_api_state_mixin.dart';
 
 mixin RoomApiJoinMixin on RoomApiStateMixin {
-  // ============================================================
-  // SAFE VALUE CONVERSION
-  // ============================================================
-
   Map<String, dynamic>? _asStringMap(dynamic value) {
     if (value is Map<String, dynamic>) {
       return value;
@@ -30,10 +25,23 @@ mixin RoomApiJoinMixin on RoomApiStateMixin {
     return null;
   }
 
-  // ============================================================
-  // JOIN ROOM
-  // ============================================================
+  bool _isSuccessful(dynamic value) {
+    final Map<String, dynamic>? data = _asStringMap(value);
 
+    if (data == null) return false;
+
+    final dynamic status = data['status'];
+
+    return status == true ||
+        status == 1 ||
+        status?.toString().toLowerCase() == 'true';
+  }
+
+  /// Joins a room using the existing backend API.
+  ///
+  /// The server's Room.join_room list can be empty even when the
+  /// membership was created successfully. Participant loading must
+  /// therefore be handled by the participant-list API, not chairs.
   Future<RoomModel> joinRooms({
     dynamic context,
     dynamic Roomid,
@@ -48,9 +56,20 @@ mixin RoomApiJoinMixin on RoomApiStateMixin {
         );
       }
 
+      final String requestedRoomId = Roomid?.toString().trim() ?? '';
+
+      if (requestedRoomId.isEmpty ||
+          requestedRoomId == 'null') {
+        if (kDebugMode) {
+          debugPrint('[JOIN_ROOM] Missing room ID.');
+        }
+
+        return Roominfo;
+      }
+
       final FormData formData = FormData.fromMap({
         'user_id': UserId.toString(),
-        'room_id': Roomid.toString(),
+        'room_id': requestedRoomId,
       });
 
       final Response response = await dio.post(
@@ -58,24 +77,24 @@ mixin RoomApiJoinMixin on RoomApiStateMixin {
         data: formData,
       );
 
-      if (response.statusCode != 200) {
-        if (kDebugMode) {
-          debugPrint(
-            '[JOIN_ROOM] Unexpected HTTP status: '
-            '${response.statusCode}',
-          );
-        }
-
-        return Roominfo;
-      }
-
       final Map<String, dynamic>? responseData =
           _asStringMap(response.data);
 
-      if (responseData == null) {
+      if (response.statusCode != 200 ||
+          responseData == null ||
+          !_isSuccessful(responseData)) {
         if (kDebugMode) {
           debugPrint(
-            '[JOIN_ROOM] Invalid response format.',
+            '[JOIN_ROOM] Join failed: '
+            'HTTP ${response.statusCode}, '
+            'errNum=${responseData?['errNum']}',
+          );
+        }
+
+        if (responseData != null && context != null) {
+          Dialogs().ShowErrorRegesterToast(
+            responseData['errNum'],
+            context,
           );
         }
 
@@ -88,45 +107,65 @@ mixin RoomApiJoinMixin on RoomApiStateMixin {
       if (roomData == null) {
         if (kDebugMode) {
           debugPrint(
-            '[JOIN_ROOM] Response does not contain a valid Room object.',
+            '[JOIN_ROOM] Successful response did not contain Room.',
           );
         }
 
         return Roominfo;
       }
 
-      // Parse the room without dumping raw API data or chair records.
-      final RoomModel parsedRoom;
+      final RoomModel parsedRoom =
+          RoomModel.fromJson(roomData);
 
-      try {
-        parsedRoom = RoomModel.fromJson(roomData);
-      } catch (error, stackTrace) {
-        if (kDebugMode) {
-          debugPrint(
-            '[JOIN_ROOM] Failed to parse the room: '
-            '${error.runtimeType}',
-          );
-          debugPrintStack(stackTrace: stackTrace);
-        }
+      final bool sameRoom =
+          Roominfo.id != null &&
+          parsedRoom.id != null &&
+          Roominfo.id == parsedRoom.id;
 
-        rethrow;
+      // The API may return join_room: [] even though the user joined.
+      // Preserve the existing list only if it belongs to this room.
+      if (sameRoom &&
+          (parsedRoom.joinRooms == null ||
+              parsedRoom.joinRooms!.isEmpty) &&
+          Roominfo.joinRooms != null &&
+          Roominfo.joinRooms!.isNotEmpty) {
+        parsedRoom.joinRooms = Roominfo.joinRooms;
       }
 
-      // Update the shared room state.
+      // Do not infer participants from chairs.
       Roominfo = parsedRoom;
-      Joinid = roomData['joinid'];
 
-      // Preserve the original cleanup behavior.
+      final dynamic returnedJoinId = roomData['joinid'];
+
+      if (returnedJoinId != null &&
+          returnedJoinId.toString().trim().isNotEmpty &&
+          returnedJoinId.toString() != 'null') {
+        Joinid = returnedJoinId;
+      } else {
+        if (kDebugMode) {
+          debugPrint(
+            '[JOIN_ROOM] Response did not contain a valid joinid.',
+          );
+        }
+      }
+
       roomViewModel?.clearcompo();
       roomViewModel?.hidewaitingtimer2();
+
+      if (kDebugMode) {
+        debugPrint(
+          '[JOIN_ROOM] Success: '
+          'roomId=${Roominfo.id}, '
+          'adminId=${Roominfo.adminId}, '
+          'joinId=$Joinid',
+        );
+      }
 
       return Roominfo;
     } on DioException catch (error) {
       handleError(error);
 
       if (kDebugMode) {
-        // Log only concise error metadata.
-        // Do not print the response body or sensitive values.
         debugPrint(
           '[JOIN_ROOM] Request failed: '
           'type=${error.type}, '
@@ -143,18 +182,19 @@ mixin RoomApiJoinMixin on RoomApiStateMixin {
           context,
         );
       }
+
+      return Roominfo;
     } catch (error, stackTrace) {
       handleError(error);
 
       if (kDebugMode) {
         debugPrint(
-          '[JOIN_ROOM] Unexpected error: '
-          '${error.runtimeType}',
+          '[JOIN_ROOM] Unexpected error: ${error.runtimeType}',
         );
         debugPrintStack(stackTrace: stackTrace);
       }
-    }
 
-    return Roominfo;
+      return Roominfo;
+    }
   }
 }

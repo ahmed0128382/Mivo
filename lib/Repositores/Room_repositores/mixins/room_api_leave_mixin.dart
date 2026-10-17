@@ -1,183 +1,134 @@
 import 'package:ahlachat/util/app_constants.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
-
-/// Shared error helpers for Roomapi import 'room_api_error_mixin.dart';
 import 'room_api_state_mixin.dart';
 
 mixin RoomApiLeaveMixin on RoomApiStateMixin {
+  Map<String, dynamic>? _asStringMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+
+    if (value is Map) {
+      try {
+        return Map<String, dynamic>.from(value);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  bool _isSuccessful(dynamic value) {
+    final Map<String, dynamic>? data = _asStringMap(value);
+
+    if (data == null) return false;
+
+    final dynamic status = data['status'];
+
+    return status == true ||
+        status == 1 ||
+        status?.toString().toLowerCase() == 'true';
+  }
+
   Future<bool> LeaveRoom({
     context,
     Roomid,
   }) async {
-    bool leaved = false;
-
     try {
-      final Map<String, dynamic> map = {
-        'join_id': Joinid.toString(),
-        'room_id': Roomid.toString(),
-        'user_id': UserId.toString(),
+      final String roomId = Roomid?.toString().trim() ?? '';
+      final String joinId = Joinid?.toString().trim() ?? '';
+      final String userId = UserId.toString();
+
+      if (roomId.isEmpty ||
+          roomId == 'null' ||
+          userId.isEmpty ||
+          userId == 'null') {
+        if (kDebugMode) {
+          debugPrint(
+            '[LEAVE_ROOM] Missing room ID or user ID.',
+          );
+        }
+
+        return false;
+      }
+
+      final Map<String, dynamic> request = {
+        'room_id': roomId,
+        'user_id': userId,
       };
 
-      map.removeWhere(
-        (key, value) =>
-            value == null ||
-            value == 'null' ||
-            key == 'null',
-      );
+      // The tested API uses join_id. Include it when available.
+      if (joinId.isNotEmpty && joinId != 'null') {
+        request['join_id'] = joinId;
+      }
 
-      final FormData formData =
-          FormData.fromMap(map);
+      final FormData formData = FormData.fromMap(request);
 
-      print(
-        '========== LEAVE ROOM REQUEST ==========',
-      );
-
-      print('METHOD: POST');
-
-      print(
-        'URL: ${dio.options.baseUrl}/api/LeaveRoom',
-      );
-
-      print('JOIN ID: $Joinid');
-
-      print('ROOM ID: $Roomid');
-
-      print('USER ID: $UserId');
-
-      print(
-        '=========================================',
-      );
-
-      final Response response2 = await dio.post(
+      final Response response = await dio.post(
         '/api/LeaveRoom',
         data: formData,
       );
 
-      print(
-        '========== LEAVE ROOM RESPONSE ==========',
-      );
+      final Map<String, dynamic>? responseData =
+          _asStringMap(response.data);
 
-      print(
-        'STATUS: ${response2.statusCode}',
-      );
+      final bool success =
+          response.statusCode == 200 &&
+          responseData != null &&
+          _isSuccessful(responseData);
 
-      print(
-        'URL: ${response2.requestOptions.uri}',
-      );
+      if (!success) {
+        if (kDebugMode) {
+          debugPrint(
+            '[LEAVE_ROOM] Leave failed: '
+            'HTTP ${response.statusCode}, '
+            'errNum=${responseData?['errNum']}',
+          );
+        }
 
-      print(
-        'RESPONSE DATA: ${response2.data}',
-      );
-
-      print(
-        'RESPONSE HEADERS: ${response2.headers}',
-      );
-
-      print(
-        '==========================================',
-      );
-
-      if (response2.statusCode == 200) {
-        leaved = true;
-      } else if (response2.statusCode == 400) {
-        leaved = false;
+        return false;
       }
 
-      print('Join id is 3');
-    } catch (e) {
-      final exception = handleError(e);
+      // The current membership has ended. Do not clear Roominfo or its
+      // participant list here: other widgets may still be displaying it.
+      // The ViewModel should refresh/clear room state as part of navigation.
+      Joinid = null;
 
-      print(
-        'LEAVE ROOM ERROR: $exception',
-      );
+      if (kDebugMode) {
+        debugPrint(
+          '[LEAVE_ROOM] Success: roomId=$roomId, userId=$userId',
+        );
+      }
 
-      showRegisterError(e, context);
+      return true;
+    } on DioException catch (error) {
+      handleError(error);
+
+      if (kDebugMode) {
+        debugPrint(
+          '[LEAVE_ROOM] Request failed: '
+          'type=${error.type}, '
+          'status=${error.response?.statusCode}',
+        );
+      }
+
+      showRegisterError(error, context);
+      return false;
+    } catch (error, stackTrace) {
+      handleError(error);
+
+      if (kDebugMode) {
+        debugPrint(
+          '[LEAVE_ROOM] Unexpected error: ${error.runtimeType}',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+      }
+
+      showRegisterError(error, context);
+      return false;
     }
-
-    return leaved;
   }
-
-  Future<bool> LeaveChair({
-    context,
-    Roomid,
-    chairid,
-  }) async {
-    bool leaved = false;
-
-    try {
-      final FormData formData = FormData.fromMap({
-        'chair_id': chairid.toString(),
-        'room_id': Roomid.toString(),
-        'user_id': UserId.toString(),
-      });
-
-      final Response response2 = await dio.post(
-        '/api/LeaveChair',
-        data: formData,
-      );
-
-      if (response2.statusCode == 200) {
-        leaved = true;
-      } else if (response2.statusCode == 400) {
-        leaved = false;
-      }
-    } catch (e) {
-      final exception = handleError(e);
-
-      print(
-        'LEAVE CHAIR ERROR: $exception',
-      );
-
-      showRegisterError(e, context);
-    }
-
-    return leaved;
-  }
-
-  Future<bool> LeaveuserChair({
-    context,
-    user_id,
-    Roomid,
-    chairid,
-  }) async {
-    print(chairid);
-    print(Roomid);
-    print(user_id);
-
-    try {
-      final FormData formData = FormData.fromMap({
-        'chair_id': chairid.toString(),
-        'room_id': Roomid.toString(),
-        'user_id': user_id.toString(),
-      });
-
-      final Response response2 = await dio.post(
-        '/api/LeaveChair',
-        data: formData,
-      );
-
-      print(response2.data);
-
-      if (response2.statusCode == 200) {
-        print('done');
-        return true;
-      }
-
-      if (response2.statusCode == 400) {
-        print('not done');
-      }
-    } catch (e) {
-      final exception = handleError(e);
-
-      print(
-        'LEAVE USER CHAIR ERROR: $exception',
-      );
-
-      showRegisterError(e, context);
-    }
-
-    return false;
-  }
-
 }

@@ -1,11 +1,41 @@
 import 'dart:io';
+
 import 'package:ahlachat/models/RoomModel.dart';
 import 'package:ahlachat/util/app_constants.dart';
 import 'package:dio/dio.dart';
-/// Shared error helpers for Roomapi import 'room_api_error_mixin.dart';
+import 'package:flutter/foundation.dart';
+
 import 'room_api_state_mixin.dart';
 
 mixin RoomApiCreateMixin on RoomApiStateMixin {
+  Map<String, dynamic>? _asStringMap(dynamic value) {
+    if (value is Map<String, dynamic>) {
+      return value;
+    }
+
+    if (value is Map) {
+      try {
+        return Map<String, dynamic>.from(value);
+      } catch (_) {
+        return null;
+      }
+    }
+
+    return null;
+  }
+
+  bool _isSuccessful(dynamic value) {
+    final Map<String, dynamic>? data = _asStringMap(value);
+
+    if (data == null) return false;
+
+    final dynamic status = data['status'];
+
+    return status == true ||
+        status == 1 ||
+        status?.toString().toLowerCase() == 'true';
+  }
+
   Future<RoomModel> CreateRoom({
     context,
     Category,
@@ -16,49 +46,37 @@ mixin RoomApiCreateMixin on RoomApiStateMixin {
     RoomAds,
   }) async {
     try {
-      if (image == null) {
-        print(
-          'CREATE ROOM API: image is null',
-        );
+      if (image == null || backgroundimage == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CREATE_ROOM] Room image and background image are required.',
+          );
+        }
 
         return Roominfo;
       }
 
-      if (backgroundimage == null) {
-        print(
-          'CREATE ROOM API: backgroundimage is null',
-        );
+      final String imagePath =
+          image is File ? image.path : image.path.toString();
 
-        return Roominfo;
-      }
-
-      final File roomImageFile =
-          image is File ? image : File(image.path);
-
-      final File backgroundImageFile =
+      final String backgroundPath =
           backgroundimage is File
-              ? backgroundimage
-              : File(backgroundimage.path);
+              ? backgroundimage.path
+              : backgroundimage.path.toString();
 
-      print(
-        'CREATE ROOM API IMAGE EXISTS: '
-        '${roomImageFile.existsSync()}',
-      );
+      final File roomImageFile = File(imagePath);
+      final File backgroundImageFile = File(backgroundPath);
 
-      print(
-        'CREATE ROOM API IMAGE SIZE: '
-        '${await roomImageFile.length()} bytes',
-      );
+      if (!await roomImageFile.exists() ||
+          !await backgroundImageFile.exists()) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CREATE_ROOM] One or more selected image files do not exist.',
+          );
+        }
 
-      print(
-        'CREATE ROOM API BACKGROUND EXISTS: '
-        '${backgroundImageFile.existsSync()}',
-      );
-
-      print(
-        'CREATE ROOM API BACKGROUND SIZE: '
-        '${await backgroundImageFile.length()} bytes',
-      );
+        return Roominfo;
+      }
 
       final MultipartFile roomMultipart =
           await MultipartFile.fromFile(
@@ -69,8 +87,7 @@ mixin RoomApiCreateMixin on RoomApiStateMixin {
       final MultipartFile backgroundMultipart =
           await MultipartFile.fromFile(
         backgroundImageFile.path,
-        filename:
-            backgroundImageFile.path.split('/').last,
+        filename: backgroundImageFile.path.split('/').last,
       );
 
       final FormData formData = FormData.fromMap({
@@ -83,183 +100,94 @@ mixin RoomApiCreateMixin on RoomApiStateMixin {
         'RoomAds': RoomAds.toString(),
       });
 
-      print(
-        'CREATE ROOM FORM DATA READY',
-      );
-
-      print(
-        'CREATE ROOM FIELDS: '
-        'name=$name, '
-        'admin_id=$UserId, '
-        'Category=$Category, '
-        'city=$city, '
-        'RoomAds=$RoomAds',
-      );
-
-      print(
-        'CREATE ROOM IMAGE FILE: '
-        '${roomImageFile.path}',
-      );
-
-      print(
-        'CREATE ROOM BACKGROUND FILE: '
-        '${backgroundImageFile.path}',
-      );
-
       final Response response = await dio.post(
         '/api/CreateRoom',
         data: formData,
       );
 
-      print(
-        'CREATE ROOM RESPONSE STATUS: '
-        '${response.statusCode}',
-      );
+      final Map<String, dynamic>? responseData =
+          _asStringMap(response.data);
 
-      print(
-        'CREATE ROOM RESPONSE DATA: '
-        '${response.data}',
-      );
-
-      print(
-        '========== CREATE ROOM RESPONSE ==========',
-      );
-
-      print(
-        'METHOD: ${response.requestOptions.method}',
-      );
-
-      print(
-        'URL: ${response.requestOptions.uri}',
-      );
-
-      print(
-        'STATUS: ${response.statusCode}',
-      );
-
-      print(
-        'RESPONSE HEADERS: ${response.headers}',
-      );
-
-      print(
-        'RESPONSE DATA: ${response.data}',
-      );
-
-      print(
-        '==========================================',
-      );
-
-      if (response.statusCode == 200) {
-        final dynamic roomData =
-            response.data['room'];
-
-        if (roomData != null) {
-          Roominfo = RoomModel.fromJson(
-            roomData,
-          );
-
-          print(
-            '========== CREATE ROOM PARSED ==========',
-          );
-
-          print(
-            'DB ID: ${Roominfo.id}',
-          );
-
-          print(
-            'PUBLIC RoomID: ${Roominfo.RoomID}',
-          );
-
-          print(
-            'ADMIN ID: ${Roominfo.adminId}',
-          );
-
-          print(
-            'TOKEN PRESENT: '
-            '${Roominfo.Token != null && Roominfo.Token.toString().trim().isNotEmpty}',
-          );
-
-          print(
-            'TOKEN LENGTH: '
-            '${Roominfo.Token?.toString().length ?? 0}',
-          );
-
-          print(
-            'NAME: ${Roominfo.name}',
-          );
-
-          print(
-            '========================================',
-          );
-        } else {
-          print(
-            'CREATE ROOM ERROR: '
-            'response.data["room"] is NULL',
+      if (response.statusCode != 200 ||
+          responseData == null ||
+          !_isSuccessful(responseData)) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CREATE_ROOM] Creation failed: '
+            'HTTP ${response.statusCode}, '
+            'errNum=${responseData?['errNum']}',
           );
         }
-      }
-    } on DioException catch (e) {
-      final exception = handleError(e);
 
-      print(
-        'CREATE ROOM DIO ERROR TYPE: '
-        '${e.type}',
-      );
-
-      print(
-        'CREATE ROOM DIO STATUS: '
-        '${e.response?.statusCode}',
-      );
-
-      print(
-        'CREATE ROOM DIO DATA: '
-        '${e.response?.data}',
-      );
-
-      print(
-        'CREATE ROOM DIO MESSAGE: '
-        '${e.message}',
-      );
-
-      print(
-        'CREATE ROOM REQUEST URL: '
-        '${e.requestOptions.uri}',
-      );
-
-      if (e.response?.data is Map) {
-        print(
-          'CREATE ROOM ERROR NUM: '
-          '${e.response?.data['errNum']}',
-        );
-
-        print(
-          'CREATE ROOM ERROR MESSAGE: '
-          '${e.response?.data['msg']}',
-        );
+        showRegisterError(response, context);
+        return Roominfo;
       }
 
-      print(
-        'API EXCEPTION: $exception',
-      );
+      final Map<String, dynamic>? roomData =
+          _asStringMap(responseData['room']);
 
-      showRegisterError(e, context);
-    } catch (e, stackTrace) {
-      final exception = handleError(e);
+      if (roomData == null) {
+        if (kDebugMode) {
+          debugPrint(
+            '[CREATE_ROOM] Successful response did not contain room.',
+          );
+        }
 
-      print(
-        'CREATE ROOM API ERROR: $e',
-      );
+        return Roominfo;
+      }
 
-      print(
-        'CREATE ROOM API STACK: $stackTrace',
-      );
+      final RoomModel createdRoom =
+          RoomModel.fromJson(roomData);
 
-      print(
-        'API EXCEPTION: $exception',
-      );
+      Roominfo = createdRoom;
+
+      // The create response can already include the creator's membership.
+      // Preserve the returned room membership as-is; never create a chair
+      // or infer the creator's membership from chair data.
+      final dynamic returnedJoinId = roomData['joinid'];
+
+      if (returnedJoinId != null &&
+          returnedJoinId.toString().trim().isNotEmpty &&
+          returnedJoinId.toString() != 'null') {
+        Joinid = returnedJoinId;
+      }
+
+      if (kDebugMode) {
+        debugPrint(
+          '[CREATE_ROOM] Success: '
+          'roomId=${Roominfo.id}, '
+          'publicRoomId=${Roominfo.RoomID}, '
+          'adminId=${Roominfo.adminId}, '
+          'hasToken=${Roominfo.Token?.isNotEmpty == true}',
+        );
+      }
+
+      return Roominfo;
+    } on DioException catch (error) {
+      final exception = handleError(error);
+
+      if (kDebugMode) {
+        debugPrint(
+          '[CREATE_ROOM] Request failed: '
+          'type=${error.type}, '
+          'status=${error.response?.statusCode}, '
+          'exception=$exception',
+        );
+      }
+
+      showRegisterError(error, context);
+    } catch (error, stackTrace) {
+      final exception = handleError(error);
+
+      if (kDebugMode) {
+        debugPrint(
+          '[CREATE_ROOM] Unexpected error: ${error.runtimeType}; '
+          '$exception',
+        );
+        debugPrintStack(stackTrace: stackTrace);
+      }
     }
 
     return Roominfo;
   }
-
 }

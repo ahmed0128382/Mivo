@@ -445,6 +445,8 @@ class SocketuserViewmodel extends ChangeNotifier {
 
         // --------------------------------------------------------
         // STATE 7: ROOM INVITATION
+        //
+        // Room invitations are still supported.
         // --------------------------------------------------------
         case 7:
           LocalNotificationService().showNotification(
@@ -462,14 +464,14 @@ class SocketuserViewmodel extends ChangeNotifier {
           break;
 
         // --------------------------------------------------------
-        // STATE 8: INVITATION TO CHAIR
+        // STATE 8: LEGACY CHAIR INVITATION
+        //
+        // Intentionally ignored because room participation no
+        // longer depends on chair invitations or chair occupancy.
         // --------------------------------------------------------
         case 8:
-          rooms.inviteToChair(
-            roominfo: payload['data']['Room'],
-            user: payload['data']['user'],
-            chairId: payload['data']['chair_id'],
-            context: roomcontext,
+          _socketLog(
+            'Ignoring legacy chair invitation event (state 8).',
           );
           break;
 

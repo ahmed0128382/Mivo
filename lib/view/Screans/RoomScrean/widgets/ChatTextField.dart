@@ -1,15 +1,14 @@
-
 import 'package:flutter/material.dart';
 import 'package:ahlachat/util/SizeConfig.dart';
 import 'package:ahlachat/util/styles.dart';
 
 class ChatTextField extends StatelessWidget {
-  String ? hint;
-  bool ?obscureText;
-  TextEditingController ?Controller;
+  final String? hint;
+  final bool? obscureText;
+  final TextEditingController? Controller;
   final TextInputType? type;
-  final bool ?enable;
-  final bool ?autofocus;
+  final bool? enable;
+  final bool? autofocus;
   final ValueSetter? onSaved;
   final ValueSetter? onChanged;
   final int? maxLines;
@@ -22,8 +21,10 @@ class ChatTextField extends StatelessWidget {
   final Color? textColor;
   final Widget? prefxIcon;
   final Widget? suffixicon;
-  final VoidCallback ? ontap;
-  ChatTextField({
+  final VoidCallback? ontap;
+
+  const ChatTextField({
+    super.key,
     this.suffixicon,
     this.hint,
     this.obscureText,
@@ -41,15 +42,63 @@ class ChatTextField extends StatelessWidget {
     this.textColor,
     this.prefxIcon,
     this.type,
-    this.ontap,this.autofocus});
+    this.ontap,
+    this.autofocus,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return TextFormField(autofocus:autofocus??false ,enabled:enable??true,controller: Controller,obscureText:obscureText??false,
-      cursorColor: Colors.black,keyboardType:type,
-      decoration: InputDecoration( suffixIcon: suffixicon,
-          suffixIconColor: Colors.black,border: InputBorder.none,
-          hintText:hint,hintStyle: style4),
+    final double cornerRadius = radius ?? 12;
+
+    return TextFormField(
+      controller: Controller,
+      enabled: enable ?? true,
+      autofocus: autofocus ?? false,
+      obscureText: obscureText ?? false,
+      keyboardType: type,
+      maxLines: obscureText == true ? 1 : maxLines ?? 1,
+      maxLength: maxLength,
+      onSaved: onSaved,
+      onChanged: onChanged,
+      onTap: ontap,
+      cursorColor: textColor ?? Colors.black,
+      style: TextStyle(
+        color: textColor ?? Colors.black,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: style4.copyWith(
+          color: hintColor,
+        ),
+        prefixIcon: prefxIcon,
+        suffixIcon: suffixicon,
+        suffixIconColor: Colors.black,
+        filled: fillColor != null,
+        fillColor: fillColor,
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: hight != null ? hight! / 3 : 12,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(cornerRadius),
+          borderSide: BorderSide(
+            color: bordercolor ?? Colors.transparent,
+          ),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(cornerRadius),
+          borderSide: BorderSide(
+            color: bordercolor ?? Colors.transparent,
+          ),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(cornerRadius),
+          borderSide: BorderSide(
+            color: bordercolor ?? Colors.transparent,
+          ),
+        ),
+        counterText: maxLength != null ? null : '',
+      ),
     );
   }
 }
