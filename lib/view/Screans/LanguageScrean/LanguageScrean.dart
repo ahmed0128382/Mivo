@@ -19,13 +19,13 @@ class LanguageScrean extends StatelessWidget {
             child: InkWell(onTap: () {
               language.Arbic();
 
-            },child: ListTile(title: Text('عربي',style: styleb.copyWith(fontWeight: FontWeight.bold),),trailing: Icon(Icons.language_outlined,color: Lang=='En'? Colors.black12:MainColor))),
+            },child: ListTile(title: Text('عربي',style: styleb.copyWith(fontWeight: FontWeight.bold),),trailing: Icon(Icons.language_outlined,color: lang=='En'? Colors.black12:MainColor))),
           ),
           SliverToBoxAdapter(
             child:                  InkWell(onTap: (){
               language.English();
 
-            },child: ListTile(title: Text('انجليزي',style: styleb.copyWith(fontWeight: FontWeight.bold)),trailing: Icon(Icons.language_outlined,color: Lang=='En'? MainColor:Colors.black12))),
+            },child: ListTile(title: Text('انجليزي',style: styleb.copyWith(fontWeight: FontWeight.bold)),trailing: Icon(Icons.language_outlined,color: lang=='En'? MainColor:Colors.black12))),
           ),
         ],
       ),

@@ -1,5 +1,3 @@
-
-
 import 'package:ahlachat/models/VipModel.dart';
 
 class MyVipmodel {
@@ -9,7 +7,7 @@ class MyVipmodel {
   int? status;
   int? days;
   int? cost;
-  VipModel ? Vip;
+  VipModel? Vip;
   var newId;
   var colorMessage;
   int? hidden;
@@ -17,21 +15,21 @@ class MyVipmodel {
   String? createdAt;
   String? updatedAt;
 
-  MyVipmodel(
-      {this.id,
-        this.userId,
-        this.vipId,
-        this.status,
-        this.days,
-        this.cost,
-        this.newId,
-        this.colorMessage,
-        this.hidden,
-        this.updateLevel,
-        this.createdAt,
-        this.updatedAt,
-      this.Vip
-      });
+  MyVipmodel({
+    this.id,
+    this.userId,
+    this.vipId,
+    this.status,
+    this.days,
+    this.cost,
+    this.newId,
+    this.colorMessage,
+    this.hidden,
+    this.updateLevel,
+    this.createdAt,
+    this.updatedAt,
+    this.Vip,
+  });
 
   MyVipmodel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
@@ -39,7 +37,12 @@ class MyVipmodel {
     vipId = json['vip_id'];
     status = json['status'];
     days = json['days'];
-    cost = json['cost'];
+    
+    // Safely parse cost to handle potential decimal/string variations
+    if (json['cost'] != null) {
+      cost = double.tryParse(json['cost'].toString())?.toInt();
+    }
+    
     newId = json['new_id'];
     colorMessage = json['Color_message'];
     hidden = json['Hidden'];
@@ -47,7 +50,6 @@ class MyVipmodel {
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
     Vip = json['vip'] != null ? new VipModel.fromJson(json['vip']) : null;
-
   }
 
   Map<String, dynamic> toJson() {

@@ -216,7 +216,7 @@ class LevelScrean extends StatelessWidget {
            SliverToBoxAdapter(child:  Center(child: Text(getLang(context: context, key: "How_level"),style: style5.copyWith(fontSize: 16,fontWeight: FontWeight.bold),textAlign: TextAlign.center,)),),
             SliverPadding(padding: EdgeInsets.symmetric(vertical: 5)),
             SliverToBoxAdapter(
-              child:   Lang=='En'?Column(
+              child:   lang=='En'?Column(
                   children:List.generate(LevelsContentEN.length, (index) => Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10),
                     child: Container(

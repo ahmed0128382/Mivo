@@ -440,11 +440,11 @@ Container(height: 350,
                   InkWell(onTap: () {
                   language.Arbic();
                   Navigator.pop(context);
-                  },child: ListTile(title: Text('عربي',style: styleb,),trailing: Icon(Icons.language_outlined,color: Lang=='En'? Colors.black12:MainColor))),
+                  },child: ListTile(title: Text('عربي',style: styleb,),trailing: Icon(Icons.language_outlined,color: lang=='En'? Colors.black12:MainColor))),
                   InkWell(onTap: (){
                    language.English();
                    Navigator.pop(context);
-                  },child: ListTile(title: Text('انجليزي',style: styleb),trailing: Icon(Icons.language_outlined,color: Lang=='En'? MainColor:Colors.black12))),
+                  },child: ListTile(title: Text('انجليزي',style: styleb),trailing: Icon(Icons.language_outlined,color: lang=='En'? MainColor:Colors.black12))),
                 ],
               )
           ),

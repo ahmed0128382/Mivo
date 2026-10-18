@@ -549,8 +549,26 @@
   "coin": "coin ",
   "paycoins": "Pay Coins !",
   "will_pay" :"You will pay",
-  "coins_avatar": "coins to get the avatar"
+  "coins_avatar": "coins to get the avatar",
 
 
+"Music_Playlist": "Playlist",
+"Add_songs_from_files": "Add songs from files",
+"Refresh_imported_music": "Refresh imported music",
+"Songs_in_playlist": "songs in playlist",
+"Play_first": "Play first",
+"Playlist_empty": "Your playlist is empty",
+"Choose_audio_description": "Choose audio files from your device, then add them to your playlist.",
+"Choose_audio_files": "Choose audio files",
+"Remove_from_playlist": "Remove from playlist",
+"Unknown_artist": "Unknown artist",
+"Audio_playback_failed": "Agora could not start this audio file. Check the debug log.",
+"Could_not_play_song": "Could not play song",
+"Choose_music": "Choose music",
+"Browse_audio_files": "Browse audio files",
+"Search_songs_artists_albums": "Search songs, artists or albums",
+"No_imported_songs": "No imported songs yet. Browse your files to add music.",
+"No_matching_songs": "No songs match your search.",
+"Add_to_playlist": "Add to playlist"
 
 }

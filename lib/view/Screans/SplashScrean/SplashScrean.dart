@@ -24,9 +24,9 @@ class SplashScrean extends StatefulWidget {
 class _SplashScreanState extends State<SplashScrean> {
   checklanguage() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    Lang = prefs.getString('Lang');
-    print("language====================================$Lang");
-    print('Lang is $Lang');
+    lang = prefs.getString('Lang');
+    print("language====================================$lang");
+    print('Lang is $lang');
     setState(() {});
   }
 

@@ -497,6 +497,25 @@
   "coin": "عمله ",
   "paycoins": "دفع الماسات !",
   "will_pay" :"سوف تدفع",
-  "coins_avatar": "عمله للحصول على الصورة المميزه"
+  "coins_avatar": "عمله للحصول على الصورة المميزه",
+  
+"Music_Playlist": "قائمة التشغيل",
+"Add_songs_from_files": "إضافة أغانٍ من الملفات",
+"Refresh_imported_music": "تحديث الموسيقى المستوردة",
+"Songs_in_playlist": "أغانٍ في قائمة التشغيل",
+"Play_first": "تشغيل الأولى",
+"Playlist_empty": "قائمة التشغيل فارغة",
+"Choose_audio_description": "اختر ملفات صوتية من جهازك، ثم أضفها إلى قائمة التشغيل.",
+"Choose_audio_files": "اختيار ملفات صوتية",
+"Remove_from_playlist": "إزالة من قائمة التشغيل",
+"Unknown_artist": "فنان غير معروف",
+"Audio_playback_failed": "تعذّر على Agora تشغيل هذا الملف الصوتي. تحقق من سجل الأخطاء.",
+"Could_not_play_song": "تعذّر تشغيل الأغنية",
+"Choose_music": "اختيار الموسيقى",
+"Browse_audio_files": "استعراض ملفات الصوت",
+"Search_songs_artists_albums": "ابحث عن الأغاني أو الفنانين أو الألبومات",
+"No_imported_songs": "لا توجد أغانٍ مستوردة بعد. استعرض الملفات لإضافة الموسيقى.",
+"No_matching_songs": "لا توجد أغانٍ تطابق بحثك.",
+"Add_to_playlist": "إضافة إلى قائمة التشغيل"
 
 }

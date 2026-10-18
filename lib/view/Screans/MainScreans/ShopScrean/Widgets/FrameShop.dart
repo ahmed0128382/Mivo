@@ -1,39 +1,37 @@
-import 'package:ahlachat/view/Screans/MainScreans/ShopScrean/Widgets/FrameWidgets.dart';
 import 'package:flutter/material.dart';
-
 import 'package:provider/provider.dart';
-
+import 'package:ahlachat/view/Screans/MainScreans/ShopScrean/Widgets/FrameWidgets.dart';
 import '../../../../../viewmodels/Shop_ViewModel/Shop_ViewModel.dart';
+
 class FrameShops extends StatelessWidget {
- int   index1=100;
+  final int index1;
 
-
- FrameShops(this.index1);
+  const  FrameShops([this.index1 = 100]);
 
   @override
   Widget build(BuildContext context) {
+    ShopViewmodel shops = Provider.of<ShopViewmodel>(context, listen: true);
 
-    ShopViewmodel Shops=  Provider.of<ShopViewmodel>(context,listen: true);
-
-    return  CustomScrollView(physics: BouncingScrollPhysics() ,
+    return CustomScrollView(
+      physics: const BouncingScrollPhysics(),
       slivers: <Widget>[
-
         SliverGrid(
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 3,
-              childAspectRatio:0.65,
-              mainAxisSpacing: 0,
-              crossAxisSpacing: 0),
+          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+            crossAxisCount: 3,
+            childAspectRatio: 0.58, // Increased vertical height ratio to prevent grid overflow
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 4,
+          ),
           delegate: SliverChildBuilderDelegate(
-                (context, index) {
-              return Framewidgets(items: Shops.AllShop[index1].items?[index],);
-            },childCount: Shops.AllShop[index1].items?.length,
+            (context, index) {
+              return Framewidgets(
+                items: shops.AllShop[index1].items?[index],
+              );
+            },
+            childCount: shops.AllShop[index1].items?.length ?? 0,
           ),
         ),
-
-
-        //SliverList
-      ], //<Widget>[]
+      ],
     );
   }
 }

@@ -11,8 +11,11 @@ import 'package:ahlachat/viewmodels/Shop_ViewModel/Shop_ViewModel.dart';
 import 'package:provider/provider.dart';
 
 import 'package:tab_indicator_styler/tab_indicator_styler.dart';
+// ignore: must_be_immutable
 class ShopScrean extends StatelessWidget {
-List Pays=[];
+List pays=[];
+
+  ShopScrean({super.key});
 
   @override
   Widget build(BuildContext context) {

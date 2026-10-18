@@ -1,5 +1,3 @@
-
-
 import 'package:ahlachat/util/app_constants.dart';
 
 class VipModel {
@@ -8,11 +6,11 @@ class VipModel {
   String? name;
   int? status;
   String? vipicon;
-  var backgroundimage ;
+  var backgroundimage;
   String? urlentry;
   String? urlframe;
-  String?  entry;
-  String?  frame;
+  String? entry;
+  String? frame;
   String? bubbles;
   int? level;
   int? specialID;
@@ -24,50 +22,67 @@ class VipModel {
   String? updatedAt;
   int? cost;
   int? day;
-  VipModel(
-      {this.id,
-        this.gif,
-        this.name,
-        this.status,
-        this.vipicon,
-        this.backgroundimage,
-        this.urlentry,
-        this.urlframe,
-        this.level,
-        this.specialID,
-        this.profileEntry,
-        this.coloredMessage,
-        this.hidden,
-        this.cost,
-        this.day,
-        this.createdAt,
-        this.updatedAt,
-        this.urlprofileEntry
-      });
+
+  VipModel({
+    this.id,
+    this.gif,
+    this.name,
+    this.status,
+    this.vipicon,
+    this.backgroundimage,
+    this.urlentry,
+    this.urlframe,
+    this.level,
+    this.specialID,
+    this.profileEntry,
+    this.coloredMessage,
+    this.hidden,
+    this.cost,
+    this.day,
+    this.createdAt,
+    this.updatedAt,
+    this.urlprofileEntry,
+  });
 
   VipModel.fromJson(Map<String, dynamic> json) {
     id = json['id'];
-    gif = AppConstants.Image_URL+json['gif'];
+    
+    // Safely concatenate base URL only if the field is not null and is a string
+    gif = json['Gif'] != null ? AppConstants.Image_URL + json['Gif'].toString() : null;
+    
     name = json['name'];
     status = json['status'];
-    vipicon = AppConstants.Image_URL +json['vipicon'];
+    
+    vipicon = json['vipicon'] != null ? AppConstants.Image_URL + json['vipicon'].toString() : null;
 
-    backgroundimage = json['background_image']==null?null: AppConstants.Image_URL +json['background_image'];
+    backgroundimage = json['background_image'] == null 
+        ? null 
+        : AppConstants.Image_URL + json['background_image'].toString();
 
-    urlentry =AppConstants.Image_URL + json['Entry'];
-    urlframe =AppConstants.Image_URL + json['Frame'];
-    entry = json['Entry'];
-    frame = json['Frame'];
+    urlentry = json['Entry'] != null ? AppConstants.Image_URL + json['Entry'].toString() : null;
+    urlframe = json['Frame'] != null ? AppConstants.Image_URL + json['Frame'].toString() : null;
+    
+    entry = json['Entry']?.toString();
+    frame = json['Frame']?.toString();
 
     level = json['Level'];
-    cost = json['cost'];
+    
+    // Safely parse cost which could be int or double (e.g. 1000.00)
+    if (json['cost'] != null) {
+      cost = double.tryParse(json['cost'].toString())?.toInt();
+    }
+    
     specialID = json['SpecialID'];
-    profileEntry = json['ProfileEntry']==null?null:AppConstants.Image_URL+json['ProfileEntry'];
-    bubbles=json['ProfileEntry']==null?null:json['ProfileEntry'];
-    coloredMessage = json['ColoredMessage']==null?null: json['ColoredMessage'];
-    hidden = json['Hidden']==null?null: json['Hidden'];
+    
+    profileEntry = json['ProfileEntry'] == null 
+        ? null 
+        : AppConstants.Image_URL + json['ProfileEntry'].toString();
+        
+    bubbles = json['ProfileEntry']?.toString();
+    coloredMessage = json['ColoredMessage'];
+    hidden = json['Hidden'];
 
-    day=json['days'];
+    day = json['days'];
     createdAt = json['created_at'];
     updatedAt = json['updated_at'];
   }
@@ -82,7 +97,7 @@ class VipModel {
     data['Entry'] = this.urlentry;
     data['Frame'] = this.urlframe;
     data['Level'] = this.level;
-    data['background_image'] =this.backgroundimage;
+    data['background_image'] = this.backgroundimage;
     data['SpecialID'] = this.specialID;
     data['ProfileEntry'] = this.profileEntry;
     data['ColoredMessage'] = this.coloredMessage;

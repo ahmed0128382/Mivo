@@ -1,3 +1,4 @@
+
 import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/util/Router.dart';
 import 'package:ahlachat/util/app_constants.dart';
@@ -39,37 +40,53 @@ import 'viewmodels/Language_Viewmodel/LanguageViewmodel.dart';
 import 'viewmodels/RoomPlay_ViewModel/RoomPlayViewModel.dart';
 
 class NavigationService {
-  static GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  static GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
 }
 
-void main() async {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Load the saved language before the first widget is built.
+  await checklanguage();
+
   await PurchasaApi.init();
+
+  // Keep your existing Firebase initialization.
   await Firebase.initializeApp();
   await FirebaseAppCheck.instance.activate();
-  checklanguage();
-  
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  FirebaseMessaging.onBackgroundMessage(
+    _firebaseMessagingBackgroundHandler,
+  );
+
   getnotifitoken();
-  SystemChrome.setPreferredOrientations(
-          [DeviceOrientation.portraitUp, DeviceOrientation.portraitDown])
-      .then((_) async {
-    WakelockPlus.enable();
-    runApp(MyApp());
-    //await SentryReporter.setup(MyApp());
-  });
+
+  await SystemChrome.setPreferredOrientations([
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
+  ]);
+
+  WakelockPlus.enable();
+
+  debugPrint('APP LANGUAGE: $lang');
+  debugPrint(
+    'APP LOCALE: ${lang?.toLowerCase() == 'en' ? 'en' : 'ar'}',
+  );
+
+  runApp(const MyApp());
 }
 
 Future<void> getnotifitoken() async {
   try {
     notifitoken = await FirebaseMessaging.instance.getToken();
-    print('FCM token: $notifitoken');
+    debugPrint('FCM token: $notifitoken');
   } catch (e) {
-    print('FCM token unavailable: $e');
+    debugPrint('FCM token unavailable: $e');
   }
 
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    print(message.data);
+    debugPrint('${message.data}');
 
     LocalNotificationService().showNotification(
       body: ';asd',
@@ -78,20 +95,15 @@ Future<void> getnotifitoken() async {
     );
   });
 
-  FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {});
+  FirebaseMessaging.onMessageOpenedApp.listen(
+    (RemoteMessage message) {},
+  );
 }
 
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print(message.data);
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `initializeApp` before using other Firebase services.
-  // await Firebase.initializeApp();
-
-  // RoomViewmodel Room=Provider.of<RoomViewmodel>(context3,listen: false);
-  // Room.Leaveroom(context:context3);
-  // SharedPreferences prefs = await SharedPreferences.getInstance();
-  // var token=prefs.getString('token');
-  // print(token);
+Future<void> _firebaseMessagingBackgroundHandler(
+  RemoteMessage message,
+) async {
+  debugPrint('${message.data}');
 }
 
 class MyApp extends StatelessWidget {
@@ -125,53 +137,52 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (context) => RelationsViewModel()),
         ChangeNotifierProvider(create: (context) => FamilyViewModel()),
       ],
-      child: Consumer<languageViewmodel>(builder: (context, mainModel, child) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: AppConstants.APP_NAME,
-          navigatorKey: NavigationService.navigatorKey,
-          restorationScopeId: "root",
-          navigatorObservers: [FlutterSmartDialog.observer],
-          builder: FlutterSmartDialog.init(),
-          onGenerateRoute: generateRoute,
-          initialRoute: AppConstants.Splash_Screan,
-          theme: ThemeData(
+      child: Consumer<languageViewmodel>(
+        builder: (context, mainModel, child) {
+          final String languageCode =
+              lang?.toLowerCase() == 'en' ? 'en' : 'ar';
+
+          final Locale appLocale = Locale(languageCode);
+
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            title: AppConstants.APP_NAME,
+            navigatorKey: NavigationService.navigatorKey,
+            restorationScopeId: 'root',
+            navigatorObservers: [
+              FlutterSmartDialog.observer,
+            ],
+            builder: FlutterSmartDialog.init(),
+            onGenerateRoute: generateRoute,
+            initialRoute: AppConstants.Splash_Screan,
+            theme: ThemeData(
               fontFamily: 'cairo',
               primarySwatch: Colors.blue,
               scaffoldBackgroundColor: whitecolor,
               appBarTheme: AppBarTheme(
-                  backgroundColor: whitecolor,
-                  centerTitle: false,
-                  titleTextStyle:
-                      style1.copyWith(fontSize: 20, letterSpacing: 2),
-                  elevation: 0.0)),
-          locale: Lang == 'En'
-              ? Locale(
-                  AppConstants.languages[0].languageCode,
-                  AppConstants.languages[0].countryCode,
-                )
-              : Locale(
-                  AppConstants.languages[1].languageCode,
-                  AppConstants.languages[1].countryCode,
+                backgroundColor: whitecolor,
+                centerTitle: false,
+                titleTextStyle: style1.copyWith(
+                  fontSize: 20,
+                  letterSpacing: 2,
                 ),
-          supportedLocales: [
-            Locale(
-              AppConstants.languages[0].languageCode,
-              AppConstants.languages[0].countryCode,
+                elevation: 0.0,
+              ),
             ),
-            Locale(
-              AppConstants.languages[1].languageCode,
-              AppConstants.languages[1].countryCode,
-            ),
-          ],
-          localizationsDelegates: const [
-            AppLocale.delegate,
-            GlobalMaterialLocalizations.delegate,
-            GlobalWidgetsLocalizations.delegate,
-            GlobalCupertinoLocalizations.delegate,
-          ],
-        );
-      }),
+            locale: appLocale,
+            supportedLocales: const [
+              Locale('ar'),
+              Locale('en'),
+            ],
+            localizationsDelegates: const [
+              AppLocale.delegate,
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+          );
+        },
+      ),
     );
   }
 }

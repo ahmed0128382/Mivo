@@ -291,106 +291,180 @@ class AgoraViewmodel extends ChangeNotifier {
 
   int index = 0;
 
-  Future<void> StartAudioMexing({
-    required filePath,
-    required duration,
-    required tittle,
-    required indexsong,
-  }) async {
-    PlaySong.clear();
+ Future<void> StartAudioMexing({
+  required filePath,
+  required duration,
+  required tittle,
+  required indexsong,
+}) async {
+  final path = filePath?.toString().trim() ?? '';
+
+  if (path.isEmpty) {
+    debugPrint('[AUDIO_MIXING] Cannot play an empty file path.');
+    return;
+  }
+
+  if (_engine == null) {
+    debugPrint('[AUDIO_MIXING] Agora engine is not initialized.');
+    return;
+  }
+
+  try {
+    // Stop the previous track before starting another one.
+    if (PlaySong.isNotEmpty) {
+  try {
+    await _engine!.stopAudioMixing();
+  } catch (e) {
+    debugPrint('[AUDIO_MIXING] Previous track cleanup: $e');
+  }
+}
+
+    await _engine!.startAudioMixing(
+      filePath: path,
+      loopback: false,
+      cycle: 1,
+    );
+
+    // Update UI state only after Agora accepts the start request.
+    index = indexsong is int
+        ? indexsong
+        : int.tryParse(indexsong.toString()) ?? 0;
+
+    PlaySong
+      ..clear()
+      ..add(tittle.toString());
+
     playmusic = true;
-    index = indexsong;
-    PlaySong.add(tittle);
+    isAudioMixingActive = true;
 
-    try {
-      if (_engine != null) {
-        await _engine!.startAudioMixing(
-          filePath: filePath,
-          loopback: false,
-          cycle: -1,
-        );
-        isAudioMixingActive = true;
-      }
-    } on AgoraRtcException catch (e) {
-      isAudioMixingActive = false;
-      debugPrint(
-        '[AUDIO_MIXING] Start failed: code=${e.code}, message=${e.message}',
-      );
-    } catch (e) {
-      isAudioMixingActive = false;
-      debugPrint('[AUDIO_MIXING] Unexpected start error: $e');
-    }
-
-    notifyListeners();
+    await _engine!.adjustAudioMixingVolume(volumnaudio);
+  } on AgoraRtcException catch (e) {
+    playmusic = false;
+    isAudioMixingActive = false;
+    debugPrint(
+      '[AUDIO_MIXING] Start failed: code=${e.code}, message=${e.message}',
+    );
+  } catch (e) {
+    playmusic = false;
+    isAudioMixingActive = false;
+    debugPrint('[AUDIO_MIXING] Unexpected start error: $e');
   }
 
-  next(context) async {
-    Provider.of<MusicViewModel>(context, listen: false);
-    notifyListeners();
+  notifyListeners();
+}
+
+  Future<void> next(BuildContext context) async {
+  final music = Provider.of<MusicViewModel>(
+    context,
+    listen: false,
+  );
+
+  if (music.SongsList.isEmpty) {
+    debugPrint('[AUDIO_MIXING] Playlist is empty.');
+    return;
   }
 
-  last(context) async {
-    notifyListeners();
+  final nextIndex = index + 1 >= music.SongsList.length
+      ? 0
+      : index + 1;
+
+  final song = music.SongsList[nextIndex];
+
+  await StartAudioMexing(
+    filePath: song.data,
+    duration: song.duration ?? 0,
+    tittle: song.title,
+    indexsong: nextIndex,
+  );
+}
+
+Future<void> last(BuildContext context) async {
+  final music = Provider.of<MusicViewModel>(
+    context,
+    listen: false,
+  );
+
+  if (music.SongsList.isEmpty) {
+    debugPrint('[AUDIO_MIXING] Playlist is empty.');
+    return;
   }
+
+  final previousIndex = index - 1 < 0
+      ? music.SongsList.length - 1
+      : index - 1;
+
+  final song = music.SongsList[previousIndex];
+
+  await StartAudioMexing(
+    filePath: song.data,
+    duration: song.duration ?? 0,
+    tittle: song.title,
+    indexsong: previousIndex,
+  );
+}
 
   int volumnaudio = 50;
 
-  setaudiovolum(int volum) {
-    volumnaudio = volum;
-    _engine?.adjustAudioMixingVolume(volum);
+  Future<void> setaudiovolum(int volum) async {
+  volumnaudio = volum.clamp(0, 100).toInt();
+
+  try {
+    await _engine?.adjustAudioMixingVolume(volumnaudio);
+  } catch (e) {
+    debugPrint('[AUDIO_MIXING] Volume change failed: $e');
   }
+
+  notifyListeners();
+}
 
   volumnausdio(int volum) {
     volumnaudio = volum;
     notifyListeners();
   }
 
-  Future<void> stopAudioMexing(context) async {
+  Future<void> stopAudioMexing(BuildContext context) async {
+  if (_engine == null || !isAudioMixingActive) {
     playmusic = false;
-
-    Provider.of<MusicViewModel>(context, listen: false);
-
-    if (!isAudioMixingActive) {
-      notifyListeners();
-      return;
-    }
-
-    try {
-      if (_engine != null) {
-        await _engine!.pauseAudioMixing();
-      }
-    } on AgoraRtcException catch (e) {
-      debugPrint(
-        '[AUDIO_MIXING] Pause failed: code=${e.code}, message=${e.message}',
-      );
-    } catch (e) {
-      debugPrint('[AUDIO_MIXING] Unexpected pause error: $e');
-    } finally {
-      isAudioMixingActive = false;
-    }
-
     notifyListeners();
+    return;
   }
 
-  Future<void> resumAudioMexing(context) async {
-    Provider.of<MusicViewModel>(context, listen: false);
-
-    try {
-      if (_engine != null) {
-        await _engine!.resumeAudioMixing();
-        isAudioMixingActive = true;
-        playmusic = true;
-      }
-    } on AgoraRtcException catch (e) {
-      debugPrint(
-        '[AUDIO_MIXING] Resume failed: code=${e.code}, message=${e.message}',
-      );
-    } catch (e) {
-      debugPrint('[AUDIO_MIXING] Unexpected resume error: $e');
-    }
-
-    notifyListeners();
+  try {
+    await _engine!.pauseAudioMixing();
+    playmusic = false;
+    isAudioMixingActive = false;
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '[AUDIO_MIXING] Pause failed: code=${e.code}, message=${e.message}',
+    );
+  } catch (e) {
+    debugPrint('[AUDIO_MIXING] Pause error: $e');
   }
+
+  notifyListeners();
+}
+
+Future<void> resumAudioMexing(BuildContext context) async {
+  if (_engine == null || PlaySong.isEmpty) {
+    debugPrint('[AUDIO_MIXING] No song is ready to resume.');
+    return;
+  }
+
+  try {
+    await _engine!.resumeAudioMixing();
+    playmusic = true;
+    isAudioMixingActive = true;
+    await _engine!.adjustAudioMixingVolume(volumnaudio);
+  } on AgoraRtcException catch (e) {
+    debugPrint(
+      '[AUDIO_MIXING] Resume failed: code=${e.code}, message=${e.message}',
+    );
+  } catch (e) {
+    debugPrint('[AUDIO_MIXING] Resume error: $e');
+  }
+
+  notifyListeners();
+}
 
   Future<void> pauseAudioMixing() async {
     try {

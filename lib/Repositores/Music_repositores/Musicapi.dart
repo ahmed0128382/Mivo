@@ -1,6 +1,8 @@
+
+import 'dart:io';
+
 import 'package:ahlachat/util/app_constants.dart';
 import 'package:dio/dio.dart';
-import 'package:flutter/services.dart' show rootBundle;
 import 'package:on_audio_query/on_audio_query.dart';
 
 import '../../core/network/api_client.dart';
@@ -14,16 +16,26 @@ class Musicapi extends MomentRepository {
   ApiException _handleError(dynamic error) {
     if (error is DioException) {
       final response = error.response;
+      final data = response?.data;
+
+      String message = error.message ?? 'Music upload failed';
+
+      if (data is Map) {
+        message = data['message']?.toString() ??
+            data['error']?.toString() ??
+            message;
+      } else if (data is String && data.trim().isNotEmpty) {
+        message = data;
+      }
 
       return ApiException(
         statusCode: response?.statusCode,
-        message: response?.data?['message']?.toString() ??
-            response?.data?['error']?.toString() ??
-            error.message ??
-            'Something went wrong',
-        data: response?.data,
+        message: message,
+        data: data,
       );
     }
+
+    if (error is ApiException) return error;
 
     return ApiException(
       message: error.toString(),
@@ -32,29 +44,32 @@ class Musicapi extends MomentRepository {
   }
 
   Future<usermusic> AddMusic({
-    context,
     SongModel? Music,
   }) async {
-    print(Music?.data.runtimeType);
-    print(Music?.data);
-    print('11111111111111111111111111111111111111111111');
-
-    final musicFile = await MultipartFile.fromFile(
-      Music?.data ?? '',
-      filename: Music?.data.split('/').last,
-    );
-
-    print(musicFile);
-    print(musicFile.runtimeType);
-    print(musicFile.filename);
-
-    usermusic? music;
-
     try {
+      if (Music == null) {
+        throw ApiException(message: 'Select a song before uploading.');
+      }
+
+      final path = Music.data.trim();
+      if (path.isEmpty) {
+        throw ApiException(message: 'The selected song has no file path.');
+      }
+
+      final file = File(path);
+      if (!await file.exists()) {
+        throw ApiException(message: 'The selected audio file no longer exists.');
+      }
+
+      final musicFile = await MultipartFile.fromFile(
+        path,
+        filename: path.split(Platform.pathSeparator).last,
+      );
+
       final formData = FormData.fromMap({
         'music': musicFile,
         'user_id': UserId.toString(),
-        'name': Music?.title.toString(),
+        'name': Music.title,
       });
 
       final response = await _dio.post(
@@ -62,16 +77,30 @@ class Musicapi extends MomentRepository {
         data: formData,
       );
 
-      if (response.statusCode == 200) {
-        music = usermusic.fromJson(
-          response.data['UserMusic'],
+      final data = response.data;
+      if (response.statusCode != 200 || data is! Map) {
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: 'The server returned an unexpected music upload response.',
+          data: data,
         );
       }
-    } catch (e) {
-      final exception = _handleError(e);
-      print(exception);
-    }
 
-    return music!;
+      final uploadedMusic = data['UserMusic'];
+      if (uploadedMusic is! Map) {
+        throw ApiException(
+          statusCode: response.statusCode,
+          message: data['message']?.toString() ??
+              'The server response did not contain UserMusic.',
+          data: data,
+        );
+      }
+
+      return usermusic.fromJson(
+        Map<String, dynamic>.from(uploadedMusic),
+      );
+    } catch (e) {
+      throw _handleError(e);
+    }
   }
 }

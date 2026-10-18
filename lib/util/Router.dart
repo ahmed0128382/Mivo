@@ -60,7 +60,10 @@ Route<dynamic> generateRoute(RouteSettings settings) {
           return MaterialPageRoute(builder: (_) =>const LoginScrean());
         case AppConstants.PhoneAuthScrean:
           return MaterialPageRoute(builder: (_) => const PhoneAuthScrean());
-
+        case AppConstants.AddMusic_Screan:
+  return MaterialPageRoute(
+    builder: (_) => const AddMusicScrean(),
+  );
           case AppConstants.Room_Screan:
           return MaterialPageRoute(builder: (_) => const RoomScrean());
         case AppConstants.CountriesRoomScrean:

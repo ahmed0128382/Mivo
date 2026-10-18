@@ -21,7 +21,7 @@ dependencies:
   dio: ^5.8.0+1
   provider: ^6.1.5+1
   shared_preferences: ^2.5.3
-  path_provider: ^2.1.5
+  path_provider: ^2.1.6
 
 
   auto_size_text: ^3.0.0
@@ -151,6 +151,7 @@ dependencies:
   google_fonts: ^4.0.4
   cached_network_image: ^3.2.3
   svgaplayer_flutter: ^2.1.2
+  file_picker: ^11.0.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
