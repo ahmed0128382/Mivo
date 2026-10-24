@@ -1,10 +1,9 @@
+
 import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/view/widgets/UserSideInfoWidget.dart';
-import 'package:ahlachat/viewmodels/Moment_Viewmodel/Moment_ViewModel.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:ahlachat/models/Usermodel.dart';
-import 'package:ahlachat/util/SizeConfig.dart';
 import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/util/images.dart';
 import 'package:ahlachat/util/styles.dart';
@@ -12,110 +11,187 @@ import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
 import 'package:ahlachat/viewmodels/InboxRooms_Viewmodel/InboxRoomsViewmodel.dart';
 import 'package:provider/provider.dart';
 
+class CustomizeAppbar extends StatelessWidget
+    implements PreferredSizeWidget {
+  final String? tittle;
+  final bool? autopop;
 
-class CustomizeAppbar extends StatelessWidget implements PreferredSizeWidget{
-
-String? tittle;
-bool  ? autopop;
-CustomizeAppbar({this.tittle,  this.autopop});
+  const CustomizeAppbar({
+    super.key,
+    this.tittle,
+    this.autopop,
+  });
 
   @override
   Widget build(BuildContext context) {
-
-
-    return Directionality(textDirection: TextDirection.ltr,
-      child: AppBar(elevation:0,centerTitle: true,flexibleSpace: Container(
- color: MainColor,
-      ),
-        title:Text(tittle??"",style: style2.copyWith(color: whitecolor ),),
-        automaticallyImplyLeading:  false,
-        leading:autopop??false?SizedBox() :InkWell(onTap: ()
-        {
-          Navigator.pop(context);
-
-
-          },child: Icon(Icons.arrow_back_ios_sharp,color: whitecolor,)),
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: AppBar(
+        elevation: 0,
+        centerTitle: true,
+        toolbarHeight: 56,
+        backgroundColor: MainColor,
+        automaticallyImplyLeading: false,
+        title: Text(
+          tittle ?? '',
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: style2.copyWith(color: whitecolor),
+        ),
+        leading: (autopop ?? false)
+            ? null
+            : IconButton(
+                tooltip: MaterialLocalizations.of(context)
+                    .backButtonTooltip,
+                onPressed: () {
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  }
+                },
+                icon: Icon(
+                  Icons.arrow_back_ios_sharp,
+                  color: whitecolor,
+                ),
+              ),
       ),
     );
   }
 
-
-  // TODO: implement preferredSize
   @override
-  Size get preferredSize =>   Size.fromHeight(50);
+  Size get preferredSize => const Size.fromHeight(56);
 }
 
+class CustomizeChatAppbar extends StatelessWidget
+    implements PreferredSizeWidget {
+  final String? tittle;
+  final String? image;
+  final usermodel? userchat;
+  final dynamic InBoxid;
 
-class CustomizeChatAppbar extends StatelessWidget implements PreferredSizeWidget{
-
-  String? tittle;
-  String? image;
-  usermodel?userchat;
- var InBoxid;
-  CustomizeChatAppbar({this.tittle,this.image,this.userchat,this.InBoxid});
+  const CustomizeChatAppbar({
+    super.key,
+    this.tittle,
+    this.image,
+    this.userchat,
+    this.InBoxid,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final InboxroomViewModel inboxrooms =
+        Provider.of<InboxroomViewModel>(context, listen: false);
 
-    InboxroomViewModel    Inboxrooms= Provider.of<InboxroomViewModel>(context,listen: true);
-    LoginViewmodel user = Provider.of<LoginViewmodel>(context, listen: true);
-    MomentViewModel   posts=Provider.of<MomentViewModel>(context,listen: true);
+    final LoginViewmodel user =
+        Provider.of<LoginViewmodel>(context, listen: false);
 
-    return Directionality(textDirection: TextDirection.ltr,
-        child: AppBar(centerTitle: true, backgroundColor: Colors.white,actions: [
-            SizedBox(height: 20,
-                                          child: PopupMenuButton(padding: const EdgeInsets.only(top: 0),  icon:const Icon(
-                                            Icons.more_vert,
-                                            color: Colors.black,
-                                          ),
-                                              onSelected: (value) {
-if(value=='Delete'){
-  Inboxrooms.DeleteInboxroom(context: context,inboxid: InBoxid );
-}else{
-  Inboxrooms.BlockUser(UserId:  user.userProfileData?.id,id:InBoxid );
-}
+    final String profileImage = image?.trim().isNotEmpty == true
+        ? image!.trim()
+        : Images.profilephoto;
 
-                                                Navigator.pop(context);
-// your logic
-                                              },
-                                              itemBuilder: (BuildContext bc) {
-                                                return   [
-                                                  PopupMenuItem(
-                                                    child: Text(getLang(context: context,key: "Block_User"),style: style6,),
-                                                    value: 'Block',
-                                                  ),
-                                                  PopupMenuItem(
-                                                    child: Text(getLang(context: context,key: "Delete_Conv"),style: style6,),
-                                                    value: 'Delete',
-                                                  ),
-                                                ];})),
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: AppBar(
+        elevation: 0,
+        toolbarHeight: 64,
+        centerTitle: false,
+        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
 
-        ],
-        title:InkWell(onTap:(){
+        leadingWidth: 48,
+        leading: IconButton(
+          tooltip: MaterialLocalizations.of(context)
+              .backButtonTooltip,
+          onPressed: () {
+            inboxrooms.ExistChatRoom();
+            Navigator.maybePop(context);
+          },
+          icon: const Icon(
+            Icons.arrow_back_ios_sharp,
+            color: Colors.black45,
+          ),
+        ),
 
-          user.GetShoweduserProfile(userchat);
-           Navigator.pushNamed(context,'${AppConstants.ShowUser_Profile}');
-        } ,
-          child: Row(mainAxisAlignment: MainAxisAlignment.start,
-            crossAxisAlignment: CrossAxisAlignment.center,
+        titleSpacing: 0,
+        title: InkWell(
+          onTap: () {
+            user.GetShoweduserProfile(userchat);
+            Navigator.pushNamed(
+              context,
+              AppConstants.ShowUser_Profile,
+            );
+          },
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              CircleAvatar(backgroundColor: Colors.transparent, backgroundImage: CachedNetworkImageProvider(image??Images.profilephoto),radius: 20),
-              const  SizedBox(width: 5,),
-              UserSideInfoWidgets(UserDate:userchat ,showdescr: 1,)
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.transparent,
+                backgroundImage:
+                    CachedNetworkImageProvider(profileImage),
+              ),
+              const SizedBox(width: 8),
+
+              // Restrict the user information to the available width.
+              Expanded(
+                child: ClipRect(
+                  child: UserSideInfoWidgets(
+                    UserDate: userchat,
+                    showdescr: 1,
+                  ),
+                ),
+              ),
             ],
           ),
         ),
-        automaticallyImplyLeading: false,
-        leading: InkWell(onTap: () {
-          Inboxrooms.ExistChatRoom();
-          Navigator.pop(context);
-        },child: Icon(Icons.arrow_back_ios_sharp,color:Colors.black45,)),
+
+        actions: [
+          PopupMenuButton<String>(
+            padding: EdgeInsets.zero,
+            icon: const Icon(
+              Icons.more_vert,
+              color: Colors.black,
+            ),
+            onSelected: (value) {
+              if (value == 'Delete') {
+                inboxrooms.DeleteInboxroom(
+                  context: context,
+                  inboxid: InBoxid,
+                );
+              } else if (value == 'Block') {
+                inboxrooms.BlockUser(
+                  UserId: user.userProfileData?.id,
+                  id: InBoxid,
+                );
+              }
+            },
+            itemBuilder: (BuildContext context) => [
+              PopupMenuItem<String>(
+                value: 'Block',
+                child: Text(
+                  getLang(
+                    context: context,
+                    key: 'Block_User',
+                  ),
+                  style: style6,
+                ),
+              ),
+              PopupMenuItem<String>(
+                value: 'Delete',
+                child: Text(
+                  getLang(
+                    context: context,
+                    key: 'Delete_Conv',
+                  ),
+                  style: style6,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-
-  // TODO: implement preferredSize
   @override
-  Size get preferredSize =>   Size.fromHeight(  SizeConfig.screenHeight!*0.07936);
+  Size get preferredSize => const Size.fromHeight(64);
 }

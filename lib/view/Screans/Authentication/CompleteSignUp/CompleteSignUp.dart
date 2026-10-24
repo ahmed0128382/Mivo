@@ -22,8 +22,7 @@ class CompleteSignUp extends StatefulWidget {
 }
 
 class _CompleteSignUpState extends State<CompleteSignUp> {
-  final TextEditingController _phoneController =
-      TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
 
   @override
   void dispose() {
@@ -53,8 +52,7 @@ class _CompleteSignUpState extends State<CompleteSignUp> {
                 maximumYear: DateTime.now().year,
                 onDateTimeChanged: (val) {
                   setState(() {
-                    user.History =
-                        '${val.month}/${val.day}/${val.year}';
+                    user.History = '${val.month}/${val.day}/${val.year}';
                     user.day = val.day;
                     user.year = val.year;
                     user.month = val.month;
@@ -79,8 +77,6 @@ class _CompleteSignUpState extends State<CompleteSignUp> {
   }
 
   bool _isValidPhone(String phone) {
-    // Basic international/local phone input validation.
-    // This does not verify ownership or send an OTP.
     final digits = phone.replaceAll(RegExp(r'\D'), '');
     return digits.length >= 7 && digits.length <= 15;
   }
@@ -110,14 +106,10 @@ class _CompleteSignUpState extends State<CompleteSignUp> {
     } else if (phone.isNotEmpty && !_isValidPhone(phone)) {
       Dialogs().showtoast('Please enter a valid phone number.');
     } else {
-      // IMPORTANT:
-      // The phone is captured in this screen, but it is not sent
-      // to your backend until LoginViewmodel and registerNewUser()
-      // are updated to accept and submit it.
       await user.registerNewUser(
-  context: context,
-  phoneNumber: _phoneController.text.trim(),
-);
+        context: context,
+        phoneNumber: phone,
+      );
     }
   }
 
@@ -127,6 +119,8 @@ class _CompleteSignUpState extends State<CompleteSignUp> {
         Provider.of<LoginViewmodel>(context, listen: true);
 
     return Scaffold(
+      // Allow the available body height to resize when the keyboard opens.
+      resizeToAvoidBottomInset: true,
       appBar: AppBar(
         centerTitle: true,
         elevation: 0,
@@ -143,7 +137,10 @@ class _CompleteSignUpState extends State<CompleteSignUp> {
               await googleuser.signOut();
               await FirebaseAuth.instance.signOut();
             }
-            if (mounted) Navigator.pop(context);
+
+            if (mounted) {
+              Navigator.pop(context);
+            }
           },
           child: const Icon(
             Icons.navigate_before_rounded,
@@ -161,427 +158,486 @@ class _CompleteSignUpState extends State<CompleteSignUp> {
           }
           return true;
         },
-        child: SizedBox(
-          height: SizeConfig.screenHeight!,
-          width: SizeConfig.screenWidth!,
-          child: Padding(
-            padding: WPadding15,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
-
-                InkWell(
-                  onTap: () => user.ComtImage(context),
-                  child: Stack(
-                    alignment: Alignment.bottomRight,
-                    children: [
-                      CircleAvatar(
-                        radius: 47,
-                        backgroundColor: MainColor,
-                        child: CircleAvatar(
-                          radius: 45,
-                          backgroundColor: whitecolor,
-                          backgroundImage: user.Comimage == null
-                              ? const ExactAssetImage(Images.Personalphoto)
-                              : FileImage(user.Comimage!) as ImageProvider,
-                        ),
-                      ),
-                      CircleAvatar(
-                        radius: 15,
-                        backgroundColor: MainColor,
-                        child: Icon(
-                          Icons.camera_alt,
-                          color: Colors.white,
-                          size: SizeConfig.TenSize! * 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              // Keeps fields and buttons reachable above the keyboard.
+              keyboardDismissBehavior:
+                  ScrollViewKeyboardDismissBehavior.onDrag,
+              padding: WPadding15,
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
                 ),
-
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
-
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: SizeConfig.TenSize! * 3.5,
-                  ),
-                  child: Text(
-                    getLang(context: context, key: 'Use_Pictuer'),
-                    textAlign: TextAlign.center,
-                    style: style6.copyWith(
-                      fontSize: SizeConfig.TenSize! * 1.3,
-                      color: Colors.black45,
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
-
-                // Name
-                Row(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Image.asset(
-                      Images.EnterName,
-                      height: SizeConfig.TenSize! * 4,
-                      width: SizeConfig.TenSize! * 7,
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Container(
-                        height: SizeConfig.TenSize! * 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1878f3).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: SizeConfig.TenSize!,
-                              vertical: 5,
-                            ),
-                            child: TextFormField(
-                              initialValue: user.UsernameComp,
-                              onChanged: (value) {
-                                user.UpdateUsernameComp(name: value);
-                              },
-                              keyboardType: TextInputType.name,
-                              textInputAction: TextInputAction.next,
-                              decoration: InputDecoration.collapsed(
-                                hintText: getLang(
-                                  context: context,
-                                  key: 'Enter_Name',
-                                ),
-                                hintStyle: styleb45.copyWith(fontSize: 1.6),
-                              ),
-                              style: style8.copyWith(height: 1),
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+
+                    // Profile photo
+                    InkWell(
+                      onTap: () => user.ComtImage(context),
+                      child: Stack(
+                        alignment: Alignment.bottomRight,
+                        children: [
+                          CircleAvatar(
+                            radius: 47,
+                            backgroundColor: MainColor,
+                            child: CircleAvatar(
+                              radius: 45,
+                              backgroundColor: whitecolor,
+                              backgroundImage: user.Comimage == null
+                                  ? const ExactAssetImage(
+                                      Images.Personalphoto,
+                                    )
+                                  : FileImage(user.Comimage!)
+                                      as ImageProvider,
                             ),
                           ),
+                          CircleAvatar(
+                            radius: 15,
+                            backgroundColor: MainColor,
+                            child: Icon(
+                              Icons.camera_alt,
+                              color: Colors.white,
+                              size: SizeConfig.TenSize! * 1.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: SizeConfig.TenSize! * 3.5,
+                      ),
+                      child: Text(
+                        getLang(context: context, key: 'Use_Pictuer'),
+                        textAlign: TextAlign.center,
+                        style: style6.copyWith(
+                          fontSize: SizeConfig.TenSize! * 1.3,
+                          color: Colors.black45,
                         ),
                       ),
                     ),
-                  ],
-                ),
 
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
 
-                // Birthday
-                InkWell(
-                  onTap: () => _showDatePickers(context),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.max,
-                    children: [
-                      Image.asset(
-                        Images.EnterBirth,
-                        height: SizeConfig.TenSize! * 4,
-                        width: SizeConfig.TenSize! * 7,
-                      ),
-                      Expanded(
-                        child: Container(
+                    // Name
+                    Row(
+                      children: [
+                        Image.asset(
+                          Images.EnterName,
                           height: SizeConfig.TenSize! * 4,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1878f3).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
+                          width: SizeConfig.TenSize! * 7,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Container(
+                            height: SizeConfig.TenSize! * 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1878f3)
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Center(
+                              child: Padding(
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: SizeConfig.TenSize!,
+                                  vertical: 5,
+                                ),
+                                child: TextFormField(
+                                  initialValue: user.UsernameComp,
+                                  onChanged: (value) {
+                                    user.UpdateUsernameComp(name: value);
+                                  },
+                                  keyboardType: TextInputType.name,
+                                  textInputAction: TextInputAction.next,
+                                  decoration: InputDecoration.collapsed(
+                                    hintText: getLang(
+                                      context: context,
+                                      key: 'Enter_Name',
+                                    ),
+                                    hintStyle:
+                                        styleb45.copyWith(fontSize: 1.6),
+                                  ),
+                                  style: style8.copyWith(height: 1),
+                                ),
+                              ),
+                            ),
                           ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+
+                    // Birthday
+                    InkWell(
+                      onTap: () => _showDatePickers(context),
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            Images.EnterBirth,
+                            height: SizeConfig.TenSize! * 4,
+                            width: SizeConfig.TenSize! * 7,
+                          ),
+                          Expanded(
+                            child: Container(
+                              height: SizeConfig.TenSize! * 4,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1878f3)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal:
+                                            SizeConfig.TenSize! * 2,
+                                      ),
+                                      child: Text(
+                                        user.History ??
+                                            getLang(
+                                              context: context,
+                                              key: 'What_Birthday',
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: style8.copyWith(
+                                          height: 1.4,
+                                          fontSize:
+                                              SizeConfig.TenSize! * 1.7,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+
+                    // Gender
+                    Row(
+                      children: [
+                        Image.asset(
+                          Images.EnterSex,
+                          height: SizeConfig.TenSize! * 4,
+                          width: SizeConfig.TenSize! * 7,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
                           child: Row(
                             children: [
-                              Padding(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: SizeConfig.TenSize! * 2,
-                                ),
-                                child: Text(
-                                  user.History ??
-                                      getLang(
-                                        context: context,
-                                        key: 'What_Birthday',
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    user.ginder = 1;
+                                    setState(() {});
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1878f3)
+                                          .withOpacity(
+                                        user.ginder == 1 ? 1 : 0.1,
                                       ),
-                                  style: style8.copyWith(
-                                    height: 2,
-                                    fontSize: SizeConfig.TenSize! * 1.7,
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: SizeConfig.TenSize!,
+                                      vertical: SizeConfig.TenSize!,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        getLang(
+                                          context: context,
+                                          key: 'Female',
+                                        ),
+                                        style: style4.copyWith(
+                                          fontSize:
+                                              SizeConfig.TenSize! * 1.3,
+                                          color: user.ginder == 1
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
-                              const Spacer(),
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    user.ginder = 0;
+                                    setState(() {});
+                                  },
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1878f3)
+                                          .withOpacity(
+                                        user.ginder == 0 ? 1 : 0.1,
+                                      ),
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: SizeConfig.TenSize!,
+                                      vertical: SizeConfig.TenSize!,
+                                    ),
+                                    child: Center(
+                                      child: Text(
+                                        getLang(
+                                          context: context,
+                                          key: 'Male',
+                                        ),
+                                        style: style4.copyWith(
+                                          fontSize:
+                                              SizeConfig.TenSize! * 1.3,
+                                          color: user.ginder == 0
+                                              ? Colors.white
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
-
-                // Gender
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    Image.asset(
-                      Images.EnterSex,
-                      height: SizeConfig.TenSize! * 4,
-                      width: SizeConfig.TenSize! * 7,
+                      ],
                     ),
-                    const SizedBox(width: 5),
-                    InkWell(
-                      onTap: () {
-                        user.ginder = 1;
-                        setState(() {});
-                      },
-                      child: Container(
-                        width: SizeConfig.TenSize! * 12,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1878f3).withOpacity(
-                            user.ginder == 1 ? 1 : 0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: SizeConfig.TenSize! * 3,
-                          vertical: SizeConfig.TenSize!,
-                        ),
-                        child: Center(
-                          child: Text(
-                            getLang(context: context, key: 'Female'),
-                            style: style4.copyWith(
-                              fontSize: SizeConfig.TenSize! * 1.3,
-                              color: user.ginder == 1
-                                  ? Colors.white
-                                  : Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    InkWell(
-                      onTap: () {
-                        user.ginder = 0;
-                        setState(() {});
-                      },
-                      child: Container(
-                        width: SizeConfig.TenSize! * 12,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1878f3).withOpacity(
-                            user.ginder == 0 ? 1 : 0.1,
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        padding: EdgeInsets.symmetric(
-                          horizontal: SizeConfig.TenSize! * 3,
-                          vertical: SizeConfig.TenSize!,
-                        ),
-                        child: Center(
-                          child: Text(
-                            getLang(context: context, key: 'Male'),
-                            style: style4.copyWith(
-                              fontSize: SizeConfig.TenSize! * 1.3,
-                              color: user.ginder == 0
-                                  ? Colors.white
-                                  : Colors.black87,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
 
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
 
-                // Phone number
-                Row(
-                  children: [
-                    Image.asset(
-                      Images.Phone,
-                      height: SizeConfig.TenSize! * 4,
-                      width: SizeConfig.TenSize! * 7,
-                    ),
-                    const SizedBox(width: 5),
-                    Expanded(
-                      child: Container(
-                        height: SizeConfig.TenSize! * 4,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1878f3).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Center(
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: SizeConfig.TenSize!,
-                              vertical: 5,
-                            ),
-                            child: TextFormField(
-                              controller: _phoneController,
-                              keyboardType: TextInputType.phone,
-                              textInputAction: TextInputAction.next,
-                              autofillHints: const [
-                                AutofillHints.telephoneNumber,
-                              ],
-                              decoration: InputDecoration.collapsed(
-                                hintText: getLang(
-                                  context: context,
-                                  key: 'Enter_Phone',
-                                ),
-                                hintStyle: styleb45.copyWith(fontSize: 1.6),
-                              ),
-                              style: style8.copyWith(height: 1),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
-
-                // Country selection
-                InkWell(
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppConstants.PickCode_Screan2,
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      Image.asset(
-                        Images.EnterLocation,
-                        height: SizeConfig.TenSize! * 4,
-                        width: SizeConfig.TenSize! * 7,
-                      ),
-                      Expanded(
-                        child: Container(
+                    // Phone number
+                    Row(
+                      children: [
+                        Image.asset(
+                          Images.Phone,
                           height: SizeConfig.TenSize! * 4,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF1878f3).withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Padding(
+                          width: SizeConfig.TenSize! * 7,
+                        ),
+                        const SizedBox(width: 5),
+                        Expanded(
+                          child: Container(
+                            height: SizeConfig.TenSize! * 4,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1878f3)
+                                  .withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Center(
+                              child: Padding(
                                 padding: EdgeInsets.symmetric(
-                                  horizontal: SizeConfig.TenSize! * 2,
+                                  horizontal: SizeConfig.TenSize!,
+                                  vertical: 5,
                                 ),
-                                child: Text(
-                                  user.Name2 ??
-                                      getLang(context: context, key: 'Country'),
-                                  style: style4.copyWith(
-                                    fontSize: 13,
-                                    color: Colors.black,
+                                child: TextFormField(
+                                  controller: _phoneController,
+                                  keyboardType: TextInputType.phone,
+                                  textInputAction: TextInputAction.done,
+                                  autofillHints: const [
+                                    AutofillHints.telephoneNumber,
+                                  ],
+                                  decoration: InputDecoration.collapsed(
+                                    hintText: getLang(
+                                      context: context,
+                                      key: 'Enter_Phone',
+                                    ),
+                                    hintStyle:
+                                        styleb45.copyWith(fontSize: 1.6),
                                   ),
+                                  style: style8.copyWith(height: 1),
+                                  onFieldSubmitted: (_) {
+                                    FocusScope.of(context).unfocus();
+                                  },
                                 ),
                               ),
-                              const Spacer(),
-                              if (user.Code2 != null)
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const SizedBox(width: 15),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    const SizedBox(height: Dimensions.FONT_SIZE_LARGE),
+
+                    // Country selection
+                    InkWell(
+                      onTap: () {
+                        FocusScope.of(context).unfocus();
+                        Navigator.pushNamed(
+                          context,
+                          AppConstants.PickCode_Screan2,
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          Image.asset(
+                            Images.EnterLocation,
+                            height: SizeConfig.TenSize! * 4,
+                            width: SizeConfig.TenSize! * 7,
+                          ),
+                          Expanded(
+                            child: Container(
+                              height: SizeConfig.TenSize! * 4,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1878f3)
+                                    .withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal:
+                                            SizeConfig.TenSize! * 2,
+                                      ),
+                                      child: Text(
+                                        user.Name2 ??
+                                            getLang(
+                                              context: context,
+                                              key: 'Country',
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: style4.copyWith(
+                                          fontSize: 13,
+                                          color: Colors.black,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (user.Code2 != null) ...[
                                     Text(
                                       user.Flag2 ?? '',
                                       style: TextStyle(
-                                        fontSize: SizeConfig.TenSize! * 2.5,
+                                        fontSize:
+                                            SizeConfig.TenSize! * 2.5,
+                                      ),
+                                    ),
+                                  ] else ...[
+                                    Flexible(
+                                      child: Text(
+                                        getLang(
+                                          context: context,
+                                          key: 'what_Country',
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: styleb45.copyWith(
+                                          fontSize: 13,
+                                        ),
                                       ),
                                     ),
                                   ],
-                                )
-                              else
-                                Text(
-                                  getLang(
-                                    context: context,
-                                    key: 'what_Country',
+                                  SizedBox(
+                                    width: SizeConfig.TenSize! * 2,
                                   ),
-                                  style: styleb45.copyWith(fontSize: 13),
-                                ),
-                              SizedBox(width: SizeConfig.TenSize! * 2),
-                            ],
+                                ],
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                    ),
+
+                    // Google email
+                    if (Gmail != null)
+                      Padding(
+                        padding: EdgeInsets.symmetric(
+                          horizontal: SizeConfig.TenSize!,
+                          vertical: SizeConfig.TenSize!,
+                        ),
+                        child: Row(
+                          children: [
+                            Image.asset(
+                              Images.location,
+                              width: 25,
+                              height: 25,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              getLang(context: context, key: 'Gmail'),
+                              style: style4.copyWith(
+                                fontSize: 13,
+                                color: Colors.black,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                Gmail ?? '',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.end,
+                                style: styleb45.copyWith(fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
-                  ),
-                ),
 
-                // Google email
-                if (Gmail != null)
-                  Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: SizeConfig.TenSize!,
-                      vertical: SizeConfig.TenSize!,
-                    ),
-                    child: Row(
-                      children: [
-                        Image.asset(
-                          Images.location,
-                          width: 25,
-                          height: 25,
-                        ),
-                        const SizedBox(width: 5),
-                        Text(
-                          getLang(context: context, key: 'Gmail'),
-                          style: style4.copyWith(
-                            fontSize: 13,
-                            color: Colors.black,
-                          ),
-                        ),
-                        const Spacer(),
-                        Flexible(
-                          child: Text(
-                            Gmail ?? '',
-                            overflow: TextOverflow.ellipsis,
-                            style: styleb45.copyWith(fontSize: 13),
-                          ),
-                        ),
-                        const SizedBox(width: 5),
-                      ],
-                    ),
-                  ),
+                    // Do not use Spacer in a scrollable Column.
+                    const SizedBox(height: 20),
 
-                const Spacer(),
-
-                Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: SizeConfig.TenSize! * 3.5,
-                  ),
-                  child: Text(
-                    getLang(context: context, key: 'Complete_Profile'),
-                    textAlign: TextAlign.center,
-                    style: style6.copyWith(
-                      fontSize: SizeConfig.TenSize! * 1.3,
-                      color: Colors.black45,
-                    ),
-                  ),
-                ),
-
-                SizedBox(height: SizeConfig.TenSize! * 2.5),
-
-                // Complete registration
-                InkWell(
-                  onTap: () => _completeRegistration(user),
-                  child: Center(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: MainColor,
-                        borderRadius: BorderRadius.circular(20),
+                    Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: SizeConfig.TenSize! * 3.5,
                       ),
-                      width: SizeConfig.screenWidth!,
-                      height: SizeConfig.TenSize! * 4.4,
+                      child: Text(
+                        getLang(
+                          context: context,
+                          key: 'Complete_Profile',
+                        ),
+                        textAlign: TextAlign.center,
+                        style: style6.copyWith(
+                          fontSize: SizeConfig.TenSize! * 1.3,
+                          color: Colors.black45,
+                        ),
+                      ),
+                    ),
+
+                    SizedBox(height: SizeConfig.TenSize! * 2.5),
+
+                    // Complete registration
+                    InkWell(
+                      onTap: () => _completeRegistration(user),
                       child: Center(
-                        child: Text(
-                          getLang(context: context, key: 'Done'),
-                          style: style1,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: MainColor,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          width: double.infinity,
+                          height: SizeConfig.TenSize! * 4.4,
+                          child: Center(
+                            child: Text(
+                              getLang(context: context, key: 'Done'),
+                              style: style1,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                ),
 
-                SizedBox(height: SizeConfig.TenSize! * 2.8),
-              ],
-            ),
-          ),
+                    SizedBox(height: SizeConfig.TenSize! * 2.8),
+                  ],
+                ),
+              ),
+            );
+          },
         ),
       ),
     );

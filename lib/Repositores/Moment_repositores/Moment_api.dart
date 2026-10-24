@@ -11,9 +11,15 @@ import '../../util/Dialogs.dart';
 import '../../util/app_constants.dart';
 import '../../viewmodels/Moment_Viewmodel/Moment_ViewModel.dart';
 
-int Index = 2;
-int PostIndex = 2;
-int FollowIndex = 2;
+// General feed pagination.
+int PostIndex = 1;
+bool HasMorePosts = true;
+bool IsLoadingMorePosts = false;
+
+// Following feed pagination.
+int FollowIndex = 1;
+bool HasMoreFollowPosts = true;
+bool IsLoadingMoreFollowPosts = false;
 
 class Momentapi extends MomentRepository {
   final Dio _dio = ApiClient.instance.dio;
@@ -46,136 +52,245 @@ class Momentapi extends MomentRepository {
   }
 
   Future<List<Postes>> GetPosts(context) async {
-    PostIndex = 2;
+  PostIndex = 1;
+  HasMorePosts = true;
+  IsLoadingMorePosts = false;
 
-    try {
-      final response = await _dio.get(
-        '/api/GetPosts/$UserId',
-      );
+  try {
+    final response = await _dio.get('/api/GetPosts/$UserId');
 
-      final List list =
-          response.data['Postes']['date']['data'] ?? [];
+    final root = _asMap(response.data);
+    final postes = _asMap(root['Postes']);
+    final pagination = _asMap(postes['date']);
 
-      final List ste =
-          response.data['Postes']['posts'] ?? [];
+    final rawData = pagination['data'];
+    final List<dynamic> list =
+        rawData is List ? rawData : <dynamic>[];
 
-      GeneralPostes.clear();
+    final currentPage = _asInt(
+      pagination['current_page'],
+      fallback: 1,
+    );
 
-      for (final element in list) {
-        GeneralPostes.add(
-          Postes.fromJson(element),
-        );
-      }
+    final lastPage = _asInt(
+      pagination['last_page'],
+      fallback: currentPage,
+    );
 
+    final nextPageUrl = pagination['next_page_url'];
+
+    final result = list
+        .map((item) => Postes.fromJson(_asMap(item)))
+        .toList();
+
+    // Update pagination only after a successful response.
+    PostIndex = currentPage + 1;
+    HasMorePosts = nextPageUrl != null &&
+        nextPageUrl.toString().isNotEmpty &&
+        currentPage < lastPage;
+
+    // The API supplies IDs of posts liked by the current user here.
+    final likedPosts = postes['posts'];
+    if (likedPosts is List) {
       Provider.of<MomentViewModel>(
         context,
         listen: false,
-      ).GetLikedPost(ste);
-    } catch (e) {
-      final exception = await _handleError(e);
-      print(exception);
+      ).GetLikedPost(likedPosts);
     }
 
-    return GeneralPostes;
+    GeneralPostes
+      ..clear()
+      ..addAll(result);
+
+    return result;
+  } catch (e) {
+    final exception = await _handleError(e);
+    print('GET POSTS ERROR: $exception');
+
+    // Keep the pagination state retryable after a failed request.
+    rethrow;
+  }
+}
+
+ Future<List<Postes>> GetFollowPostes(context) async {
+  FollowIndex = 1;
+  HasMoreFollowPosts = true;
+  IsLoadingMoreFollowPosts = false;
+
+  try {
+    final response = await _dio.get(
+      '/api/GetPostsUserFollowing/$UserId',
+    );
+
+    final root = _asMap(response.data);
+    final pagination = _asMap(root['Postes']);
+
+    final rawData = pagination['data'];
+    final List<dynamic> list =
+        rawData is List ? rawData : <dynamic>[];
+
+    final currentPage = _asInt(
+      pagination['current_page'],
+      fallback: 1,
+    );
+
+    final lastPage = _asInt(
+      pagination['last_page'],
+      fallback: currentPage,
+    );
+
+    final nextPageUrl = pagination['next_page_url'];
+
+    final result = list
+        .map((item) => Postes.fromJson(_asMap(item)))
+        .toList();
+
+    FollowIndex = currentPage + 1;
+    HasMoreFollowPosts = nextPageUrl != null &&
+        nextPageUrl.toString().isNotEmpty &&
+        currentPage < lastPage;
+
+    print(
+      'FOLLOWING FEED: page=$currentPage/$lastPage, '
+      'items=${result.length}, '
+      'hasMore=$HasMoreFollowPosts',
+    );
+
+    return result;
+  } catch (e) {
+    final exception = await _handleError(e);
+    print('GET FOLLOWING POSTS ERROR: $exception');
+    rethrow;
+  }
+}
+
+ Future<List<Postes>> AddmoreFollowPosts(context) async {
+  if (!HasMoreFollowPosts || IsLoadingMoreFollowPosts) {
+    return <Postes>[];
   }
 
-  Future<List<Postes>> GetFollowPostes(context) async {
-    FollowIndex = 2;
+  IsLoadingMoreFollowPosts = true;
 
-    try {
-      final response = await _dio.get(
-        '/api/GetPostsUserFollowing/$UserId',
-      );
+  try {
+    final requestedPage = FollowIndex;
 
-      final List list =
-          response.data['Postes']['data'] ?? [];
+    final response = await _dio.get(
+      '/api/GetPostsUserFollowing/$UserId',
+      queryParameters: {'page': requestedPage},
+    );
 
-      GeneralPostes.clear();
+    final root = _asMap(response.data);
+    final pagination = _asMap(root['Postes']);
 
-      for (final element in list) {
-        GeneralPostes.add(
-          Postes.fromJson(element),
-        );
-      }
-    } catch (e) {
-      final exception = await _handleError(e);
-      print(exception);
-    }
+    final rawData = pagination['data'];
+    final List<dynamic> list =
+        rawData is List ? rawData : <dynamic>[];
 
-    return GeneralPostes;
+    final currentPage = _asInt(
+      pagination['current_page'],
+      fallback: requestedPage,
+    );
+
+    final lastPage = _asInt(
+      pagination['last_page'],
+      fallback: currentPage,
+    );
+
+    final nextPageUrl = pagination['next_page_url'];
+
+    final newPosts = list
+        .map((item) => Postes.fromJson(_asMap(item)))
+        .toList();
+
+    FollowIndex = currentPage + 1;
+
+    HasMoreFollowPosts = newPosts.isNotEmpty &&
+        nextPageUrl != null &&
+        nextPageUrl.toString().isNotEmpty &&
+        currentPage < lastPage;
+
+    print(
+      'FOLLOWING FEED: requested=$requestedPage, '
+      'received=$currentPage/$lastPage, '
+      'items=${newPosts.length}, '
+      'hasMore=$HasMoreFollowPosts',
+    );
+
+    return newPosts;
+  } catch (e) {
+    final exception = await _handleError(e);
+    print('LOAD MORE FOLLOWING POSTS ERROR: $exception');
+    rethrow;
+  } finally {
+    IsLoadingMoreFollowPosts = false;
+  }
+}
+ Future<List<Postes>> AddmorePosts(context) async {
+  if (!HasMorePosts || IsLoadingMorePosts) {
+    return <Postes>[];
   }
 
-  Future<List<Postes>> AddmoreFollowPosts(context) async {
-    try {
-      final response = await _dio.get(
-        '/api/GetPostsUserFollowing/$UserId?page=$FollowIndex',
-      );
+  IsLoadingMorePosts = true;
 
-      final List list =
-          response.data['Postes']['data'] ?? [];
+  try {
+    final requestedPage = PostIndex;
 
-      if (list.isNotEmpty) {
-        FollowIndex++;
-      }
+    final response = await _dio.get(
+      '/api/GetPosts/$UserId',
+      queryParameters: {'page': requestedPage},
+    );
 
-      for (final element in list) {
-        GeneralPostes.add(
-          Postes.fromJson(element),
-        );
-      }
-    } catch (e) {
-      final exception = await _handleError(e);
-      print(exception);
-    }
+    final root = _asMap(response.data);
+    final postes = _asMap(root['Postes']);
+    final pagination = _asMap(postes['date']);
 
-    return GeneralPostes;
+    final rawData = pagination['data'];
+    final List<dynamic> list =
+        rawData is List ? rawData : <dynamic>[];
+
+    final currentPage = _asInt(
+      pagination['current_page'],
+      fallback: requestedPage,
+    );
+
+    final lastPage = _asInt(
+      pagination['last_page'],
+      fallback: currentPage,
+    );
+
+    final nextPageUrl = pagination['next_page_url'];
+
+    final newPosts = list
+        .map((item) => Postes.fromJson(_asMap(item)))
+        .toList();
+
+    // Use the page actually returned by the server.
+    PostIndex = currentPage + 1;
+
+    HasMorePosts = newPosts.isNotEmpty &&
+        nextPageUrl != null &&
+        nextPageUrl.toString().isNotEmpty &&
+        currentPage < lastPage;
+
+    print(
+      'GENERAL FEED: requested=$requestedPage, '
+      'received=$currentPage/$lastPage, '
+      'items=${newPosts.length}, '
+      'hasMore=$HasMorePosts',
+    );
+
+    // Return ONLY this page. The ViewModel appends it once.
+    return newPosts;
+  } catch (e) {
+    final exception = await _handleError(e);
+    print('LOAD MORE GENERAL POSTS ERROR: $exception');
+
+    // Do not advance PostIndex on failure; the next attempt retries it.
+    rethrow;
+  } finally {
+    IsLoadingMorePosts = false;
   }
-
-  Future<List<Postes>> AddmorePosts(context) async {
-    try {
-      final response = await _dio.get(
-        '/api/GetPosts/$UserId?page=$PostIndex',
-      );
-
-      final List list =
-          response.data['Postes']['date']['data'] ?? [];
-
-      if (list.isNotEmpty) {
-        PostIndex++;
-      }
-
-      print('POST INDEX IS $PostIndex');
-
-      for (final element in list) {
-        GeneralPostes.add(
-          Postes.fromJson(element),
-        );
-      }
-
-      print(GeneralPostes);
-    } catch (e) {
-      final exception = await _handleError(e);
-
-      print(exception);
-
-      if (exception.data is Map) {
-        final errNum = exception.data['errNum'];
-
-        if (errNum != null) {
-          Dialogs().ShowErrorToast(
-            errNum,
-            context,
-          );
-        }
-
-        if (errNum == '3500') {
-          // Existing special handling.
-        }
-      }
-    }
-
-    return GeneralPostes;
-  }
+}
 
   Future<bool> ReportPost({
     context,
@@ -523,55 +638,84 @@ class Momentapi extends MomentRepository {
     }
   }
 
-  Future<Postes> AddPost({
-    context,
-    tittle,
-    image,
-  }) async {
-    try {
-      final Map<String, dynamic> map = {
-        'user_id': UserId.toString(),
-        'content': tittle.toString(),
-      };
+ 
+Future<Postes?> AddPost({
+  context,
+  tittle,
+  image,
+}) async {
+  try {
+    final Map<String, dynamic> map = {
+      'user_id': UserId.toString(),
+      'content': tittle.toString(),
+    };
 
-      if (image != null) {
-        map['image'] = await MultipartFile.fromFile(
-          image.path,
-          filename: image.path.split('/').last,
-        );
-      }
+    if (image != null) {
+      map['image'] = await MultipartFile.fromFile(
+        image.path,
+        filename: image.path.split('/').last,
+      );
+    }
 
-      final formData = FormData.fromMap(map);
+    final formData = FormData.fromMap(map);
 
-      final response = await _dio.post(
-        '/api/AddPost',
-        data: formData,
+    print('ADD POST: Sending POST /api/AddPost');
+
+    final response = await _dio.post(
+      '/api/AddPost',
+      data: formData,
+    );
+
+    print('ADD POST: HTTP ${response.statusCode}');
+    print('ADD POST: Response = ${response.data}');
+
+    if (response.statusCode == 200 &&
+        response.data is Map &&
+        response.data['status'] == true &&
+        response.data['Postes'] is Map) {
+      final Postes createdPost = Postes.fromJson(
+        Map<String, dynamic>.from(response.data['Postes']),
       );
 
-      print(response.data['Comment']);
+      print('ADD POST: Success. Created post ID = ${createdPost.id}');
 
-      if (response.statusCode == 200) {
-        post = Postes.fromJson(
-          response.data['Postes'],
-        );
-      }
-    } catch (e) {
-      final exception = await _handleError(e);
+      return createdPost;
+    }
 
-      print(exception);
+    print('ADD POST: Server did not confirm success.');
+    return null;
+  } catch (e) {
+    final exception = await _handleError(e);
 
-      if (exception.data is Map) {
-        final errNum = exception.data['errNum'];
+    print('ADD POST ERROR: $exception');
 
-        if (errNum != null) {
-          Dialogs().ShowErrorRegesterToast(
-            errNum,
-            context,
-          );
-        }
+    if (exception.data is Map) {
+      final errNum = exception.data['errNum'];
+
+      if (errNum != null && context != null) {
+        Dialogs().ShowErrorRegesterToast(errNum, context);
       }
     }
 
-    return post;
+    return null;
   }
+}
+
+Map<String, dynamic> _asMap(dynamic value) {
+  if (value is Map<String, dynamic>) {
+    return value;
+  }
+
+  if (value is Map) {
+    return Map<String, dynamic>.from(value);
+  }
+
+  return <String, dynamic>{};
+}
+
+int _asInt(dynamic value, {required int fallback}) {
+  if (value is int) return value;
+
+  return int.tryParse(value?.toString() ?? '') ?? fallback;
+}
 }

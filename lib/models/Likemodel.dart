@@ -1,5 +1,3 @@
-
-
 import 'package:ahlachat/models/Usermodel.dart';
 
 class Like {
@@ -10,33 +8,54 @@ class Like {
   String? updatedAt;
   usermodel? user;
 
-  Like(
-      {this.id,
-        this.postId,
-        this.userId,
-        this.createdAt,
-        this.updatedAt,
-        this.user});
+  Like({
+    this.id,
+    this.postId,
+    this.userId,
+    this.createdAt,
+    this.updatedAt,
+    this.user,
+  });
+
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
+  }
+
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    return value.toString();
+  }
 
   Like.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    postId = json['post_id'];
-    userId = json['user_id'];
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-    user = json['user'] != null ? new usermodel.fromJson(json['user']) : null;
+    id = _parseInt(json['id']);
+    postId = _parseString(json['post_id']);
+    userId = _parseString(json['user_id']);
+
+    createdAt = _parseString(json['created_at']);
+    updatedAt = _parseString(json['updated_at']);
+
+    final dynamic rawUser = json['user'];
+
+    if (rawUser is Map) {
+      user = usermodel.fromJson(
+        Map<String, dynamic>.from(rawUser),
+      );
+    } else {
+      user = null;
+    }
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['post_id'] = this.postId;
-    data['user_id'] = this.userId;
-    data['created_at'] = this.createdAt;
-    data['updated_at'] = this.updatedAt;
-    if (this.user != null) {
-      data['user'] = this.user!.toJson();
-    }
-    return data;
+    return <String, dynamic>{
+      'id': id,
+      'post_id': postId,
+      'user_id': userId,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'user': user?.toJson(),
+    };
   }
 }

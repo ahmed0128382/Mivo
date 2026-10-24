@@ -1,5 +1,6 @@
 import 'package:ahlachat/Repositores/Shop_repositores/ShopRepository.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/material.dart';
 
 import '../../core/network/api_client.dart';
 import '../../core/network/api_exception.dart';
@@ -246,48 +247,67 @@ class shopapi extends ShopRepository {
     return check;
   }
 
-  Future<bool> Updateprofilebubles({
-    Frame,
-    context,
-  }) async {
-    bool check = false;
-
-    try {
-      final FormData formData = FormData.fromMap({
-        'user_id': UserId.toString(),
-        'frame': Frame.toString(),
-      });
-
-      final response = await _dio.post(
-        'api/Setprofilebubles',
-        data: formData,
+ 
+Future<bool> Updateprofilebubles({
+  dynamic Frame,
+  dynamic context,
+}) async {
+  try {
+    if (Frame == null || Frame.toString().trim().isEmpty) {
+      debugPrint(
+        'Setprofilebubles failed: bubble filename is empty.',
       );
+      return false;
+    }
 
-      if (response.statusCode == 200) {
-        check = true;
-      } else {
-        check = false;
-      }
-    } catch (e) {
-      check = false;
+    final FormData formData = FormData.fromMap({
+      'user_id': UserId.toString(),
+      'frame': Frame.toString(),
+    });
 
-      final exception = _handleError(e);
-      print(exception);
+    final response = await _dio.post(
+      '/api/Setprofilebubles',
+      data: formData,
+    );
 
-      if (e is DioException) {
-        final errNum = e.response?.data?['errNum'];
+    final dynamic data = response.data;
 
-        if (errNum != null) {
-          Dialogs().ShowErrorRegesterToast(
-            errNum,
-            context,
-          );
-        }
+    // This endpoint returns JSON containing status: true
+    // and Setframe: "1789733934.svg" on success.
+    final bool success =
+        response.statusCode == 200 &&
+        data is Map &&
+        data['status'] == true;
+
+    debugPrint(
+      'Setprofilebubles: '
+      'http=${response.statusCode}, '
+      'success=$success, '
+      'response=$data',
+    );
+
+    return success;
+  } catch (e) {
+    final exception = _handleError(e);
+    debugPrint('Updateprofilebubles failed: $exception');
+
+    if (e is DioException) {
+      final dynamic errNum = e.response?.data is Map
+          ? e.response?.data['errNum']
+          : null;
+
+      if (errNum != null && context != null) {
+        Dialogs().ShowErrorRegesterToast(
+          errNum,
+          context,
+        );
       }
     }
 
-    return check;
+    return false;
   }
+}
+
 
   Future<bool> RemoveFrame({
     context,
@@ -520,4 +540,83 @@ class shopapi extends ShopRepository {
 
     return AllMyItems;
   }
+  
+
+
+Future<List<Salesmodel>> getMyBag2({
+  required int userId,
+  required int categoryId,
+}) async {
+  try {
+    final formData = FormData.fromMap({
+      'user_id': userId.toString(),
+      'category_id': categoryId.toString(),
+    });
+
+    final response = await _dio.post(
+      '/api/Getmyitems',
+      data: formData,
+    );
+
+    if (response.statusCode == 200 && response.data['status'] == true) {
+      final List<dynamic> list = response.data['Sales'] ?? [];
+
+      AllMyItems.clear();
+
+      for (final element in list) {
+        AllMyItems.add(
+          Salesmodel.fromJson(
+            Map<String, dynamic>.from(element),
+          ),
+        );
+      }
+    } else {
+      AllMyItems.clear();
+    }
+  } catch (e) {
+    final exception = _handleError(e);
+    print(exception);
+    AllMyItems.clear();
+  }
+
+  return AllMyItems;
+}
+
+Future<List<Sales>> getMyItemsByCategory({
+  required int userId,
+  required int categoryId,
+}) async {
+  try {
+    final formData = FormData.fromMap({
+      'user_id': userId.toString(),
+      'category_id': categoryId.toString(),
+    });
+
+    final response = await _dio.post(
+      '/api/Getmyitems',
+      data: formData,
+    );
+
+    if (response.statusCode == 200 &&
+        response.data['status'] == true) {
+      final List<dynamic> list = response.data['Sales'] ?? [];
+
+      return list.map<Sales>((element) {
+        return Sales.fromJson(
+          Map<String, dynamic>.from(element),
+        );
+      }).toList();
+    }
+
+    return [];
+  } catch (e) {
+    final exception = _handleError(e);
+    print(
+      'Getmyitems failed for category $categoryId: $exception',
+    );
+
+    return [];
+  }
+}
+
 }

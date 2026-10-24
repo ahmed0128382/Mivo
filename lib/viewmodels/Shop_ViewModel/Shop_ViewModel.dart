@@ -1,6 +1,7 @@
 
 import 'package:ahlachat/main.dart';
 import 'package:ahlachat/util/Localization.dart';
+import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/util/helperclass.dart';
 import 'package:ahlachat/view/Screans/BageScrean/BageScrean.dart';
 import 'package:ahlachat/view/Screans/MainScreans/ShopScrean/ShopScrean.dart';
@@ -87,6 +88,59 @@ class ShopViewmodel extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> getBag2({
+  required BuildContext context,
+}) async {
+  ShowGlopalLoading();
+
+  try {
+    final api = shopapi();
+
+    // Step 1: Get all shop categories dynamically.
+    final categories = await api.getShop(context: context);
+
+    final int userId = int.parse(UserId.toString());
+
+    // Step 2: Fetch purchased items for every category.
+    final List<Salesmodel> bagCategories = [];
+
+    for (final category in categories) {
+      final int? categoryId = category.id;
+
+      if (categoryId == null) continue;
+
+      final sales = await api.getMyItemsByCategory(
+        userId: userId,
+        categoryId: categoryId,
+      );
+
+      // Preserve the category-based structure expected by
+      // the existing BagScrean.
+      bagCategories.add(
+        Salesmodel(
+          id: category.id,
+          name: category.name,
+          status: category.status,
+          createdAt: category.createdAt,
+          updatedAt: category.updatedAt,
+          sales: sales,
+        ),
+      );
+    }
+
+    AllMyItem = bagCategories;
+
+    navigateTo(
+      context: context,
+      screen: BagScrean(),
+    );
+  } catch (e) {
+    print('GetBag error: $e');
+  } finally {
+    DismissGlopalLoading();
+    notifyListeners();
+  }
+}
   ByeShop({context}) async {
     LoginViewmodel user=  Provider.of<LoginViewmodel>(context,listen: false);
     ShowGlopalLoading();
@@ -169,23 +223,125 @@ if((user.userinfo?.coins??0)<(price??0)){
 
     notifyListeners();
   }
-  UserpdatepROFILEbubles({context, Frame}) async {
-    ShowGlopalLoading();
-    await shopapi().
-    Updateprofilebubles(Frame:Frame, context: context)
-        .then((value) {
-      if(value==true){
-        Dialogs().showtoast(getLang(context:NavigationService.navigatorKey.currentContext,key: "Done_Succ"));
+  
 
-      }else{
-        Dialogs().showtoast(getLang(context:NavigationService.navigatorKey.currentContext,key: "Sorry"));
+Future<void> UserpdatepROFILEbubles({
+  required BuildContext context,
+  required String? Frame,
+}) async {
+  if (Frame == null || Frame.trim().isEmpty) {
+    Dialogs().showtoast(
+      getLang(
+        context: NavigationService.navigatorKey.currentContext,
+        key: 'Sorry',
+      ),
+    );
+    return;
+  }
 
-      }
-      DismissGlopalLoading();
-    });
+  ShowGlopalLoading();
 
+  try {
+    final bool success = await shopapi().Updateprofilebubles(
+      Frame: Frame,
+      context: context,
+    );
+
+    if (!context.mounted) return;
+
+    if (success) {
+      final LoginViewmodel user =
+          Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      );
+
+      // The repository returns bool, not String.
+      // Use the selected bubble filename to update local state.
+      user.UpdateProfilebubles(frames: Frame);
+
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Done_Succ',
+        ),
+      );
+    } else {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Sorry',
+        ),
+      );
+    }
+  } catch (e, stackTrace) {
+    debugPrint('Update profile bubble failed: $e');
+    debugPrintStack(stackTrace: stackTrace);
+
+    Dialogs().showtoast(
+      getLang(
+        context: NavigationService.navigatorKey.currentContext,
+        key: 'Sorry',
+      ),
+    );
+  } finally {
+    DismissGlopalLoading();
     notifyListeners();
   }
+}
+
+Future<void> RemoveProfilebubles({
+  required BuildContext context,
+}) async {
+  ShowGlopalLoading();
+
+  try {
+    final bool success = await shopapi().RemoveProfilebubles(
+      context: context,
+    );
+
+    if (!context.mounted) return;
+
+    if (success) {
+      final LoginViewmodel user =
+          Provider.of<LoginViewmodel>(
+        context,
+        listen: false,
+      );
+
+      // Clear the local bubble only after successful removal.
+      user.removeProfilebubles();
+
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Done_Succ',
+        ),
+      );
+    } else {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: 'Sorry',
+        ),
+      );
+    }
+  } catch (e, stackTrace) {
+    debugPrint('Remove profile bubble failed: $e');
+    debugPrintStack(stackTrace: stackTrace);
+
+    Dialogs().showtoast(
+      getLang(
+        context: NavigationService.navigatorKey.currentContext,
+        key: 'Sorry',
+      ),
+    );
+  } finally {
+    DismissGlopalLoading();
+    notifyListeners();
+  }
+}
+
 
   RemoveFrame({context}) async {
     ShowGlopalLoading();
@@ -234,21 +390,7 @@ if((user.userinfo?.coins??0)<(price??0)){
 
     notifyListeners();
   }
-  RemoveProfilebubles({context}) async {
-    ShowGlopalLoading();
-    await shopapi().
-    RemoveProfilebubles(  context: context)
-        .then((value) {
-      if(value==true){
-        Dialogs().showtoast(getLang(context:NavigationService.navigatorKey.currentContext,key: "Done_Succ"));
-      }else{
-        Dialogs().showtoast(getLang(context:NavigationService.navigatorKey.currentContext,key: "Sorry"));
-      }
-      DismissGlopalLoading();
-    });
-
-    notifyListeners();
-  }
+  
   UserpdateEntry({context, Entry}) async {
     ShowGlopalLoading();
     await shopapi().UpdateEntry(Entry:Entry, context: context)

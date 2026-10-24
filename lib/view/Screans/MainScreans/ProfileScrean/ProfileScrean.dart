@@ -265,10 +265,12 @@ class ProfileScrean extends StatelessWidget {
                     ),
                   ),
                   InkWell(
-                    onTap: () {
-                      Shop.GetBag(context: context);
-                    },
-                    child: Column(
+  onTap: () {
+    Shop.getBag2(
+      context: context,
+    );
+  },
+  child: Column(
                       mainAxisSize: MainAxisSize.min,
                       mainAxisAlignment: MainAxisAlignment.start,
                       crossAxisAlignment: CrossAxisAlignment.center,

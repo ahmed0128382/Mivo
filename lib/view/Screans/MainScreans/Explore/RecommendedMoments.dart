@@ -19,7 +19,6 @@ import 'package:flutter/cupertino.dart';
 
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:provider/provider.dart';
-import 'package:pull_to_refresh/pull_to_refresh.dart';
 
 import 'package:readmore/readmore.dart';
 
@@ -37,14 +36,32 @@ class _RecommendedMomentsState extends State<RecommendedMoments> {
   ScrollController? _controller;
 
   void _scrollListener() {
-    MomentViewModel Moment=  Provider.of<MomentViewModel>(context,listen: false);
-    if((_controller?.offset??0) >= (_controller?.position.maxScrollExtent??0)-20 && !Moment.showloading7){
-      Moment.GetMorePostes(context);
-    }
-
-
-
+  if (_controller == null || !_controller!.hasClients) {
+    return;
   }
+
+  final posts = Provider.of<MomentViewModel>(
+    context,
+    listen: false,
+  );
+
+  if (!posts.hasMoreGeneralPosts || posts.showloading7) {
+    return;
+  }
+
+  final position = _controller!.position;
+
+  if (position.maxScrollExtent - position.pixels <= 200) {
+    posts.GetMorePostes(context);
+  }
+}
+
+@override
+void dispose() {
+  _controller?.removeListener(_scrollListener);
+  _controller?.dispose();
+  super.dispose();
+}
 
 
   @override
@@ -85,7 +102,23 @@ class _RecommendedMomentsState extends State<RecommendedMoments> {
                       },
                         child: Row(
                           children: [
-                            CircleAvatar(backgroundColor: Colors.transparent,backgroundImage: CachedNetworkImageProvider(Postuser?.image ?? ''), radius: 23, ),
+                            
+CircleAvatar(
+  radius: 23,
+  backgroundColor: Colors.transparent,
+  backgroundImage: (Postuser?.image != null &&
+          Postuser!.image!.trim().isNotEmpty)
+      ? CachedNetworkImageProvider(Postuser.image!)
+      : null,
+  child: (Postuser?.image == null ||
+          Postuser!.image!.trim().isEmpty)
+      ? const Icon(
+          Icons.person,
+          color: Colors.grey,
+          size: 25,
+        )
+      : null,
+),
                             SizedBox(width: 5,),
                             UserSideInfoWidgets(UserDate: Postuser,showdescr: 1,)
                           ],

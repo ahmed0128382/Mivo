@@ -7,7 +7,7 @@ import 'package:on_audio_query/on_audio_query.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../Repositores/Music_repositores/Musicapi.dart';
+import '../../Repositores/Music_repositores/music_api.dart';
 import '../../models/UserMusic.dart';
 
 class DurationState {

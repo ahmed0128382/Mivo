@@ -1,5 +1,3 @@
-
-
 import 'package:ahlachat/models/CommentsModel.dart';
 import 'package:ahlachat/models/Likemodel.dart';
 import 'package:ahlachat/models/Usermodel.dart';
@@ -11,29 +9,42 @@ class PostsModel {
   String? msg;
   List<Postes>? postes;
 
-  PostsModel({this.status, this.errNum, this.msg, this.postes});
+  PostsModel({
+    this.status,
+    this.errNum,
+    this.msg,
+    this.postes,
+  });
 
   PostsModel.fromJson(Map<String, dynamic> json) {
-    status = json['status'];
-    errNum = json['errNum'];
-    msg = json['msg'];
-    if (json['Postes'] != null) {
+    status = json['status'] as bool?;
+    errNum = json['errNum']?.toString();
+    msg = json['msg']?.toString();
+
+    final dynamic rawPosts = json['Postes'];
+
+    if (rawPosts is List) {
+      postes = rawPosts
+          .whereType<Map>()
+          .map(
+            (item) => Postes.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+    } else {
       postes = <Postes>[];
-      json['Postes'].forEach((v) {
-        postes!.add(new Postes.fromJson(v));
-      });
     }
   }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['status'] = this.status;
-    data['errNum'] = this.errNum;
-    data['msg'] = this.msg;
-    if (this.postes != null) {
-      data['Postes'] = this.postes!.map((v) => v.toJson()).toList();
-    }
-    return data;
+    return <String, dynamic>{
+      'status': status,
+      'errNum': errNum,
+      'msg': msg,
+      if (postes != null)
+        'Postes': postes!.map((post) => post.toJson()).toList(),
+    };
   }
 }
 
@@ -43,83 +54,140 @@ class Postes {
   String? content;
   int? likes;
   int? comments;
-  var image ;
+  String? image;
   String? createdAt;
   String? updatedAt;
   usermodel? user;
-  List<Like>? like=[];
-  List<Comments>? commentsuser=[];
-  Postes(
-      {this.id,
-        this.userId,
-        this.content,
-        this.likes,
-        this.comments,
-        this.image ,
-        this.createdAt,
-        this.updatedAt,
-        this.user,
-        this.like,
-        this.commentsuser});
+  List<Like>? like = <Like>[];
+  List<Comments>? commentsuser = <Comments>[];
 
-  Postes.fromJson(Map<String, dynamic> json) {
-    id = json['id'];
-    userId =json['user_id']==null? '':json['user_id'];
-    content = json['content']==null? '':json['content'];
-  //  image = json['image']==null? '':AppConstants.Image_URL+json['image'];
-    likes = json['likes'];
-    comments = json['comments'];
-    if(json['image']!=null){
-      image =AppConstants.Image_URL+ json['image'];
-    }else{
-      image='';
-    }
+  Postes({
+    this.id,
+    this.userId,
+    this.content,
+    this.likes,
+    this.comments,
+    this.image,
+    this.createdAt,
+    this.updatedAt,
+    this.user,
+    this.like,
+    this.commentsuser,
+  });
 
-    createdAt = json['created_at'];
-    updatedAt = json['updated_at'];
-      user = json['user'] != null ? new usermodel.fromJson(json['user']) : null;
-
-      if (json['commentsuser'] != null) {
-        commentsuser = <Comments>[];
-        json['commentsuser'].forEach((v) {
-       commentsuser!.add(new Comments.fromJson(v));
-      });
-    }else{
-      commentsuser =[];
-    }
-
-    if (json['like'] != null) {
-      like = <Like>[];
-      json['like'].forEach((v) {
-        like!.add(new Like.fromJson(v));
-      });
-  }else{
-      like =[];
-
-    }
-
+  static int? _parseInt(dynamic value) {
+    if (value == null) return null;
+    if (value is int) return value;
+    if (value is num) return value.toInt();
+    return int.tryParse(value.toString());
   }
 
+  static String? _parseString(dynamic value) {
+    if (value == null) return null;
+    return value.toString();
+  }
+
+  static String _parseImage(dynamic value) {
+    if (value == null) return '';
+
+    final String path = value.toString().trim();
+
+    if (path.isEmpty || path.toLowerCase() == 'null') {
+      return '';
+    }
+
+    // Preserve complete URLs returned by the API.
+    if (path.startsWith('https://') || path.startsWith('http://')) {
+      return path;
+    }
+
+    final String baseUrl = AppConstants.Image_URL;
+
+    // Avoid duplicating the base URL.
+    if (path.startsWith(baseUrl)) {
+      return path;
+    }
+
+    final String normalizedBase = baseUrl.endsWith('/')
+        ? baseUrl
+        : '$baseUrl/';
+
+    final String normalizedPath = path.startsWith('/')
+        ? path.substring(1)
+        : path;
+
+    return '$normalizedBase$normalizedPath';
+  }
+
+  Postes.fromJson(Map<String, dynamic> json) {
+    id = _parseInt(json['id']);
+    userId = _parseString(json['user_id']) ?? '';
+    content = _parseString(json['content']) ?? '';
+
+    likes = _parseInt(json['likes']);
+    comments = _parseInt(json['comments']);
+
+    image = _parseImage(json['image']);
+
+    createdAt = _parseString(json['created_at']);
+    updatedAt = _parseString(json['updated_at']);
+
+    final dynamic rawUser = json['user'];
+
+    if (rawUser is Map) {
+      user = usermodel.fromJson(
+        Map<String, dynamic>.from(rawUser),
+      );
+    } else {
+      user = null;
+    }
+
+    final dynamic rawComments = json['commentsuser'];
+
+    if (rawComments is List) {
+      commentsuser = rawComments
+          .whereType<Map>()
+          .map(
+            (item) => Comments.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+    } else {
+      commentsuser = <Comments>[];
+    }
+
+    final dynamic rawLikes = json['like'];
+
+    if (rawLikes is List) {
+      like = rawLikes
+          .whereType<Map>()
+          .map(
+            (item) => Like.fromJson(
+              Map<String, dynamic>.from(item),
+            ),
+          )
+          .toList();
+    } else {
+      like = <Like>[];
+    }
+  }
 
   Map<String, dynamic> toJson() {
-    final Map<String, dynamic> data = new Map<String, dynamic>();
-    data['id'] = this.id;
-    data['user_id'] = this.userId;
-    data['content'] = this.content;
-    data['likes'] = this.likes;
-    data['comments'] = this.comments;
-    data['image'] = this.image;
-    data['created_at'] = this.createdAt;
-    data['updated_at'] = this.updatedAt;
-    if (this.commentsuser != null) {
-      data['commentsuser'] = this.commentsuser!.map((v) => v.toJson()).toList();
-    }
-    if (this.user != null) {
-      data['user'] = this.user!.toJson();
-    }
-    if (this.like != null) {
-      data['like'] = this.like!.map((v) => v.toJson()).toList();
-    }
-    return data;
+    return <String, dynamic>{
+      'id': id,
+      'user_id': userId,
+      'content': content,
+      'likes': likes,
+      'comments': comments,
+      'image': image,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'commentsuser': commentsuser
+          ?.map((comment) => comment.toJson())
+          .toList(),
+      'user': user?.toJson(),
+      'like': like?.map((item) => item.toJson()).toList(),
+    };
   }
 }

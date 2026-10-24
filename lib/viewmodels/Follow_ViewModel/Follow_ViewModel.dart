@@ -20,6 +20,8 @@ class FollowViewModel extends ChangeNotifier {
 bool fanspanner=false;
 bool fanspanner2=false;
 bool Visitorspanner=false;
+bool friendsLoaded = false;
+bool visitorsLoaded = false;
 RefreshController refreshController = RefreshController(initialRefresh: false);
 RefreshController refreshController2 = RefreshController(initialRefresh: false);
 RefreshController refreshController4 = RefreshController(initialRefresh: false);
@@ -108,17 +110,69 @@ sentShareRoom({context,userid})async{
 }
 
 
-GetmyVisitors({context})async{
+
+GetmyVisitors({context}) async {
   ShowGlopalLoading();
-  await Followapi().Getvisitors( context ).then((value) {
 
-    visitor=value;
+  try {
+    final value = await Followapi().Getvisitors(context);
 
+    final LoginViewmodel user =
+        Provider.of<LoginViewmodel>(context, listen: false);
+
+    final int? currentUserId = user.userinfo?.id;
+
+    final seenVisitorIds = <int>{};
+
+    visitor = value.where((item) {
+      final int? visitorId = item.user?.id;
+
+      // Never count the current user as their own visitor.
+      if (visitorId == null || visitorId == currentUserId) {
+        return false;
+      }
+
+      // Avoid counting the same visitor more than once.
+      return seenVisitorIds.add(visitorId);
+    }).toList();
+
+    visitorsLoaded = true;
+  } catch (e) {
+    debugPrint('GetmyVisitors failed: $e');
+  } finally {
     DismissGlopalLoading();
-
-  });
-  notifyListeners();
+    notifyListeners();
+  }
 }
+
+GetFriends({context}) async {
+  ShowGlopalLoading();
+
+  try {
+    final value = await Followapi().GetFriends(context);
+
+    final seenFriendIds = <int>{};
+
+    Friends = value.where((friend) {
+      final int? friendId = friend.id;
+
+      if (friendId == null) {
+        return false;
+      }
+
+      // Avoid duplicate friend records.
+      return seenFriendIds.add(friendId);
+    }).toList();
+
+    friendsLoaded = true;
+  } catch (e) {
+    debugPrint('GetFriends failed: $e');
+  } finally {
+    DismissGlopalLoading();
+    notifyListeners();
+  }
+}
+
 
 GetFollowing({context})async{
   ShowGlopalLoading();
@@ -130,16 +184,7 @@ GetFollowing({context})async{
   });
   notifyListeners();
 }
-GetFriends({context})async{
-  ShowGlopalLoading();
-  await Followapi().GetFriends( context ).then((value) {
 
-    Friends=value;
-
-    DismissGlopalLoading();
-  });
-  notifyListeners();
-}
 GetShareFriends({context})async{
   RoomViewmodel Room=   Provider.of<RoomViewmodel>(context,listen: false);
 

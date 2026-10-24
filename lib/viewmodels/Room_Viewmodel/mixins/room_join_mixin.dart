@@ -1,4 +1,3 @@
-
 import 'dart:async';
 
 import 'package:ahlachat/Repositores/Room_repositores/Room_api.dart';
@@ -64,10 +63,12 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
       context,
       listen: false,
     );
+
     final agora = Provider.of<AgoraViewmodel>(
       context,
       listen: false,
     );
+
     final user = Provider.of<LoginViewmodel>(
       context,
       listen: false,
@@ -86,6 +87,7 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
 
       await agora.EndAgora();
 
+      // Keep the database room ID unchanged for the backend API.
       final joinedRoom = await Roomapi().joinRooms(
         context: context,
         Roomid: roomId,
@@ -97,6 +99,7 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
         Rooms.removeWhere(
           (room) => room.id.toString() == roomId.toString(),
         );
+
         NewRooms.removeWhere(
           (room) => room.id.toString() == roomId.toString(),
         );
@@ -107,6 +110,7 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
             key: 'Room_Disbanded',
           ),
         );
+
         return;
       }
 
@@ -125,20 +129,38 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
       Currentroom?.joinRooms = [];
       notifyListeners();
 
-      final String channelName =
+      // Database/API room ID, for example "5".
+      final String databaseRoomId =
           joinedRoom.id?.toString().trim() ?? '';
+
+      // Agora channel name, for example "Room5".
+      final String channelName = databaseRoomId.isEmpty
+          ? ''
+          : 'Room$databaseRoomId';
+
       final String token = joinedRoom.Token?.toString().trim() ?? '';
+
       final bool isAdmin = _isRoomAdmin(joinedRoom, user);
+
+      debugPrint(
+        '[ROOM_JOIN][AGORA_CONFIG] '
+        'databaseRoomId="$databaseRoomId", '
+        'channelName="$channelName", '
+        'tokenPresent=${token.isNotEmpty}, '
+        'tokenLength=${token.length}, '
+        'userId=${_currentUserId(user)}, '
+        'isAdmin=$isAdmin',
+      );
 
       if (channelName.isEmpty || token.isEmpty) {
         debugPrint(
           '[ROOM_JOIN] Missing Agora configuration '
-          '(room=${joinedRoom.id}, '
+          '(room=$databaseRoomId, '
           'channelEmpty=${channelName.isEmpty}, '
           'tokenEmpty=${token.isEmpty})',
         );
       } else {
-        // Audio connection failure must not block loading membership/UI.
+        // Audio connection failure must not block membership/UI loading.
         try {
           await agora.initialize(
             role: isAdmin
@@ -148,7 +170,10 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
             channelName: channelName,
           );
         } catch (error, stackTrace) {
-          debugPrint('[ROOM_JOIN][AGORA] Initialize failed: $error');
+          debugPrint(
+            '[ROOM_JOIN][AGORA] Initialize failed: $error',
+          );
+
           if (kDebugMode) {
             debugPrintStack(stackTrace: stackTrace);
           }
@@ -177,14 +202,17 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
             '[ROOM_JOIN][MEMBERS] '
             'room=${joinedRoom.id}, '
             'count=${refreshedParticipants.length}, '
-            'currentUser=$_currentUserId(user), '
+            'currentUser=${_currentUserId(user)}, '
             'admin=${_roomAdminId(joinedRoom)}',
           );
 
           notifyListeners();
         }
       } catch (error, stackTrace) {
-        debugPrint('[ROOM_JOIN] Participant refresh failed: $error');
+        debugPrint(
+          '[ROOM_JOIN] Participant refresh failed: $error',
+        );
+
         if (kDebugMode) {
           debugPrintStack(stackTrace: stackTrace);
         }
@@ -209,12 +237,14 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
 
       roomVM.initscrollcontroller();
 
+      // Keep the socket connected using the database room ID.
       socket.ConnectRoomScocket(context, joinedRoom.id);
 
       final roomPlay = Provider.of<RoomPlayViewModel>(
         context,
         listen: false,
       );
+
       roomPlay.changeHasRoomstate(true);
       roomPlay.changeIsRoomstate(true);
 
@@ -255,6 +285,7 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
       HideEnterWidget();
 
       final int? userId = int.tryParse(_currentUserId(user));
+
       if (userId != null) {
         agora.unmuteusermic(userId);
       }
@@ -271,7 +302,36 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
           gifts.sidepanner();
 
           final String entry = user.userinfo?.entry?.trim() ?? '';
-          if (entry.isEmpty) return;
+
+          if (entry.isEmpty) {
+            debugPrint(
+              '[ROOM_JOIN][ENTRY] No entry animation configured for '
+              'user=${_currentUserId(user)}',
+            );
+            return;
+          }
+
+          final String lowerEntry = entry.toLowerCase();
+
+          final bool isStaticImage =
+              lowerEntry.endsWith('.png') ||
+              lowerEntry.endsWith('.jpg') ||
+              lowerEntry.endsWith('.jpeg') ||
+              lowerEntry.endsWith('.webp');
+
+          // EntryShow uses the SVGA animation controller.
+          // Never pass a static profile image to the SVGA parser.
+          if (isStaticImage) {
+            debugPrint(
+              '[ROOM_JOIN][ENTRY] '
+              'Skipped static image as entry animation: $entry',
+            );
+            return;
+          }
+
+          debugPrint(
+            '[ROOM_JOIN][ENTRY] Loading animation: $entry',
+          );
 
           Provider.of<SvgViewmodel>(
             context,
@@ -281,8 +341,14 @@ mixin RoomJoinMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
             entername: user.userinfo?.name,
             svga: entry,
           );
-        } catch (error) {
-          debugPrint('[ROOM_JOIN] Entry animation failed: $error');
+        } catch (error, stackTrace) {
+          debugPrint(
+            '[ROOM_JOIN][ENTRY] Animation failed: $error',
+          );
+
+          if (kDebugMode) {
+            debugPrintStack(stackTrace: stackTrace);
+          }
         }
       });
 

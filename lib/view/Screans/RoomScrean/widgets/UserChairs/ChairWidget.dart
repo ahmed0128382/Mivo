@@ -1,9 +1,8 @@
+
 import 'package:ahlachat/util/Localization.dart';
 import 'package:ahlachat/util/app_constants.dart';
-import 'package:ahlachat/util/helperclass.dart';
 import 'package:ahlachat/util/styles.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/SendGift.dart';
-import 'package:ahlachat/view/widgets/ModelSheet.dart';
 import 'package:ahlachat/view/widgets/PhotoWithFrame.dart';
 import 'package:ahlachat/viewmodels/Agora_ViewModel/AgoraViewmodel.dart';
 import 'package:ahlachat/viewmodels/Auth_Viewmodel/LoginViewModel.dart';
@@ -12,10 +11,11 @@ import 'package:ahlachat/viewmodels/Room_Viewmodel/Room_Viewmodel.dart';
 import 'package:avatar_glow/avatar_glow.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:svgaplayer_flutter/player.dart';
 
 /// Legacy filename/class name retained for existing imports.
 ///
-/// The index now refers to room.joinuserRooms, not a chair position.
+/// The index refers to room.joinuserRooms, not a chair position.
 class Chairwidget extends StatelessWidget {
   final int index;
 
@@ -24,14 +24,58 @@ class Chairwidget extends StatelessWidget {
     required this.index,
   });
 
+  /// Returns the first non-empty value.
+  ///
+  /// Room-member API data takes priority. The local profile is used as
+  /// a fallback for the current user when the room data is incomplete.
+  dynamic _firstAvailableValue(List<dynamic> values) {
+    for (final dynamic value in values) {
+      if (value == null) continue;
+
+      final String text = value.toString().trim();
+
+      if (text.isNotEmpty && text.toLowerCase() != 'null') {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  /// Converts a filename or absolute URL into a usable image URL.
+  String? _resolveDecorationUrl(dynamic value) {
+    if (value == null) return null;
+
+    final String path = value.toString().trim();
+
+    if (path.isEmpty || path.toLowerCase() == 'null') {
+      return null;
+    }
+
+    if (path.startsWith('https://') || path.startsWith('http://')) {
+      return path;
+    }
+
+    final String base = AppConstants.Image_URL.trim();
+    final String normalizedBase =
+        base.endsWith('/') ? base : '$base/';
+    final String normalizedPath =
+        path.startsWith('/') ? path.substring(1) : path;
+
+    return '$normalizedBase$normalizedPath';
+  }
+
   @override
   Widget build(BuildContext context) {
     final RoomViewmodel room =
         Provider.of<RoomViewmodel>(context, listen: true);
+
     final LoginViewmodel login =
         Provider.of<LoginViewmodel>(context, listen: true);
+
     final GiftsViewModel gifts =
         Provider.of<GiftsViewModel>(context, listen: true);
+
     final AgoraViewmodel agora =
         Provider.of<AgoraViewmodel>(context, listen: true);
 
@@ -54,32 +98,83 @@ class Chairwidget extends StatelessWidget {
 
     final bool isHost = participantId == hostId;
     final bool isCurrentUser = participantId == currentUserId;
-    final bool isModerator = room.Currentroom?.supervisorsId
-            ?.contains(participantId) ??
-        false;
+
+    final bool isModerator =
+        room.Currentroom?.supervisorsId?.contains(participantId) ??
+            false;
+
     final bool currentUserIsModerator =
         room.Currentroom?.supervisorsId?.contains(currentUserId) ??
             false;
 
     final bool canModerate =
         room.checkadmin(context: context) || currentUserIsModerator;
+
     final bool canManageModerators =
         room.checkadmin(context: context);
 
-    final int? participantNumericId =
-        int.tryParse(participantId);
+    final int? participantNumericId = int.tryParse(participantId);
 
-    final bool isMuted =
-        room.Mutedids.contains(participant.id);
+    final bool isMuted = room.Mutedids.contains(participant.id);
 
     final bool isSpeaking = participantNumericId != null &&
         agora.isUserSpeaking(participantNumericId) &&
         !isMuted;
 
-    final bool canModerateThisParticipant =
-        !isCurrentUser &&
+    final bool canModerateThisParticipant = !isCurrentUser &&
         !isHost &&
         !(currentUserIsModerator && isModerator);
+
+    // Prefer the user information returned by Getjoinusers.
+    // Fall back to the local profile for your own account if necessary.
+    final dynamic localUser = isCurrentUser ? login.userinfo : null;
+
+    final dynamic avatarImage = _firstAvailableValue([
+      participant.image,
+      localUser?.image,
+    ]);
+
+    // UserFrame already handles the avatar frame rendering.
+    // Keep its original frame format; do not treat it as an SVG bubble.
+    final dynamic avatarFrame = _firstAvailableValue([
+      participant.frameimage,
+      localUser?.frameimage,
+    ]);
+
+    // Profile bubble: SVG decoration around the user's avatar.
+    final dynamic profileBubbleValue = _firstAvailableValue([
+      participant.bubbles,
+      localUser?.bubbles,
+    ]);
+
+    final String? profileBubbleUrl =
+        _resolveDecorationUrl(profileBubbleValue);
+
+    // Entry decoration: the API returns Enterbubles separately.
+    // This asset is commonly a PNG, so render it as an image, not an SVG.
+    final dynamic entryDecorationValue = _firstAvailableValue([
+      participant.Enterbubles,
+      localUser?.Enterbubles,
+    ]);
+
+    final String? entryDecorationUrl =
+        _resolveDecorationUrl(entryDecorationValue);
+
+    debugPrint(
+      '[ROOM_DECORATION] user=$participantId '
+      'isCurrentUser=$isCurrentUser',
+    );
+    debugPrint(
+      '[ROOM_DECORATION] frame=$avatarFrame',
+    );
+    debugPrint(
+      '[ROOM_DECORATION] bubbles=$profileBubbleValue '
+      'url=$profileBubbleUrl',
+    );
+    debugPrint(
+      '[ROOM_DECORATION] Enterbubles=$entryDecorationValue '
+      'url=$entryDecorationUrl',
+    );
 
     return PopupMenuButton<int>(
       color: const Color(0xFF171A24),
@@ -87,13 +182,16 @@ class Chairwidget extends StatelessWidget {
       tooltip: participant.name?.toString() ?? 'Participant',
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
-        side: const BorderSide(color: Color(0xFF303747)),
+        side: const BorderSide(
+          color: Color(0xFF303747),
+        ),
       ),
       onSelected: (value) async {
         switch (value) {
           case 0:
             login.GetShoweduserProfile(participant);
             CheckBlocked = false;
+
             Navigator.pushNamed(
               context,
               AppConstants.ShowUser_Profile,
@@ -139,9 +237,7 @@ class Chairwidget extends StatelessWidget {
             break;
 
           case 3:
-            if (!canManageModerators ||
-                isHost ||
-                isCurrentUser) {
+            if (!canManageModerators || isHost || isCurrentUser) {
               return;
             }
 
@@ -164,6 +260,7 @@ class Chairwidget extends StatelessWidget {
             }
 
             Navigator.pop(context);
+
             room.Evictionuser(
               Userid: participant.id,
               context: context,
@@ -192,9 +289,7 @@ class Chairwidget extends StatelessWidget {
               key: isMuted ? 'unmute' : 'mute',
             ),
           ),
-        if (canManageModerators &&
-            !isHost &&
-            !isCurrentUser)
+        if (canManageModerators && !isHost && !isCurrentUser)
           _menuItem(
             value: 3,
             icon: Icons.shield_outlined,
@@ -207,7 +302,10 @@ class Chairwidget extends StatelessWidget {
           _menuItem(
             value: 4,
             icon: Icons.person_remove_outlined,
-            title: getLang(context: context, key: 'Room_kick'),
+            title: getLang(
+              context: context,
+              key: 'Room_kick',
+            ),
           ),
       ],
       child: SizedBox(
@@ -215,86 +313,127 @@ class Chairwidget extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              clipBehavior: Clip.none,
-              children: [
-                if (isSpeaking)
-                  AvatarGlow(
-                    glowColor: Colors.tealAccent,
-                    glowRadiusFactor: 1.2,
-                    glowCount: 2,
-                    duration: const Duration(milliseconds: 1000),
-                    repeat: true,
-                    animate: true,
-                    child: const SizedBox(
-                      width: 58,
-                      height: 58,
+            SizedBox(
+              width: 66,
+              height: 66,
+              child: Stack(
+                alignment: Alignment.center,
+                clipBehavior: Clip.none,
+                children: [
+                  // 1. Speaking glow stays behind the avatar.
+                  if (isSpeaking)
+                    AvatarGlow(
+                      glowColor: Colors.tealAccent,
+                      glowRadiusFactor: 1.2,
+                      glowCount: 2,
+                      duration: const Duration(milliseconds: 1000),
+                      repeat: true,
+                      animate: true,
+                      child: const SizedBox(
+                        width: 62,
+                        height: 62,
+                      ),
                     ),
-                  ),
-                Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isHost
-                          ? Colors.amber
-                          : isSpeaking
-                              ? Colors.tealAccent
-                              : const Color(0xFF394254),
-                      width: isHost || isSpeaking ? 2 : 1,
+
+                  // 2. Avatar and its existing frame.
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isHost
+                            ? Colors.amber
+                            : isSpeaking
+                                ? Colors.tealAccent
+                                : const Color(0xFF394254),
+                        width: isHost || isSpeaking ? 2 : 1,
+                      ),
                     ),
-                  ),
-                  child: ClipOval(
-                    child: SizedBox(
-                      width: 48,
-                      height: 48,
-                      child: UserFrame(
-                        image: isCurrentUser
-                            ? login.userinfo?.image
-                            : participant.image,
-                        Frame: isCurrentUser
-                            ? login.userinfo?.frameimage
-                            : participant.frameimage,
+                    child: ClipOval(
+                      child: SizedBox(
+                        width: 48,
+                        height: 48,
+                        child: UserFrame(
+                          image: avatarImage,
+                          Frame: avatarFrame,
+                        ),
                       ),
                     ),
                   ),
-                ),
-                if (isHost)
-                  const Positioned(
-                    top: -4,
-                    right: -4,
-                    child: Icon(
-                      Icons.workspace_premium,
-                      color: Colors.amber,
-                      size: 17,
-                    ),
-                  ),
-                if (isMuted)
-                  Positioned(
-                    bottom: -2,
-                    right: -3,
-                    child: Container(
-                      padding: const EdgeInsets.all(3),
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF2A2E3A),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.mic_off,
-                        color: Colors.white70,
-                        size: 12,
+
+                  // 3. Entry decoration (Enterbubles).
+                  // This is rendered as a raster image, e.g. PNG.
+                  if (entryDecorationUrl != null)
+                    IgnorePointer(
+                      child: SizedBox(
+                        width: 66,
+                        height: 66,
+                        child: Image.network(
+                          entryDecorationUrl,
+                          width: 66,
+                          height: 66,
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            debugPrint(
+                              '[ROOM_DECORATION] Failed to load entry '
+                              'decoration: $entryDecorationUrl; $error',
+                            );
+                            return const SizedBox.shrink();
+                          },
+                        ),
                       ),
                     ),
-                  ),
-              ],
+
+                  // 4. Profile bubble (bubbles).
+                  // This is SVG, so use flutter_svg rather than SVGA.
+                  if (profileBubbleUrl != null)
+  SizedBox(
+    width: 66,
+    height: 66,
+    child: SVGASimpleImage(
+      resUrl: profileBubbleUrl,
+    ),
+  ),
+
+                  // 5. Host badge stays above both decorations.
+                  if (isHost)
+                    const Positioned(
+                      top: -4,
+                      right: -4,
+                      child: Icon(
+                        Icons.workspace_premium,
+                        color: Colors.amber,
+                        size: 17,
+                      ),
+                    ),
+
+                  // 6. Mute indicator stays visible.
+                  if (isMuted)
+                    Positioned(
+                      bottom: -2,
+                      right: -3,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF2A2E3A),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.mic_off,
+                          color: Colors.white70,
+                          size: 12,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
             const SizedBox(height: 5),
             Text(
-              (isCurrentUser
-                      ? login.userinfo?.name
-                      : participant.name)
-                  ?.toString() ??
+              _firstAvailableValue([
+                    participant.name,
+                    localUser?.name,
+                  ])?.toString() ??
                   'Member',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -331,7 +470,11 @@ class Chairwidget extends StatelessWidget {
       height: 40,
       child: Row(
         children: [
-          Icon(icon, color: Colors.white70, size: 18),
+          Icon(
+            icon,
+            color: Colors.white70,
+            size: 18,
+          ),
           const SizedBox(width: 10),
           Text(
             title,

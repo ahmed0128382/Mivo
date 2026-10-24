@@ -20,30 +20,35 @@ class VisitorsScrean extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
-            children:List.generate(Follow.visitor.length, (index){
-              if(Follow.visitor[index].user?.id==user.userinfo?.id){
-                return SizedBox();
-              }
-              return Padding(
-                padding: const EdgeInsets.only(top: 10),
-                child: InkWell(
-                  onTap: () {
-                    user.GetShoweduserProfile(Follow.visitor[index].user);
-                    navigateTo(context: context,screen: ShowUserProfile());
+            
+children: Follow.visitor.map((item) {
+  return Padding(
+    padding: const EdgeInsets.only(top: 10),
+    child: InkWell(
+      onTap: () {
+        user.GetShoweduserProfile(item.user);
+        navigateTo(
+          context: context,
+          screen: ShowUserProfile(),
+        );
+      },
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: Colors.transparent,
+            radius: 30,
+            backgroundImage: CachedNetworkImageProvider(
+              item.user?.image ?? '',
+            ),
+          ),
+          const SizedBox(width: 6),
+          UserSideInfoWidgets(UserDate: item.user),
+        ],
+      ),
+    ),
+  );
+}).toList(),
 
-                  },
-                  child: Container(
-                    child: Row(
-                      children: [
-                        CircleAvatar(backgroundColor: Colors.transparent,radius: 30,backgroundImage: CachedNetworkImageProvider( Follow.visitor[index].user?.image??'')),
-                        SizedBox(width: 6,),
-                        UserSideInfoWidgets(UserDate: Follow.visitor[index].user,)
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            } ),
           ),
         ),
       )

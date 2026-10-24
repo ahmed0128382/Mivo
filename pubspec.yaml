@@ -152,6 +152,7 @@ dependencies:
   cached_network_image: ^3.2.3
   svgaplayer_flutter: ^2.1.2
   file_picker: ^11.0.3
+  flutter_svg: ^2.0.9
 dev_dependencies:
   flutter_test:
     sdk: flutter

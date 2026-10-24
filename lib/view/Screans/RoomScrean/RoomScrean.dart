@@ -24,6 +24,7 @@ import 'package:ahlachat/view/Screans/RoomScrean/widgets/GiftShow/GiftShow.dart'
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/SentGift/SentGift.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/ChatWedget.dart';
 import 'package:ahlachat/view/Screans/RoomScrean/widgets/Headwidget.dart';
+import 'package:ahlachat/view/widgets/PhotoWithFrame.dart';
 
 class RoomScrean extends StatefulWidget {
   const RoomScrean({super.key});
@@ -355,21 +356,23 @@ class RoomParticipantsPanel extends StatelessWidget {
                     final bool isMe = memberId == currentUserId;
 
                     return _RoomMemberTile(
-                      key: ValueKey('member-$memberId'),
-                      userId: memberId,
-                      name: isMe
-                          ? 'You'
-                          : (memberUser.name ?? 'Member').toString(),
-                      image: (memberUser.image ?? '').toString(),
-                      isHost: isHost,
-                      onTap: isMe
-                          ? null
-                          : () => _openProfile(
-                                context,
-                                memberUser,
-                                memberId,
-                              ),
-                    );
+  key: ValueKey('member-$memberId'),
+  userId: memberId,
+  name: isMe
+      ? 'You'
+      : (memberUser.name ?? 'Member').toString(),
+  image: (memberUser.image ?? '').toString(),
+  frameImage: (memberUser.frameimage ?? '').toString(),
+  profileBubble: (memberUser.bubbles ?? '').toString(),
+  isHost: isHost,
+  onTap: isMe
+      ? null
+      : () => _openProfile(
+            context,
+            memberUser,
+            memberId,
+          ),
+);
                   }).toList(),
                 ),
               ),
@@ -412,6 +415,8 @@ class _RoomMemberTile extends StatelessWidget {
     required this.image,
     required this.isHost,
     required this.onTap,
+    required this.frameImage,
+    required this.profileBubble,
   });
 
   final String userId;
@@ -419,20 +424,105 @@ class _RoomMemberTile extends StatelessWidget {
   final String image;
   final bool isHost;
   final VoidCallback? onTap;
+  final String frameImage;
+  final String profileBubble;
+
+ 
+String? _resolveDecorationUrl(
+  String value, {
+  bool usePngForSvg = false,
+}) {
+  String path = value.trim();
+
+  if (path.isEmpty || path.toLowerCase() == 'null') {
+    return null;
+  }
+
+  final Uri? parsedUri = Uri.tryParse(path);
+  final bool isAbsoluteUrl =
+      parsedUri != null &&
+      (parsedUri.scheme == 'https' || parsedUri.scheme == 'http');
+
+  // The selected Shop decoration has a matching PNG file.
+  // Example: 1789734084.svg -> 1789734084.png
+  if (usePngForSvg) {
+    final String lowerPath = path.toLowerCase();
+
+    if (lowerPath.endsWith('.svg')) {
+      path = '${path.substring(0, path.length - 4)}.png';
+    } else if (lowerPath.endsWith('.svga')) {
+      path = '${path.substring(0, path.length - 5)}.png';
+    }
+  }
+
+  if (isAbsoluteUrl) {
+    final Uri uri = Uri.parse(path);
+    return uri.toString();
+  }
+
+  final String baseUrl = AppConstants.Image_URL.endsWith('/')
+      ? AppConstants.Image_URL
+      : '${AppConstants.Image_URL}/';
+
+  final String relativePath = path.startsWith('/images/')
+      ? path.substring('/images/'.length)
+      : path.startsWith('images/')
+          ? path.substring('images/'.length)
+          : path.startsWith('/')
+              ? path.substring(1)
+              : path;
+
+  return '$baseUrl$relativePath';
+}
+
+Widget _buildDecoration(String url) {
+  final Uri? uri = Uri.tryParse(url);
+  final String path = (uri?.path ?? url).toLowerCase();
+
+  // Static image decorations must not be sent to the SVGA parser.
+  final bool isStaticImage = path.endsWith('.png') ||
+      path.endsWith('.jpg') ||
+      path.endsWith('.jpeg') ||
+      path.endsWith('.webp') ||
+      path.endsWith('.gif');
+
+  if (isStaticImage) {
+    return CachedNetworkImage(
+      imageUrl: url,
+      fit: BoxFit.contain,
+      placeholder: (_, __) => const SizedBox.expand(),
+      errorWidget: (_, __, error) {
+        debugPrint(
+          '[ROOM_DECORATION] Image failed: $url; error=$error',
+        );
+        return const SizedBox.expand();
+      },
+    );
+  }
+
+  // This project uses SVGA data even for files ending in .svg.
+  return SVGASimpleImage(resUrl: url);
+}
 
   @override
   Widget build(BuildContext context) {
     final agora = Provider.of<AgoraViewmodel>(context);
 
-    // Never show a speaking animation from stale state after an Agora
-    // connection failure or after leaving the audio channel.
+    // Prevent stale speaking animations after leaving the Agora channel.
     final int? agoraUid = int.tryParse(userId);
+
     final bool isSpeaking = agora.isJoined &&
         agora.connectionError == null &&
         agoraUid != null &&
         agora.isUserSpeaking(agoraUid);
 
     const Color speakingColor = Color(0xFF45D6C5);
+
+    final String? frameUrl = resolveFramePngUrl(frameImage);
+final String? bubbleUrl = _resolveDecorationUrl(
+  profileBubble,
+  usePngForSvg: true,
+);
 
     return SizedBox(
       width: 66,
@@ -443,12 +533,13 @@ class _RoomMemberTile extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             SizedBox(
-              width: 58,
-              height: 58,
+              width: 66,
+              height: 66,
               child: Stack(
                 alignment: Alignment.center,
                 clipBehavior: Clip.none,
                 children: [
+                  // Avatar and speaking indicator.
                   AnimatedContainer(
                     duration: const Duration(milliseconds: 220),
                     curve: Curves.easeOut,
@@ -474,7 +565,7 @@ class _RoomMemberTile extends StatelessWidget {
                           : const [],
                     ),
                     child: ClipOval(
-                      child: image.isNotEmpty
+                      child: image.trim().isNotEmpty
                           ? CachedNetworkImage(
                               imageUrl: image,
                               fit: BoxFit.cover,
@@ -485,6 +576,49 @@ class _RoomMemberTile extends StatelessWidget {
                           : _avatarFallback(),
                     ),
                   ),
+
+                  // SVGA avatar frame.
+                  // Profile bubble / decoration.
+if (bubbleUrl != null)
+  Positioned.fill(
+    child: IgnorePointer(
+      child: CachedNetworkImage(
+        imageUrl: bubbleUrl,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => const SizedBox.expand(),
+        errorWidget: (_, __, error) {
+          debugPrint(
+            '[ROOM_DECORATION] Bubble PNG failed: '
+            '$bubbleUrl; error=$error',
+          );
+          return const SizedBox.expand();
+        },
+      ),
+    ),
+  ),
+
+// Avatar frame: render above the bubble.
+// Selected user frame: display the matching static PNG.
+if (frameUrl != null)
+  Positioned.fill(
+    child: IgnorePointer(
+      child: CachedNetworkImage(
+        imageUrl: frameUrl,
+        fit: BoxFit.contain,
+        placeholder: (_, __) => const SizedBox.shrink(),
+        errorWidget: (_, __, error) {
+          debugPrint(
+            '[ROOM_FRAME] Failed to load frame PNG: '
+            '$frameUrl; error=$error',
+          );
+          return const SizedBox.shrink();
+        },
+      ),
+    ),
+  ),
+  
+
+                  // Host badge.
                   if (isHost)
                     Positioned(
                       top: 0,
@@ -507,6 +641,8 @@ class _RoomMemberTile extends StatelessWidget {
                         ),
                       ),
                     ),
+
+                  // Speaking badge.
                   if (isSpeaking)
                     Positioned(
                       right: 0,
@@ -532,7 +668,9 @@ class _RoomMemberTile extends StatelessWidget {
                 ],
               ),
             ),
+
             const SizedBox(height: 6),
+
             Text(
               name,
               maxLines: 1,
@@ -547,6 +685,7 @@ class _RoomMemberTile extends StatelessWidget {
                     isSpeaking ? FontWeight.w700 : FontWeight.w500,
               ),
             ),
+
             if (isHost) ...[
               const SizedBox(height: 2),
               const Text(

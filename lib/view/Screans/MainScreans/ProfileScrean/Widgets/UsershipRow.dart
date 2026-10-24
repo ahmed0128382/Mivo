@@ -21,19 +21,33 @@ class FollwoingRowWidget extends StatelessWidget {
 
     return  Row(mainAxisAlignment: MainAxisAlignment.spaceAround,
       children: [
-        InkWell(onTap: ()
-        {follow.GetmyVisitors(context: context);
-          navigateTo(context: context, screen: VisitorsScrean());
+        
+InkWell(
+  onTap: () {
+    follow.GetmyVisitors(context: context);
+    navigateTo(context: context, screen: const VisitorsScrean());
+  },
+  child: followRowWidget(
+    name: getLang(context: context, key: "Visitors"),
+    num: follow.visitorsLoaded
+        ? follow.visitor.length.toString()
+        : user.userinfo?.visitors.toString(),
+  ),
+),
 
-                },child: followRowWidget(name:getLang(context: context, key: "Visitors")  ,num:user.userinfo?.visitors.toString())),
-        InkWell(onTap: ()
-        {
+InkWell(
+  onTap: () {
+    follow.GetFriends(context: context);
+    navigateTo(context: context, screen: const FriendsScrean());
+  },
+  child: followRowWidget(
+    name: getLang(context: context, key: "Friends"),
+    num: follow.friendsLoaded
+        ? follow.Friends.length.toString()
+        : user.userinfo?.friends.toString(),
+  ),
+),
 
-          follow.GetFriends(context: context);
-
-          navigateTo(context: context, screen:  FriendsScrean());
-
-          },child: followRowWidget(name: getLang(context: context, key: "Friends") ,num:user.userinfo?.friends.toString())),
     InkWell(onTap: (){
       follow.GetFollowing(context: context);
       navigateTo(context: context, screen:  FollowingScrean());

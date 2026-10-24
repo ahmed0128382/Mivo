@@ -4,6 +4,7 @@ import 'package:ahlachat/util/app_constants.dart';
 import 'package:ahlachat/view/Screans/Family/CreateFamilyScrean.dart';
 
 import 'package:ahlachat/view/Screans/MainScreans/MainScrean/widgets/CountriesRoom.dart';
+import 'package:ahlachat/view/Screans/RoomScrean/RoomConnectionTestScreen.dart';
 import 'package:ahlachat/view/Screans/SplashScrean/InternetConnection.dart';
 import 'package:ahlachat/view/widgets/PickFlag.dart';
 import 'package:flutter/material.dart';
@@ -54,6 +55,10 @@ import '../view/Screans/VipScrean/VipScrean.dart';
 import '../view/widgets/ImageView.dart';
 Route<dynamic> generateRoute(RouteSettings settings) {
       switch (settings.name) {
+        case '/room-connection-test':
+  return MaterialPageRoute(
+    builder: (_) => const RoomConnectionTestScreen(),
+  );
         case AppConstants.Splash_Screan:
           return MaterialPageRoute(builder: (_) => const SplashScrean());
         case AppConstants.Login_Screan:

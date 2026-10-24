@@ -31,6 +31,7 @@ class MomentViewModel extends ChangeNotifier{
   bool showloading5= false;
   bool showloading6= false;
   bool showloading7= false;
+  bool showloadingFollow = false;
   RefreshController refreshController = RefreshController(initialRefresh: false);
   RefreshController refreshController3 = RefreshController(initialRefresh: false);
   RefreshController refreshController4 = RefreshController(initialRefresh: false);
@@ -179,50 +180,103 @@ class MomentViewModel extends ChangeNotifier{
     showloading3 = false;
     notifyListeners();
   }
-  GetPostes({context}) async {
-    ShowGlopalLoading();
-    await Momentapi().GetPosts(context).then((value) {
-      GeneralPosts=value;
-      refreshController.refreshCompleted();
-      refreshController3.refreshCompleted();
-      DismissGlopalLoading();
-    });
+  Future<void> GetPostes({context}) async {
+  ShowGlopalLoading();
+
+  try {
+    final value = await Momentapi().GetPosts(context);
+
+    GeneralPosts = value;
+
+    refreshController.refreshCompleted();
+    refreshController3.refreshCompleted();
+
     notifyListeners();
+  } catch (e) {
+    print('GET POSTS VIEWMODEL ERROR: $e');
+
+    refreshController.refreshFailed();
+    refreshController3.refreshFailed();
+  } finally {
+    DismissGlopalLoading();
   }
-  GetFollowPostes({context}) async {
+}
+ 
+ Future<void> GetFollowPostes({context}) async {
+  try {
+    final value = await Momentapi().GetFollowPostes(context);
 
-    await Momentapi().GetFollowPostes(context).then((value) {
-      FollowPosts=value;
+    FollowPosts = value;
 
-
-    });
     notifyListeners();
+  } catch (e) {
+    print('GET FOLLOWING POSTS VIEWMODEL ERROR: $e');
   }
-  GetMoreFollow(context) async {
-    showSpinner7();
-
-    await Momentapi().AddmoreFollowPosts(context).then((value) {
-
-      value.forEach((element) {
-        FollowPosts.add(element);
-      });
-      hideSpinner7();
-    });
-    notifyListeners();
-  }
-  GetMorePostes(context) async {
-
-    showSpinner7();
-    await Momentapi().AddmorePosts(context).then((value) {
-       
-      value.forEach((element) {
-        GeneralPosts.add(element);
-      });
-      hideSpinner7();
-    });
-    notifyListeners();
+}
+ 
+  Future<void> GetMoreFollow(context) async {
+  if (showloadingFollow || !HasMoreFollowPosts) {
+    return;
   }
 
+  showloadingFollow = true;
+  notifyListeners();
+
+  try {
+    final newPosts = await Momentapi().AddmoreFollowPosts(context);
+
+    if (newPosts.isNotEmpty) {
+      final existingIds = FollowPosts
+          .map((post) => post.id)
+          .toSet();
+
+      final uniquePosts = newPosts
+          .where((post) => !existingIds.contains(post.id))
+          .toList();
+
+      if (uniquePosts.isNotEmpty) {
+        FollowPosts.addAll(uniquePosts);
+      }
+    }
+  } catch (e) {
+    print('LOAD MORE FOLLOWING POSTS VIEWMODEL ERROR: $e');
+  } finally {
+    showloadingFollow = false;
+    notifyListeners();
+  }
+}
+ 
+ Future<void> GetMorePostes(context) async {
+  if (showloading7 || !HasMorePosts) {
+    return;
+  }
+
+  showloading7 = true;
+  notifyListeners();
+
+  try {
+    final newPosts = await Momentapi().AddmorePosts(context);
+
+    if (newPosts.isNotEmpty) {
+      final existingIds = GeneralPosts
+          .map((post) => post.id)
+          .toSet();
+
+      final uniquePosts = newPosts
+          .where((post) => !existingIds.contains(post.id))
+          .toList();
+
+      if (uniquePosts.isNotEmpty) {
+        GeneralPosts.addAll(uniquePosts);
+      }
+    }
+  } catch (e) {
+    print('LOAD MORE POSTS VIEWMODEL ERROR: $e');
+  } finally {
+    showloading7 = false;
+    notifyListeners();
+  }
+}
 
   GetMyPostes({context}) async {
     showSpinner();
@@ -429,24 +483,79 @@ if(value.id!=null){
 
   }
 
-  AddPost({ context})async{
+  
 
-    ShowGlopalLoading();
-    await Momentapi().AddPost(image: Postimage,context: context,tittle: PostName.text).then((value){
 
-      if(value.id!=null){
-        MyPosts.add(value);
-        PostName.clear();
-        Postimage=null;
-        Navigator.pop(context);
-        FocusScope.of(context).unfocus();
-        DismissGlopalLoading();
-      }else  {
-        Dialogs().showtoast(getLang(context:NavigationService.navigatorKey.currentContext,key: "Sorry"));
-      }
-      hideSpinner3();
-    });
+Future<void> AddPost({required BuildContext context}) async {
+  if (showloading4) return;
+
+  showloading4 = true;
+  notifyListeners();
+
+  ShowGlopalLoading();
+
+  try {
+    // 1. Create the post through the API.
+    final Postes? createdPost = await Momentapi().AddPost(
+      image: Postimage,
+      context: context,
+      tittle: PostName.text,
+    );
+
+    if (createdPost == null || createdPost.id == null) {
+      Dialogs().showtoast(
+        getLang(
+          context: NavigationService.navigatorKey.currentContext,
+          key: "Sorry",
+        ),
+      );
+      return;
+    }
+
+    print(
+      'ADD POST: Created post ID = ${createdPost.id}. '
+      'Fetching posts from API...',
+    );
+
+    // 2. Fetch posts from the backend.
+    // Do NOT insert createdPost into any list locally.
+    await GetPostes(context: context);
+
+    // 3. Clear the form only after successful creation.
+    PostName.clear();
+    Postimage = null;
+
+    // 4. Complete pull-to-refresh indicators.
+    refreshController.refreshCompleted();
+    refreshController3.refreshCompleted();
 
     notifyListeners();
+
+    // 5. Close the Add Post screen.
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
+  } catch (e, stackTrace) {
+    print('ADD POST ERROR: $e');
+    print(stackTrace);
+
+    refreshController.refreshFailed();
+    refreshController3.refreshFailed();
+
+    Dialogs().showtoast(
+      getLang(
+        context: NavigationService.navigatorKey.currentContext,
+        key: "Sorry",
+      ),
+    );
+  } finally {
+    showloading4 = false;
+    DismissGlopalLoading();
+    notifyListeners();
   }
+}
+bool get hasMoreGeneralPosts => HasMorePosts;
+
+bool get hasMoreFollowingPosts => HasMoreFollowPosts;
+
 }

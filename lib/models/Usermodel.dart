@@ -1,6 +1,5 @@
 import 'package:ahlachat/models/AgencyModel.dart';
 import 'package:ahlachat/models/FamilyModel.dart';
-import 'package:ahlachat/models/FamilyRequestModel.dart';
 import 'package:ahlachat/models/JoinRoomModel.dart';
 import 'package:ahlachat/models/MyVip.dart';
 import 'package:ahlachat/models/PostsModel.dart';
@@ -236,20 +235,35 @@ class usermodel {
     return value.toString();
   }
 
-  String _imageUrl(dynamic value) {
-    if (value == null) {
-      return '';
-    }
+ String _imageUrl(dynamic value) {
+  if (value == null) return '';
 
-    final String path = value.toString().trim();
+  final String path = value.toString().trim();
 
-    if (path.isEmpty) {
-      return '';
-    }
-
-    // Prevent accidentally creating Image_URL + "null".
-    return AppConstants.Image_URL + path;
+  if (path.isEmpty || path.toLowerCase() == 'null') {
+    return '';
   }
+
+  // Keep absolute URLs unchanged.
+  if (path.startsWith('https://') || path.startsWith('http://')) {
+    return path;
+  }
+
+  final String baseUrl = AppConstants.Image_URL.endsWith('/')
+      ? AppConstants.Image_URL
+      : '${AppConstants.Image_URL}/';
+
+  // Avoid producing /images/images/filename.
+  final String relativePath = path.startsWith('images/')
+      ? path.substring('images/'.length)
+      : path.startsWith('/images/')
+          ? path.substring('/images/'.length)
+          : path.startsWith('/')
+              ? path.substring(1)
+              : path;
+
+  return '$baseUrl$relativePath';
+}
 
   Map<String, dynamic>? _toMap(dynamic value) {
     if (value is Map<String, dynamic>) {
@@ -638,20 +652,26 @@ class usermodel {
     city = _toStringOrNull(json['city']);
 
     // ============================================================
-    // Images
-    // ============================================================
+// Profile decorations and entry animation
+// ============================================================
 
-    frameimage = json['frameimage'] == null
-        ? ''
-        : _imageUrl(json['frameimage']);
+frameimage = _imageUrl(json['frameimage']);
 
-    Enterbubles = json['Enterbubles'] == null
-        ? ''
-        : _imageUrl(json['Enterbubles']);
+// bubbles is the persistent profile bubble/decoration.
+// Normalize it to a URL just like frameimage.
+bubbles = _imageUrl(json['bubbles']);
 
-    SuporrtedImage = json['SuporrtedImage'] == null
-        ? null
-        : _imageUrl(json['SuporrtedImage']);
+// Enterbubles is a separate API field. Do not treat it as an
+// SVGA animation automatically; its file may be a PNG.
+Enterbubles = _imageUrl(json['Enterbubles']);
+
+// entry is the actual entry-animation field consumed by
+// RoomJoinMixin and SvgViewmodel.
+entry = _imageUrl(json['entry']);
+
+SuporrtedImage = json['SuporrtedImage'] == null
+    ? null
+    : _imageUrl(json['SuporrtedImage']);
 
     // ============================================================
     // Hidden

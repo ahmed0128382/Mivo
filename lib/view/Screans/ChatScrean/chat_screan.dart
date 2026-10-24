@@ -119,26 +119,24 @@ class _ChatScreenState extends State<ChatScreen> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                mainAxisAlignment: MainAxisAlignment.start,
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  CircleAvatar(
-                                    backgroundColor: Colors.transparent,
-                                    backgroundImage: otherUserImage.isNotEmpty
-                                        ? CachedNetworkImageProvider(
-                                            otherUserImage,
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 5),
-                                  _buildMessageContent(
-                                    context: context,
-                                    message: message,
-                                    messageText: messageText,
-                                  ),
-                                ],
-                              ),
+  crossAxisAlignment: CrossAxisAlignment.start,
+  children: [
+    CircleAvatar(
+      backgroundColor: Colors.transparent,
+      backgroundImage: otherUserImage.isNotEmpty
+          ? CachedNetworkImageProvider(otherUserImage)
+          : null,
+    ),
+    const SizedBox(width: 5),
+    Flexible(
+      child: _buildMessageContent(
+        context: context,
+        message: message,
+        messageText: messageText,
+      ),
+    ),
+  ],
+),
                               Text(
                                 Helper().getTimeago(
                                   time: message.createdAt,
@@ -159,27 +157,26 @@ class _ChatScreenState extends State<ChatScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.end,
                           children: [
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                _buildMessageContent(
-                                  context: context,
-                                  message: message,
-                                  messageText: messageText,
-                                ),
-                                const SizedBox(width: 6),
-                                CircleAvatar(
-                                  backgroundColor: Colors.transparent,
-                                  backgroundImage:
-                                      (user.userinfo?.image ?? '').isNotEmpty
-                                          ? CachedNetworkImageProvider(
-                                              user.userinfo!.image!,
-                                            )
-                                          : null,
-                                ),
-                              ],
-                            ),
+                           Row(
+  crossAxisAlignment: CrossAxisAlignment.start,
+  mainAxisAlignment: MainAxisAlignment.end,
+  children: [
+    Flexible(
+      child: _buildMessageContent(
+        context: context,
+        message: message,
+        messageText: messageText,
+      ),
+    ),
+    const SizedBox(width: 6),
+    CircleAvatar(
+      backgroundColor: Colors.transparent,
+      backgroundImage: (user.userinfo?.image ?? '').isNotEmpty
+          ? CachedNetworkImageProvider(user.userinfo!.image!)
+          : null,
+    ),
+  ],
+),
                             Text(
                               Helper().getTimeago(
                                 time: message.createdAt,
@@ -196,127 +193,130 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                 ),
 
-                // Bottom message composer
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.only(
-                    top: 8,
-                    bottom: isKeyboardVisible ? 8 : 4,
+               // Bottom message composer
+SafeArea(
+  bottom: true, // Ensures it stays above the iOS home indicator / Android navigation bar
+  child: Container(
+    width: double.infinity,
+    padding: EdgeInsets.only(
+      top: 8,
+      // Increased bottom padding to give more breathing room under the textfield/buttons
+      bottom: isKeyboardVisible ? 8 : 16, 
+    ),
+    decoration: BoxDecoration(
+      border: Border(
+        top: BorderSide(
+          color: whitecolor4,
+          width: 0.5,
+        ),
+      ),
+      color: whitecolor,
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        const SizedBox(width: 10),
+
+        // Message input
+        Expanded(
+          child: Container(
+            decoration: BoxDecoration(
+              color: secondcolor,
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 8,       
+              ),
+              child: TextField(
+                controller: inboxrooms.textEditingController,
+                keyboardType: TextInputType.multiline,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 15,
+                ),
+                decoration: InputDecoration.collapsed(
+                  hintText: getLang(
+                    context: context,
+                    key: 'Say',
                   ),
-                  decoration: BoxDecoration(
-                    border: Border(
-                      top: BorderSide(
-                        color: whitecolor4,
-                        width: 0.5,
-                      ),
-                    ),
-                    color: whitecolor,
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const SizedBox(width: 10),
-
-                      // Message input
-                      Expanded(
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: secondcolor,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 14,
-                              vertical: 8,
-                            ),
-                            child: TextField(
-                              controller: inboxrooms.textEditingController,
-                              keyboardType: TextInputType.multiline,
-                              minLines: 1,
-                              maxLines: 4,
-                              textInputAction: TextInputAction.newline,
-                              style: const TextStyle(
-                                color: Colors.black,
-                                fontSize: 15,
-                              ),
-                              decoration: InputDecoration.collapsed(
-                                hintText: getLang(
-                                  context: context,
-                                  key: 'Say',
-                                ),
-                                hintStyle: const TextStyle(
-                                  color: Colors.black45,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      // Attachment menu: images and files
-                      IconButton(
-                        tooltip: 'Attach image or file',
-                        icon: const Icon(
-                          Icons.attach_file_rounded,
-                          color: _attachmentBlue,
-                          size: 27,
-                        ),
-                        onPressed: _showAttachmentMenu,
-                      ),
-
-                      // Send button
-                      Padding(
-                        padding: const EdgeInsets.only(
-                          right: 8,
-                          bottom: 2,
-                        ),
-                        child: Material(
-                          color: _sendBlue,
-                          shape: const CircleBorder(),
-                          child: IconButton(
-                            tooltip: 'Send message',
-                            icon: const Icon(
-                              Icons.arrow_upward_rounded,
-                              color: Colors.white,
-                              size: 24,
-                            ),
-                            onPressed: () {
-                              final String text = inboxrooms
-                                  .textEditingController.text
-                                  .trim();
-
-                              if (text.isEmpty) {
-                                return;
-                              }
-
-                              if (!user.checkuserkind(
-                                context: context,
-                                id: widget.inboxContent?.sender?.id,
-                              )) {
-                                inboxrooms.SendMessage(
-                                  userinfo: widget.inboxContent?.sender,
-                                  context: context,
-                                  id: widget.inboxContent?.id,
-                                  message: text,
-                                );
-                              } else {
-                                inboxrooms.SendMessage(
-                                  userinfo: widget.inboxContent?.user,
-                                  context: context,
-                                  id: widget.inboxContent?.id,
-                                  message: text,
-                                );
-                              }
-                            },
-                          ),
-                        ),
-                      ),
-                    ],
+                  hintStyle: const TextStyle(
+                    color: Colors.black45,
                   ),
                 ),
+              ),
+            ),
+          ),
+        ),
 
-                // Added bottom padding below the input bar
-                const SizedBox(height: 16),
+        // Attachment menu: images and files
+        IconButton(
+          tooltip: 'Attach image or file',
+          icon: const Icon(
+            Icons.attach_file_rounded,
+            color: _attachmentBlue,
+            size: 27,
+          ),
+          onPressed: _showAttachmentMenu,
+        ),
+
+        // Send button
+        Padding(
+          padding: const EdgeInsets.only(
+            right: 8,
+            bottom: 2,
+          ),
+          child: Material(
+            color: _sendBlue,
+            shape: const CircleBorder(),
+            child: IconButton(
+              tooltip: 'Send message',
+              icon: const Icon(
+                Icons.arrow_upward_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+              onPressed: () {
+                final String text = inboxrooms
+                    .textEditingController.text
+                    .trim();
+
+                if (text.isEmpty) {
+                  return;
+                }
+
+                if (!user.checkuserkind(
+                  context: context,
+                  id: widget.inboxContent?.sender?.id,
+                )) {
+                  inboxrooms.SendMessage(
+                    userinfo: widget.inboxContent?.sender,
+                    context: context,
+                    id: widget.inboxContent?.id,
+                    message: text,
+                  );
+                } else {
+                  inboxrooms.SendMessage(
+                    userinfo: widget.inboxContent?.user,
+                    context: context,
+                    id: widget.inboxContent?.id,
+                    message: text,
+                  );
+                }
+              },
+            ),
+          ),
+        ),
+      ],
+    ),
+  ),
+)
+
+                
               ],
             ),
           ),
@@ -486,10 +486,10 @@ class _ChatScreenState extends State<ChatScreen> {
           );
         },
         child: Container(
-          constraints: const BoxConstraints(
-            minWidth: 10,
-            maxWidth: 200,
-          ),
+          constraints:BoxConstraints(
+  minWidth: 10,
+  maxWidth: MediaQuery.sizeOf(context).width * 0.65,
+),
           decoration: BoxDecoration(
             color: MainColor,
             borderRadius: BorderRadius.circular(25),

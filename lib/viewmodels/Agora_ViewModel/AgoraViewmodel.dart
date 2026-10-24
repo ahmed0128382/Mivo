@@ -145,8 +145,26 @@ class AgoraViewmodel extends ChangeNotifier {
     }
 
     final String token = Token?.toString().trim() ?? '';
-    final String channel = channelName?.toString().trim() ?? '';
-    final int? uid = int.tryParse(UserId?.toString() ?? '');
+
+final String requestedChannel =
+    channelName?.toString().trim() ?? '';
+
+final String channel;
+
+if (requestedChannel.isEmpty) {
+  channel = '';
+} else if (requestedChannel.toLowerCase().startsWith('room')) {
+  channel = requestedChannel;
+} else {
+  channel = 'Room$requestedChannel';
+}
+
+final int? uid = int.tryParse(UserId?.toString() ?? '');
+debugPrint(
+  '[AGORA][CHANNEL_MAPPING] '
+  'requested="$requestedChannel" '
+  'actual="$channel"',
+);
 
     if (APP_ID.trim().isEmpty) {
       connectionError = 'Agora App ID is missing.';

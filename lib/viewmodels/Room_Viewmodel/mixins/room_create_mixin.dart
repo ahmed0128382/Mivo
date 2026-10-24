@@ -187,8 +187,10 @@ mixin RoomCreateMixin on RoomStateMixin, RoomLoadingMixin, RoomUiMixin {
       listen: false,
     ).changeHasRoomstate(true);
 
-    final String agoraChannel =
-        value.id?.toString().trim() ?? '';
+    final String roomId = value.id?.toString().trim() ?? '';
+
+final String agoraChannel =
+    roomId.isEmpty ? '' : 'Room$roomId';
 
     final String agoraToken =
         value.Token?.toString().trim() ?? '';

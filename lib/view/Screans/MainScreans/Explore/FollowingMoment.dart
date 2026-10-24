@@ -36,15 +36,31 @@ class _FollowingMomentsState extends State<FollowingMoments> {
 
   ScrollController? _controller2;
   void _scrollListener2() {
-    MomentViewModel Moment=  Provider.of<MomentViewModel>(context,listen: false);
-    if((_controller2?.offset??0) >= (_controller2?.position.maxScrollExtent??0)-20 && !Moment.showloading7){
-      print('gooooooooooooooooooooooooooooooooooooooooo');
-      Moment.GetMoreFollow(context);
-    }
-
-
-
+  if (_controller2 == null || !_controller2!.hasClients) {
+    return;
   }
+
+  final posts = Provider.of<MomentViewModel>(
+    context,
+    listen: false,
+  );
+
+  if (!posts.hasMoreFollowingPosts || posts.showloadingFollow) {
+    return;
+  }
+
+  final position = _controller2!.position;
+
+  if (position.maxScrollExtent - position.pixels <= 200) {
+    posts.GetMoreFollow(context);
+  }
+}
+@override
+void dispose() {
+  _controller2?.removeListener(_scrollListener2);
+  _controller2?.dispose();
+  super.dispose();
+}
 
   @override
   void initState() {
@@ -71,7 +87,13 @@ class _FollowingMomentsState extends State<FollowingMoments> {
               crossAxisAlignment: CrossAxisAlignment.center,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                InkWell(onTap: () =>navigateTo(context: context, screen: Momentcontent(ChoosePost:  posts.GeneralPosts[index],)),
+                InkWell(
+  onTap: () => navigateTo(
+    context: context,
+    screen: Momentcontent(
+      ChoosePost: posts.FollowPosts[index],
+    ),
+  ),
                   child: Row( crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.start,
                     children: [
@@ -190,10 +212,14 @@ class _FollowingMomentsState extends State<FollowingMoments> {
                           ],
                         ),
 
-                        InkWell(onTap:(){
-                          navigateTo(context: context, screen: Momentcontent(ChoosePost:  posts.GeneralPosts[index],));
-
-                        },
+                        InkWell(onTap: () {
+  navigateTo(
+    context: context,
+    screen: Momentcontent(
+      ChoosePost: posts.FollowPosts[index],
+    ),
+  );
+},
                           child: Row(
                             children: [
                               FaIcon( FontAwesomeIcons.comment,color: MainColor,size: 22),
